@@ -1,0 +1,44 @@
+{
+  "name": "personal-atlas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "validate:data": "tsx scripts/validate-data.ts",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "build": "npm run validate:data && npm run licenses && tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "photos": "tsx scripts/optimize-photos.ts",
+    "test:subpath": "vite build --base /website/ --outDir .test-build && playwright test --config playwright.subpath.config.ts",
+    "verify:sources": "python3 scripts/verify-sources.py",
+    "catalogs:world": "node scripts/build-world.mjs",
+    "licenses": "node scripts/licenses.mjs"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-globe.gl": "^2.37.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/d3-geo": "^3.1.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "sharp": "^0.34.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

@@ -1,0 +1,115 @@
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/SpaceGrotesk-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+.atlas-orb {
+  width: 100%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  user-select: none;
+  animation: atlas-orb-arrive 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.atlas-orb-parallax {
+  width: 100%;
+  height: 100%;
+  transform: translate3d(var(--orb-x, 0px), var(--orb-y, 0px), 0);
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.atlas-orb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.atlas-orb-instrument {
+  fill: none;
+  stroke: #687173;
+  stroke-width: 0.65;
+  opacity: 0.52;
+}
+
+.atlas-orb-instrument > circle {
+  stroke: #41494b;
+}
+
+.atlas-orb-instrument .atlas-orb-tick-major {
+  stroke: #b0b7b6;
+  stroke-width: 1;
+}
+
+.atlas-orb-ocean {
+  fill: #0e1214;
+}
+
+.atlas-orb-land {
+  fill: #242c2e;
+  stroke: #8c9999;
+  stroke-width: 0.65;
+  stroke-linejoin: round;
+}
+
+.atlas-orb-achieved {
+  fill: #9fbfb9;
+  stroke: #d7e4de;
+}
+
+.atlas-orb-graticule {
+  fill: none;
+  stroke: #566568;
+  stroke-width: 0.55;
+  opacity: 0.57;
+}
+
+.atlas-orb-equator {
+  fill: none;
+  stroke: #91a09f;
+  stroke-width: 0.65;
+  stroke-dasharray: 2 5;
+  opacity: 0.8;
+}
+
+.atlas-orb-rim {
+  fill: none;
+  stroke: #a5b1ae;
+  stroke-width: 1.2;
+}
+
+.atlas-orb-labels {
+  fill: #85918e;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.atlas-orb-coordinate {
+  font-size: 8px;
+}
+
+@keyframes atlas-orb-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-orb {
+    animation: none;
+  }
+
+  .atlas-orb-parallax {
+    transform: none;
+    transition: none;
+  }
+}

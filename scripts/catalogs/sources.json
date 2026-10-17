@@ -1,0 +1,26 @@
+{
+  "species.csv": {
+    "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/5ee47a9a9c1229632ec4b473a9c1c53026e005dd/data/v2/csv/pokemon_species.csv",
+    "sha256": "e66e2eeb25fd3836b0ebab6bf87bbf01960aa3c0555e2bac495fa8393c5e0c45"
+  },
+  "names.csv": {
+    "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/5ee47a9a9c1229632ec4b473a9c1c53026e005dd/data/v2/csv/pokemon_species_names.csv",
+    "sha256": "820cde17074cdb1c2b0595c997fb8f998e773bd5da3bb525dec85703c86c5fd9"
+  },
+  "world.json": {
+    "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_50m_admin_0_map_units.geojson",
+    "sha256": "b8d421aca6e9e08e8cdf09cc26af111cc3e0deba4fe915611d58ade71e8a4db0"
+  },
+  "jpn.tgz": {
+    "url": "https://registry.npmjs.org/jpn-atlas/-/jpn-atlas-1.0.2.tgz",
+    "sha256": "ab6cd808f2f89d86ff2b19ba5a24eb1ded237d91199d5543d7120b600b1fcbe9"
+  },
+  "iso.tgz": {
+    "url": "https://registry.npmjs.org/i18n-iso-countries/-/i18n-iso-countries-7.14.0.tgz",
+    "sha256": "bb418ebfb965789fcfbcce7dee59888d901ef64b03601da78b2e224cd6f5825c"
+  },
+  "mountains.ndjson": {
+    "url": "https://raw.githubusercontent.com/codemountains/mountix/1325247de2465c10b5b01f71496dc26c96b2b240/migrations/data/mountix_db-mountains.json",
+    "sha256": "9d12befc372c99949a2c5146c8ae1982d7c4bf0ebece9325242bcdccdeb233af"
+  }
+}

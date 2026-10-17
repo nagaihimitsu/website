@@ -1,0 +1,19 @@
+{
+  "retrieved": "2026-10-18",
+  "naturalEarth": "5.1.2 / ne_50m_admin_0_map_units.geojson",
+  "jpnAtlas": "1.0.2 / GSI Global Map Japan 2016",
+  "pokemonSpeciesCount": 1025,
+  "mountixCommit": "1325247de2465c10b5b01f71496dc26c96b2b240",
+  "comparisonCommit": "f5ff0c0d9097f96829450f5c9f46a47bb3b79c1f",
+  "sha256": {
+    "japan.json": "ba336c96b86c901cc4aad3b1e60b50781afb952b29388d1b7a251b8d989f582f",
+    "world.json": "b8d421aca6e9e08e8cdf09cc26af111cc3e0deba4fe915611d58ade71e8a4db0",
+    "names.csv": "820cde17074cdb1c2b0595c997fb8f998e773bd5da3bb525dec85703c86c5fd9",
+    "species.csv": "e66e2eeb25fd3836b0ebab6bf87bbf01960aa3c0555e2bac495fa8393c5e0c45"
+  },
+  "isoCountries": "i18n-iso-countries 7.14.0, ISO-assigned 249 codes only",
+  "pokeapiCommit": "5ee47a9a9c1229632ec4b473a9c1c53026e005dd",
+  "naturalEarthCommit": "f1890d9f152c896d250a77557a5751a93d494776",
+  "mapProcessing": "mapshaper: world 18% keep-shapes; Japan planar interval 0.3, keep-shapes; world clockwise for d3-geo",
+  "mapshaperVersion": "0.7.88"
+}

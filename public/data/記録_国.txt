@@ -1,0 +1,1 @@
+# 国名|YYYYまたはYYYY-MMまたはYYYY-MM-DD|写真パス（カンマ区切り）
