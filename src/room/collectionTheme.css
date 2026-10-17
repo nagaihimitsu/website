@@ -1,0 +1,368 @@
+/* The archive is the paper-and-ink counterpart of the sunlit room. */
+.app-collection {
+  --bg: #f6f3ed;
+  --panel: #fbfaf6;
+  --line: #d8d7cc;
+  --muted: #6b736b;
+  --accent: #4f715d;
+  min-height: 100dvh;
+  color: #313a36;
+  background: var(--bg);
+  color-scheme: light;
+}
+
+.app-collection.theme-mountains {
+  --accent: #956240;
+}
+
+.app-collection :is(button, a, input, select, [role="button"]):focus-visible {
+  outline-color: #425e4d;
+}
+
+.app-collection ::selection {
+  background: #c9d9ca;
+  color: #263c2e;
+}
+
+.app-collection .skip-link {
+  background: #313a36;
+  color: #fffdf7;
+}
+
+.app-collection :is(.brand-mark, .footer-brand, .page-count strong) {
+  color: #313a36;
+}
+
+.app-collection .brand-period {
+  color: #668575;
+}
+
+.app-collection .site-header nav {
+  color: #697169;
+}
+
+.app-collection .site-header nav a > span {
+  color: #71786f;
+}
+
+.app-collection .site-header nav a:is(.current, :hover) {
+  color: #283c30;
+}
+
+.app-collection .site-header nav a:after {
+  background: #668575;
+}
+
+.app-collection .header-note i {
+  background: #668575;
+}
+
+.app-collection :is(
+  .eyebrow,
+  .header-note,
+  .site-footer,
+  .footer-brand > span,
+  .back-link,
+  .page-title-row .eyebrow,
+  .collection-japanese,
+  .page-count span,
+  .catalog-header > span,
+  .catalog-footnote,
+  .empty-results,
+  .loading
+) {
+  color: #687168;
+}
+
+.app-collection .back-link:hover {
+  color: #2c4936;
+}
+
+.app-collection .map-panel {
+  background: #eeefe6;
+  border-color: #d6d7ca;
+  box-shadow: 0 12px 38px #484a2e06;
+}
+
+.app-collection .map-panel-top {
+  background: #f9f7f0;
+  border-color: #d6d7ca;
+}
+
+.app-collection :is(.map-caption, .map-coordinates, .map-notice) {
+  color: #657060;
+}
+
+.app-collection .segmented {
+  border-color: #cccec3;
+  background: #f2f1e9;
+}
+
+.app-collection .segmented button {
+  color: #616b60;
+}
+
+.app-collection .segmented button[aria-pressed="true"] {
+  background: #465f4e;
+  color: #fffdf5;
+}
+
+.app-collection .segmented button:not([aria-pressed="true"]):hover {
+  background: #e4e8dc;
+  color: #334a39;
+}
+
+/* Replace the SVG's original dark ocean stops without changing geometry. */
+.app-collection .map-surface radialGradient stop {
+  stop-color: #dbe3d7;
+}
+
+.app-collection .map-surface radialGradient stop:last-child {
+  stop-color: #eeefe6;
+}
+
+.app-collection .land {
+  fill: #cbd2c2;
+  stroke: #f5f5ec;
+}
+
+.app-collection .land.visited {
+  fill: var(--accent);
+}
+
+.app-collection .land[role="button"]:is(:hover, :focus) {
+  fill: #98ad93;
+  stroke: #3c5941;
+}
+
+.app-collection .land.visited:hover {
+  fill: var(--accent);
+  filter: brightness(1.14);
+}
+
+.app-collection .sphere {
+  fill: #e5eadd66;
+  stroke: #adbca477;
+}
+
+.app-collection .graticule {
+  stroke: #8b9f7c44;
+}
+
+.app-collection .mountain-marker {
+  fill: #89977e;
+  stroke: #f5f5e9;
+}
+
+.app-collection .mountain-marker.visited {
+  fill: #956240;
+  stroke: #fff8ec;
+}
+
+.app-collection .mountain-marker:is(:hover, :focus) {
+  fill: #754b32;
+  stroke: #313a36;
+}
+
+.app-collection .map-tools {
+  background: #fffdf5ed;
+  border-color: #bfc8b7;
+  box-shadow: 0 4px 14px #414c3020;
+}
+
+.app-collection .map-tools button {
+  color: #43543d;
+}
+
+.app-collection .map-tools button + button {
+  border-color: #d8dece;
+}
+
+.app-collection .map-tools button:hover {
+  background: #e1e8d8;
+}
+
+.app-collection .map-legend {
+  color: #54634c;
+}
+
+.app-collection .legend-dot {
+  background: #a2b295;
+}
+
+.app-collection .legend-dot.active {
+  background: var(--accent);
+}
+
+/* The 3D Earth has its own dark scene and keeps a matching caption surface. */
+.app-collection .globe {
+  background: #0e1214;
+}
+
+.app-collection .globe .map-coordinates {
+  color: #b2bfb4;
+}
+
+.app-collection .search {
+  border-color: #9ca895;
+}
+
+.app-collection .search > span,
+.app-collection .search input::placeholder {
+  color: #6d7967;
+}
+
+.app-collection .search input {
+  color: #313a36;
+}
+
+.app-collection .entry {
+  border-color: #dbddd1;
+}
+
+.app-collection .entry:hover {
+  background: #e9ecdf;
+}
+
+.app-collection :is(.entry-id, .entry-name small, .entry-arrow) {
+  color: #6b7664;
+}
+
+.app-collection .entry-status {
+  color: #8a9680;
+}
+
+.app-collection .collected .entry-status {
+  color: var(--accent);
+}
+
+.app-collection .dex-stats {
+  color: #65705e;
+  border-color: #d8dccf;
+}
+
+.app-collection .dex-stats strong {
+  color: #313a36;
+}
+
+.app-collection .dex-stats > span {
+  color: #6a7563;
+}
+
+/* These two status utilities are important in the original stylesheet. */
+.app-collection .normal {
+  color: #456d52 !important;
+}
+
+.app-collection .shiny {
+  color: #975c35 !important;
+}
+
+.app-collection .generation select {
+  background: #fbfaf4;
+  border-color: #bbc6b0;
+  color: #4e5e43;
+}
+
+.app-collection .pokemon-grid {
+  background: #d8dccf;
+  border-color: #d8dccf;
+}
+
+.app-collection .pokemon-card {
+  background: #fcfaf4;
+}
+
+.app-collection .pokemon-card:hover {
+  background: #eff2e5;
+}
+
+.app-collection .dex-name {
+  color: #313a36;
+}
+
+.app-collection :is(.dex-number, .dex-english, .dex-flags, .pagination) {
+  color: #6b7663;
+}
+
+.app-collection .pagination button {
+  border-color: #c6cdbb;
+}
+
+.app-collection .pagination button:not(:disabled):hover {
+  background: #e6ecda;
+}
+
+.app-collection .load-error pre {
+  color: #855b3f;
+}
+
+.app-collection .detail-dialog {
+  --accent: #4f715d;
+  color: #313a36;
+  background: #f9f6ef;
+  border-color: #cbcdbf;
+  box-shadow: -30px 0 100px #343c302e;
+  color-scheme: light;
+}
+
+.app-collection .detail-dialog.theme-mountains {
+  --accent: #956240;
+}
+
+.app-collection .detail-dialog::backdrop {
+  background: #2b342a80;
+}
+
+.app-collection .close-button {
+  color: #3d513b;
+  background: #fafaf1;
+  border-color: #aebaa2;
+}
+
+.app-collection .close-button:hover {
+  background: #e3e9d7;
+}
+
+.app-collection :is(
+  .detail-inner .eyebrow,
+  .detail-state,
+  .variant-status,
+  .peak-info > span,
+  .peak-info p,
+  .record-heading,
+  .record-date > span,
+  .quiet-note
+) {
+  color: #68735f;
+}
+
+.app-collection .detail-state.done {
+  color: var(--accent);
+}
+
+.app-collection :is(.peak-info, .record-heading) {
+  border-color: #d2d8c6;
+}
+
+.app-collection .record-date {
+  color: #414f39;
+}
+
+.app-collection .photo-main {
+  background: #e9ebdf;
+}
+
+.app-collection :is(.gallery-controls, .source-link) {
+  color: #53694a;
+}
+
+.app-collection .source-link:hover {
+  color: #344d2a;
+}
+
+.app-collection .lightbox,
+.app-collection .lightbox::backdrop {
+  background: #f0eee6fa;
+  color: #313a36;
+}

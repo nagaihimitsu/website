@@ -16,6 +16,10 @@
 
 英字は [Space Grotesk](https://github.com/google/fonts/tree/main/ofl/spacegrotesk)（SIL Open Font License 1.1、ウェイト300〜700）。Google Fontsリポジトリの可変TTFをfontToolsでWOFF2へ可逆変換し、`public/fonts/` に収録しています。ブラウザではローカルファイルだけを読み込みます。出典とライセンス全文は同フォルダの `README.txt`、`SpaceGrotesk-OFL.txt`。日本語はOSフォントを使用します。
 
+## 部屋とスマートフォン
+
+家具、植物、布、アバター、iPhone風スマートフォンはThree.jsで作成したオリジナル形状です。画面の図形・文字も独自に描画し、AppleのロゴやiOSの画像素材、ポケモンのキャラクター画像、ゲーム音声は使用していません。壁の世界地図・日本地図は上記の静的マスターをCanvasで描き、実際の訪問IDに連動して着色します。部屋の小物を架空の旅行・登頂実績として扱いません。
+
 ## 国の範囲とポリゴン
 
 「訪問○か国」はISO国・地域マスターに登録したユニークな実績数です。国連加盟国のみのカウントではありません。分母・達成率は表示しません。

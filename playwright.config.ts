@@ -3,7 +3,8 @@ import { existsSync } from "node:fs";
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: true,
-  workers: 2,
+  // SwiftShader renders the full room on CPU; keep WebGL tests from competing.
+  workers: 1,
   timeout: 45000,
   use: {
     baseURL: "http://127.0.0.1:5173",

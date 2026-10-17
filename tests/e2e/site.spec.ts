@@ -32,7 +32,7 @@ async function fixture(page: Page) {
   );
 }
 test("本番は架空の実績なし、4コレクションへ移動", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/index");
   await expect(page.locator(".card-count strong")).toHaveText([
     "0",
     "0",
@@ -41,7 +41,7 @@ test("本番は架空の実績なし、4コレクションへ移動", async ({ p
   ]);
   await expect(page.locator(".collection-card")).toHaveCount(4);
   await page.screenshot({
-    path: "docs/screenshots/home-desktop.png",
+    path: "docs/screenshots/index-desktop.png",
     fullPage: true,
     animations: "disabled",
   });
@@ -213,9 +213,13 @@ test("360pxの各画面で横はみ出しなし、ボトムシート操作", asy
   await page.setViewportSize({ width: 360, height: 800 });
   for (const s of ["", "world", "japan", "mountains", "pokemon"]) {
     await page.goto("/#/" + s);
-    await expect(
-      page.locator(s ? ".page-count" : ".collection-grid"),
-    ).toBeVisible();
+    await expect(page.locator(s ? ".page-count" : ".room-home")).toBeVisible();
+    if (!s)
+      await expect(page.locator(".room-home")).toHaveAttribute(
+        "data-room-status",
+        /^(ready|fallback)$/,
+        { timeout: 30000 },
+      );
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

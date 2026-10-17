@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import sharp from "sharp";
-test("本番ビルドを /website/ 配下から読み込み、TXT・写真・ハッシュ再読み込みが動く", async ({
+test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT・写真・ハッシュ再読み込みが動く", async ({
   page,
 }) => {
   // Synthetic records exist only in the isolated test build, never public/ or dist/.
@@ -20,7 +20,27 @@ test("本番ビルドを /website/ 配下から読み込み、TXT・写真・ハ
   page.on("response", (r) => {
     if (r.status() >= 400) failed.push(r.url());
   });
-  await page.goto("http://127.0.0.1:4174/website/#/world");
+  await page.goto("http://127.0.0.1:4174/website/#/");
+  await expect(page.locator(".room-home")).toHaveAttribute(
+    "data-room-status",
+    "ready",
+    { timeout: 20000 },
+  );
+  await expect(page.locator(".room-canvas canvas")).toBeVisible();
+  await expect(page.locator(".room-portal")).toHaveCount(4);
+  for (const [section, label] of [
+    ["world", "世界地図を開く"],
+    ["japan", "日本地図を開く"],
+    ["mountains", "百名山を開く"],
+    ["pokemon", "スマートフォンでポケモン図鑑を開く"],
+  ])
+    await expect(
+      page.locator(`.room-portal[data-section="${section}"]`),
+    ).toHaveAccessibleName(label);
+  await page
+    .getByRole("button", { name: "世界地図を開く", exact: true })
+    .click();
+  await expect(page).toHaveURL("http://127.0.0.1:4174/website/#/world");
   await expect(page.locator(".page-count strong")).toHaveText("1");
   await page.reload();
   await expect(page.locator(".page-count strong")).toHaveText("1");
