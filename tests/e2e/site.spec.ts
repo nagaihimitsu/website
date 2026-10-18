@@ -36,8 +36,10 @@ async function fixture(page: Page) {
 }
 test("公開TXTの件数が4コレクションのカードと詳細に一致", async ({ page }) => {
   // Match the Vite/tsx JSON loader used by the app and data validation scripts.
-  const { catalogs, sections } = await tsImport("../../src/data/catalogs.ts", import.meta.url);
-  const { parseArchive } = await tsImport("../../src/data/parser.ts", import.meta.url);
+  const { catalogs, sections }: typeof import("../../src/data/catalogs") =
+    await tsImport("../../src/data/catalogs.ts", import.meta.url);
+  const { parseArchive }: typeof import("../../src/data/parser") =
+    await tsImport("../../src/data/parser.ts", import.meta.url);
   const archive = parseArchive(
     Object.fromEntries(
       Object.values(files).map((file) => [
