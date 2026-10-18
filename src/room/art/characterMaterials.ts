@@ -238,12 +238,12 @@ function eyeReflection(): THREE.DataTexture {
         const distance = Math.atan2(Math.sin(longitude - centre), Math.cos(longitude - centre));
         panels += Math.exp(-((distance / 0.23) ** 2));
       }
-      const softbox = Math.exp(-(((dy - 0.58) / 0.14) ** 2)) * panels;
+      const softbox = Math.exp(-(((dy - 0.64) / 0.14) ** 2)) * panels;
       const bounce = Math.exp(-(((dy + 0.48) / 0.32) ** 2)) * 0.13;
       const offset = (y * width + x) * 4;
-      data[offset] = 0.028 + softbox * 3.1 + bounce * 0.6;
-      data[offset + 1] = 0.024 + softbox * 3.0 + bounce * 0.4;
-      data[offset + 2] = 0.022 + softbox * 2.9 + bounce * 0.28;
+      data[offset] = 0.028 + softbox * 2.75 + bounce * 0.6;
+      data[offset + 1] = 0.024 + softbox * 2.66 + bounce * 0.4;
+      data[offset + 2] = 0.022 + softbox * 2.57 + bounce * 0.28;
       data[offset + 3] = 1;
     }
   }

@@ -83,7 +83,7 @@ GitHub Pagesの場合：
 
 ## 検証と残る範囲
 
-検証結果は [VALIDATION.md](docs/VALIDATION.md)。キャラクターの部位ごとの変更は [外観の調整記録](docs/CHARACTER_REFINEMENT.md)、[フードの変更前後](docs/screenshots/character-hood-before-after.png)、[6方向の確認画像](docs/screenshots/character-comparison.png) にまとめています。PC/360px幅の画面画像は [screenshots](docs/screenshots/)。テスト用実績・画像は通信モックおよび無視対象の `.test-build/` 内だけで使用します。
+検証結果は [VALIDATION.md](docs/VALIDATION.md)。キャラクターの部位ごとの変更は [外観の調整記録](docs/CHARACTER_REFINEMENT.md)、[首元の変更前後](docs/screenshots/character-neck-before-after.png)、[フードの変更前後](docs/screenshots/character-hood-before-after.png)、[6方向の確認画像](docs/screenshots/character-comparison.png) にまとめています。PC/360px幅の画面画像は [screenshots](docs/screenshots/)。テスト用実績・画像は通信モックおよび無視対象の `.test-build/` 内だけで使用します。
 
 MUST要件は実装済み。全国図鑑は採用時点の1,025基本種を固定し、将来の追加種はマスター更新が必要です。独立した地図形状のない3地域は一覧と記録で対応し、地図では誤って着色しません。地球儀の主要ライブラリは大きいため3D選択時のみ読み込みます。
 

@@ -81,10 +81,8 @@ export function buildCharacterHood(builder: CharacterBuilder, body: THREE.Group)
   hood.material = [hoodie, hoodInterior];
   hood.name = "continuous-collapsed-cotton-hood";
 
-  // The narrow shadow at the inner neck opening is buried beneath the plush
-  // jaw. It gives the folded fabric depth without a visible collar component.
-  ellipsoid(0.128, 0.034, 0.14, hoodInterior, body, 0, 0.696, -0.004).name =
-    "buried-hood-lining";
+  // The plush throat continues from the head mesh inside this opening.
+  // Leave the V open rather than filling it with a grey lining disc.
 
   for (const side of [-1, 1]) {
     // The cord pierces the rolled opening itself. There is no separate lip
@@ -114,11 +112,11 @@ export function buildCharacterHood(builder: CharacterBuilder, body: THREE.Group)
     const path = new THREE.CatmullRomCurve3([
       exit.clone().addScaledVector(normal, -0.003),
       exit.clone().addScaledVector(normal, 0.003),
-      new THREE.Vector3(exit.x, exit.y - 0.022, -0.176),
-      new THREE.Vector3(exit.x - side * 0.001, exit.y - 0.06, -0.18),
-      new THREE.Vector3(exit.x - side * 0.002, exit.y - 0.096, -0.181),
+      new THREE.Vector3(exit.x + side * 0.002, exit.y - 0.022, -0.176),
+      new THREE.Vector3(exit.x + side * 0.004, exit.y - 0.06, -0.182),
+      new THREE.Vector3(exit.x + side * 0.001, exit.y - 0.096, -0.181),
     ]);
-    const cordGeometry = remember(new THREE.TubeGeometry(path, 48, 0.0044, 12, false));
+    const cordGeometry = remember(new THREE.TubeGeometry(path, 48, 0.0049, 12, false));
     const cordUvs = cordGeometry.getAttribute("uv");
     for (let index = 0; index < cordUvs.count; index++)
       cordUvs.setX(index, cordUvs.getX(index) * path.getLength() / 0.012);
@@ -132,13 +130,13 @@ export function buildCharacterHood(builder: CharacterBuilder, body: THREE.Group)
       const y = knotPositions.getY(index);
       const z = knotPositions.getZ(index);
       const twist = 1 + Math.sin(Math.atan2(z, x) * 3 + y * 2) * 0.065;
-      knotPositions.setXYZ(index, x * 0.0075 * twist, y * 0.0065, z * 0.0068 * twist);
+      knotPositions.setXYZ(index, x * 0.0083 * twist, y * 0.0072, z * 0.0075 * twist);
     }
     smoothNormals(knotGeometry);
-    mesh(knotGeometry, cord, body, exit.x - side * 0.002, knotY, -0.181).name = "soft-cord-knot";
+    mesh(knotGeometry, cord, body, exit.x + side * 0.0015, knotY, -0.181).name = "soft-cord-knot";
     const aglet = ellipsoid(
-      0.0038, 0.009, 0.0038, cord, body,
-      exit.x - side * 0.0035, knotY - 0.0125, -0.179,
+      0.0042, 0.0098, 0.0042, cord, body,
+      exit.x, knotY - 0.0135, -0.179,
     );
     aglet.rotation.x = -0.18;
     aglet.rotation.z = -side * 0.12;

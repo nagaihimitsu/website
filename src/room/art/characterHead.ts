@@ -101,9 +101,14 @@ export function buildCharacterHead(
     const latitude = Math.hypot(x, z);
     const front = latitude > 0 ? Math.max(0, -z / latitude) : 0;
     const px = x * skullWidth(y);
-    const py = y * HEAD_HEIGHT;
-    const rawDepth = z * HEAD_DEPTH * (1 - y * 0.075) - plushSwell(px, py, front);
-    positions.setXYZ(index, px, py, z < 0 ? eyeSocketDepth(px, py, rawDepth, eyeLayouts) : rawDepth);
+    const faceY = y * HEAD_HEIGHT;
+    // Continue the lowest jaw rings into a short plush throat. The smooth
+    // transition sits below the facial features; its pole is buried inside
+    // the hoodie, with one shared surface instead of a visible head/neck seam.
+    const throat = 1 - THREE.MathUtils.smootherstep(y, -1, -0.79);
+    const py = faceY - 0.044 * throat;
+    const rawDepth = z * HEAD_DEPTH * (1 - y * 0.075) - plushSwell(px, faceY, front);
+    positions.setXYZ(index, px, py, z < 0 ? eyeSocketDepth(px, faceY, rawDepth, eyeLayouts) : rawDepth);
   }
   smoothNormals(skull);
   const skullMesh = mesh(skull, fur, head);
