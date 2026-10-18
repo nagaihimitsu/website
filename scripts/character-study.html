@@ -76,9 +76,18 @@
         punchProgress: null,
         reducedMotion: true,
       });
-      const views = { front: 0, quarter: 60, side: 90, back: 180 };
+      // Compare adjacent angles as well as the profile: a reference's projected
+      // proportions must not be mistaken for differences in the actual sculpt.
+      const views = {
+        front: 0,
+        quarter: -45,
+        shallow: -35,
+        profile: -60,
+        side: 90,
+        back: 180,
+      };
       const angle =
-        ((views[params.get("view") || "quarter"] ?? 60) * Math.PI) / 180;
+        ((views[params.get("view") || "quarter"] ?? -45) * Math.PI) / 180;
       const height = 1.38;
       const width = (height * innerWidth) / innerHeight;
       const camera = new THREE.OrthographicCamera(

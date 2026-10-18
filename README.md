@@ -23,7 +23,7 @@ npm run preview
 
 `build` はデータ検証→TypeScript検査→静的ビルドを実行。`dist/` を配信します。既存チェックアウトをそのまま使用できます。
 
-キャラクターの造形確認は、開発サーバーの `/scripts/character-study.html?view=quarter` で行えます。`view=front`、`side`、`back` で正面・真横・背面へ切り替わります。部屋と同じモデルを一定の照明・縮尺で比較する開発用ページで、本番ビルドには含めません。
+キャラクターの造形確認は、開発サーバーの `/scripts/character-study.html?view=quarter`（斜め45度）で行えます。`view=shallow`（35度）、`profile`（60度）、`front`、`side`、`back` で角度を切り替えます。部屋と同じモデルを一定の照明・縮尺で比較する開発用ページで、本番ビルドには含めません。
 
 ## 最短の更新方法
 

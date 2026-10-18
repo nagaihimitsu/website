@@ -197,12 +197,35 @@ function ribTile(): Textile {
   return result;
 }
 
+function cordTile(): Textile {
+  // A small tubular braid: UV.x follows the cord, UV.y wraps around it.
+  // Keep the relief shallow so the cord reads as soft cotton, not a screw.
+  const result = tile(128, 128, 1, 1, (x, y) => {
+    const u = x / 128;
+    const v = y / 128;
+    const clockwise = (0.5 + 0.5 * Math.cos(TAU * (u * 2 + v * 4))) ** 3;
+    const counter = (0.5 + 0.5 * Math.cos(TAU * (u * 2 - v * 4))) ** 3;
+    const braid =
+      Math.max(clockwise, counter) * 0.65 + Math.min(clockwise, counter) * 0.15;
+    const fibre = hash(x, y, 271) - 0.5;
+    return [
+      0.97 + braid * 0.018 + fibre * 0.012,
+      0.35 + braid * 0.38 + fibre * 0.04,
+      0.97,
+    ];
+  });
+  result.colour.name = "traveller-cotton-cord-colour";
+  result.detail.name = "traveller-cotton-cord-braid";
+  return result;
+}
+
 export function createCharacterMaterials() {
   const plush = plushTile();
   const cotton = cottonTile();
   const canvas = canvasTile();
   const ribs = ribTile();
-  const textures = [plush, cotton, canvas, ribs].flatMap(
+  const braid = cordTile();
+  const textures = [plush, cotton, canvas, ribs, braid].flatMap(
     ({ colour, detail }) => [colour, detail],
   );
   const owned: THREE.Material[] = [];
@@ -235,6 +258,7 @@ export function createCharacterMaterials() {
   // The reference reads as soft, short velvet with broad shading. Strong bump
   // and bright isolated fibres made the former head look granular from the side.
   const fur = textile("#a87c5e", plush, 0.0007, 0.52, "#c09a7f");
+  const pawFur = textile("#79513c", plush, 0.00065, 0.42, "#ad8265");
   const earInner = textile("#875f4c", plush, 0.0006, 0.42, "#b18a73");
   const hoodie = textile("#73747b", cotton, 0.00055, 0.35, "#a5a6af");
   const ribbing = textile("#6d6f76", ribs, 0.0009, 0.3, "#a3a5af");
@@ -245,11 +269,11 @@ export function createCharacterMaterials() {
   const shoeUpper = textile("#454951", canvas, 0.0007, 0.2, "#838791");
   const shoeSole = own(
     new THREE.MeshStandardMaterial({
-      color: "#d8d6ce",
+      color: "#e5e4e2",
       roughness: 0.83,
     }),
   );
-  const ivory = textile("#eeeae1", cotton, 0.00065, 0.3, "#f6f2e8");
+  const cord = textile("#eeede8", braid, 0.00018, 0.38, "#fffdf6");
   const backpack = textile("#d1c8b9", canvas, 0.00065, 0.28, "#e5dac8");
   const backpackTrim = textile("#b9ad9c", canvas, 0.00065, 0.25, "#d8cbb9");
   const backpackLight = textile("#ddd3c3", canvas, 0.00065, 0.28, "#eae0d0");
@@ -262,9 +286,10 @@ export function createCharacterMaterials() {
   const eye = own(
     new THREE.MeshPhysicalMaterial({
       color: "#291d1a",
-      roughness: 0.18,
-      clearcoat: 0.9,
-      clearcoatRoughness: 0.12,
+      roughness: 0.26,
+      specularIntensity: 0.4,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.3,
     }),
   );
   const eyeRim = own(
@@ -283,6 +308,7 @@ export function createCharacterMaterials() {
   let disposed = false;
   return {
     fur,
+    pawFur,
     earInner,
     hoodie,
     ribbing,
@@ -292,7 +318,7 @@ export function createCharacterMaterials() {
     pantCuffs,
     shoeUpper,
     shoeSole,
-    ivory,
+    cord,
     backpack,
     backpackTrim,
     backpackLight,

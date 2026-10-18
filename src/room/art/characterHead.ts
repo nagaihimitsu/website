@@ -6,32 +6,50 @@ const HEAD_HEIGHT = 0.222;
 const HEAD_DEPTH = 0.205;
 const EYE_X = 0.116;
 const EYE_Y = 0.012;
-const EYE_RADIUS_X = 0.045;
-const EYE_RADIUS_Y = 0.054;
+const EYE_RADIUS_X = 0.04;
+const EYE_RADIUS_Y = 0.05;
 
 // The reference has a narrow crown and broad low cheeks, not a round ball.
 const skullWidth = (height: number) => HEAD_WIDTH * (1 - height * 0.26);
 
 /**
- * The cheek, muzzle and forehead are one continuous piece of plush. The small
- * forward swell is concentrated below the eyes instead of attaching a second
- * ball to a spherical skull. Local -Z is the front of the traveller.
+ * One continuous surface joins the brow, paired cheeks, short muzzle and chin.
+ * Each volume has its own centre: a height-only swell makes the three-quarter
+ * face read as an egg, with no change of plane beside the nose. Local -Z is
+ * the front of the traveller.
  */
-function muzzleSwell(y: number, front: number) {
-  // A generous lower cheek keeps the side silhouette round beneath the nose.
-  // The taper closes the polar rings at one point without a pinched seam.
-  const pole = THREE.MathUtils.smoothstep(y, -HEAD_HEIGHT, -0.18);
-  return (
-    (0.061 * Math.exp(-(((y + 0.045) / 0.07) ** 2)) * front ** 4 +
-      0.072 * Math.exp(-(((y + 0.15) / 0.072) ** 2)) * front ** 2.4 +
-      // Full forehead, a shallow bridge, then a short round snout. This
-      // changes the profile's curvature without narrowing the rounded jaw.
-      0.018 * Math.exp(-(((y - 0.075) / 0.06) ** 2)) * front ** 2 +
-      (0.011 * Math.exp(-(((y + 0.062) / 0.032) ** 2)) -
-        0.007 * Math.exp(-(((y + 0.028) / 0.025) ** 2))) *
-        front ** 6) *
-    pole
-  );
+function plushSwell(x: number, y: number, front: number) {
+  const gaussian = (value: number, centre: number, width: number) =>
+    Math.exp(-(((value - centre) / width) ** 2));
+  const cheeks =
+    0.057 *
+    (gaussian(x, -0.104, 0.07) + gaussian(x, 0.104, 0.07)) *
+    gaussian(y, -0.06, 0.063) *
+    front ** 1.6;
+  const muzzle =
+    0.053 * gaussian(x, 0, 0.078) * gaussian(y, -0.055, 0.058) * front ** 2;
+  const chin =
+    0.066 * gaussian(x, 0, 0.145) * gaussian(y, -0.151, 0.07) * front ** 1.6;
+  const brow = 0.02 * gaussian(y, 0.08, 0.075) * front ** 2;
+  // A shallow bridge separates the brow from the snout. The eyes sit on the
+  // broader planes to either side, without changing their approved placement.
+  const bridge =
+    0.007 * gaussian(x, 0, 0.055) * gaussian(y, 0.005, 0.047) * front ** 2;
+  // The eye-bearing planes face forward more than the rounded lateral cheeks.
+  // Correct both slopes locally: wrapping a lens over the skull otherwise
+  // hides the far eye and tilts the near oval at a three-quarter angle. The
+  // central gate leaves the short muzzle and nose untouched.
+  const eyePlane =
+    (0.3 * (Math.abs(x) - EYE_X) + 0.32 * (y - EYE_Y)) *
+    gaussian(Math.abs(x), EYE_X, 0.075) *
+    gaussian(y, EYE_Y, 0.07) *
+    THREE.MathUtils.smoothstep(Math.abs(x), 0.035, 0.085) *
+    THREE.MathUtils.smoothstep(front, 0.15, 0.65);
+  // Close both polar rings without a longitude-dependent gap at the crown.
+  const pole =
+    THREE.MathUtils.smoothstep(y, -HEAD_HEIGHT, -0.18) *
+    (1 - THREE.MathUtils.smoothstep(y, 0.195, HEAD_HEIGHT));
+  return (cheeks + muzzle + chin + brow - bridge + eyePlane) * pole;
 }
 
 function faceDepth(x: number, y: number) {
@@ -41,7 +59,7 @@ function faceDepth(x: number, y: number) {
   const front = Math.sqrt(Math.max(0, latitude * latitude - (x / width) ** 2));
   return (
     -front * HEAD_DEPTH * (1 - height * 0.075) -
-    muzzleSwell(y, latitude > 0 ? front / latitude : 0)
+    plushSwell(x, y, latitude > 0 ? front / latitude : 0)
   );
 }
 
@@ -79,7 +97,8 @@ export function buildCharacterHead(
       index,
       x * skullWidth(y),
       y * HEAD_HEIGHT,
-      z * HEAD_DEPTH * (1 - y * 0.075) - muzzleSwell(y * HEAD_HEIGHT, front),
+      z * HEAD_DEPTH * (1 - y * 0.075) -
+        plushSwell(x * skullWidth(y), y * HEAD_HEIGHT, front),
     );
   }
   smoothNormals(skull);
@@ -163,29 +182,34 @@ export function buildCharacterHead(
     shell.material = [fur, earInner];
     // The root is hidden inside the skull, like sewn plush ears rather than
     // an upright disc balanced on the crown.
-    ear.updateMatrix();
     for (let tuft = 0; tuft < 3; tuft++) {
-      // The tallest tuft is on the inside, rising toward the crown. Sample the
-      // forehead so each little tuft emerges from the plush instead of sinking
-      // behind the expanded head or hovering in front of the ear bowl.
-      const root = new THREE.Vector3(
-        -side * (0.067 - tuft * 0.035),
-        -0.008 - tuft * 0.026,
-        -0.047,
-      ).applyMatrix4(ear.matrix);
-      root.z = Math.min(root.z, faceDepth(root.x, root.y) + 0.004);
-      const tuftMesh = ellipsoid(
-        0.0135 - tuft * 0.001,
-        0.026 - tuft * 0.003,
-        0.014,
+      // Broad roots disappear into the crown; only the soft, swept tips rise
+      // toward the ear rim. Tapering each lobe avoids a row of upright beads.
+      const rootX = side * (0.104 + tuft * 0.031);
+      const rootY = 0.177 - tuft * 0.024;
+      const tuftGeometry = remember(new THREE.SphereGeometry(1, 28, 24));
+      const tuftPositions = tuftGeometry.getAttribute("position");
+      for (let vertex = 0; vertex < tuftPositions.count; vertex++) {
+        const t = (tuftPositions.getY(vertex) + 1) / 2;
+        tuftPositions.setXYZ(
+          vertex,
+          tuftPositions.getX(vertex) * (0.025 - tuft * 0.0015) * (1 - t * 0.2) +
+            side * (0.022 + tuft * 0.002) * t ** 1.2,
+          (t - 0.12 * t ** 5) * (0.058 - tuft * 0.006) - 0.01,
+          tuftPositions.getZ(vertex) * (0.017 - tuft * 0.001) * (1 - t * 0.15) +
+            0.004 * t * t,
+        );
+      }
+      smoothNormals(tuftGeometry);
+      const tuftMesh = mesh(
+        tuftGeometry,
         fur,
         head,
-        root.x,
-        root.y,
-        root.z,
+        rootX,
+        rootY,
+        faceDepth(rootX, rootY) + 0.02,
       );
-      tuftMesh.quaternion.copy(ear.quaternion);
-      tuftMesh.rotateZ(side * (0.5 + tuft * 0.16));
+      tuftMesh.name = `${side < 0 ? "left" : "right"}-crown-tuft-${tuft + 1}`;
     }
   }
 
@@ -248,8 +272,8 @@ export function buildCharacterHead(
     // Mirror the highlights: a soft five-point star at the upper inner corner,
     // and a small four-point sparkle at the lower outer corner of each eye.
     for (const [offsetX, offsetY, radius, points, inner] of [
-      [-side * 0.008, 0.018, 0.0185, 5, 0.55],
-      [side * 0.022, -0.023, 0.0095, 4, 0.28],
+      [-side * 0.0072, 0.0162, 0.01665, 5, 0.55],
+      [side * 0.0198, -0.0207, 0.00855, 4, 0.28],
     ]) {
       const star = new THREE.Shape();
       const corners = Array.from({ length: points * 2 }, (_, index) => {

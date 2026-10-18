@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { RoomAvatarAnimation } from "../types";
 import { createCharacterMaterials } from "./characterMaterials";
 import { buildCharacterHead } from "./characterHead";
@@ -129,35 +128,6 @@ export function createCharacter() {
       parent,
     );
   }
-  function padded(
-    w: number,
-    h: number,
-    d: number,
-    radius: number,
-    surface: THREE.Material,
-    parent: THREE.Object3D,
-    x: number,
-    y: number,
-    z: number,
-  ) {
-    const geometry = remember(new RoundedBoxGeometry(w, h, d, 6, radius));
-    const positions = geometry.getAttribute("position");
-    for (let index = 0; index < positions.count; index++) {
-      const px = positions.getX(index);
-      const py = positions.getY(index);
-      const pz = positions.getZ(index);
-      const centre =
-        Math.max(0, 1 - (px / (w * 0.54)) ** 2) *
-        Math.max(0, 1 - (py / (h * 0.54)) ** 2);
-      positions.setZ(
-        index,
-        pz + Math.sign(pz) * centre * Math.min(0.009, d * 0.12),
-      );
-    }
-    smoothNormals(geometry);
-    return mesh(geometry, surface, parent, x, y, z);
-  }
-
   const builder: CharacterBuilder = {
     surfaces,
     remember,
@@ -165,7 +135,6 @@ export function createCharacter() {
     mesh,
     ellipsoid,
     thread,
-    padded,
     pile,
   };
   const head = buildCharacterHead(builder, body);
@@ -230,6 +199,18 @@ export function createCharacter() {
     const rootInverse = root.matrixWorld.clone().invert();
     let instance = 0;
     for (const patch of patches) {
+      const patchMaterial = patch.mesh.material;
+      const patchColour =
+        !Array.isArray(patchMaterial) && "color" in patchMaterial
+          ? (patchMaterial.color as THREE.Color)
+          : fur.color;
+      // Paws have darker plush. Share the strand material and draw call while
+      // tinting their pile to the local coat rather than leaving golden fibres.
+      const patchTint = new THREE.Color(
+        patchColour.r / fur.color.r,
+        patchColour.g / fur.color.g,
+        patchColour.b / fur.color.b,
+      );
       const geometry = patch.mesh.geometry;
       const positions = geometry.getAttribute("position");
       const normals = geometry.getAttribute("normal");
@@ -315,7 +296,7 @@ export function createCharacter() {
         dummy.scale.setScalar(length);
         dummy.updateMatrix();
         strands.setMatrixAt(instance, dummy.matrix);
-        tint.setScalar(0.98 + random() * 0.035);
+        tint.copy(patchTint).multiplyScalar(0.98 + random() * 0.035);
         strands.setColorAt(instance, tint);
         instance++;
         added++;

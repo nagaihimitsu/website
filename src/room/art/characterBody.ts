@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import type { CharacterBuilder } from "./characterBuilder";
+import { buildCharacterBackpack } from "./characterBackpack";
+import { buildCharacterPaw, buildCharacterShoe } from "./characterExtremities";
 
 type Section = {
   y: number;
@@ -23,12 +25,8 @@ export function buildCharacterBody(
     pocketFabric,
     pants,
     pantCuffs,
-    shoeUpper,
     shoeSole,
-    ivory,
-    backpack,
-    backpackTrim,
-    backpackLight,
+    cord,
   } = builder.surfaces;
   const tau = Math.PI * 2;
 
@@ -267,30 +265,47 @@ export function buildCharacterBody(
   );
 
   for (const side of [-1, 1]) {
-    thread(
+    const path = new THREE.CatmullRomCurve3(
       [
-        [side * 0.045, 0.708, -0.143],
-        [side * 0.043, 0.663, -0.151],
-        [side * 0.047, 0.622, -0.16],
-        [side * 0.044, 0.602, -0.164],
-      ],
-      0.0046,
-      ivory,
-      body,
-      28,
+        [side * 0.045, 0.711, -0.148],
+        [side * 0.047, 0.69, -0.163],
+        [side * 0.046, 0.654, -0.176],
+        [side * 0.047, 0.623, -0.18],
+        [side * 0.045, 0.607, -0.18],
+      ].map(([x, y, z]) => new THREE.Vector3(x, y, z)),
     );
-    ellipsoid(0.007, 0.006, 0.007, ivory, body, side * 0.045, 0.607, -0.164);
+    const cordGeometry = remember(new THREE.TubeGeometry(path, 48, 0.0055, 12, false));
+    const cordUvs = cordGeometry.getAttribute("uv");
+    for (let index = 0; index < cordUvs.count; index++)
+      cordUvs.setX(index, cordUvs.getX(index) * path.getLength() / 0.012);
+    mesh(cordGeometry, cord, body).name = "soft-braided-hood-cord";
+
+    // A compressed, softly irregular overhand knot followed by a short bound
+    // cotton end. The ends bow away from the chest under their own weight.
+    const knotGeometry = remember(new THREE.SphereGeometry(1, 24, 16));
+    const knotPositions = knotGeometry.getAttribute("position");
+    for (let index = 0; index < knotPositions.count; index++) {
+      const x = knotPositions.getX(index);
+      const y = knotPositions.getY(index);
+      const z = knotPositions.getZ(index);
+      const twist = 1 + Math.sin(Math.atan2(z, x) * 3 + y * 2) * 0.065;
+      knotPositions.setXYZ(index, x * 0.0085 * twist, y * 0.007, z * 0.0075 * twist);
+    }
+    smoothNormals(knotGeometry);
+    mesh(knotGeometry, cord, body, side * 0.045, 0.609, -0.18).name = "soft-cord-knot";
     const aglet = ellipsoid(
-      0.004,
-      0.01,
-      0.004,
-      ivory,
+      0.0043,
+      0.0105,
+      0.0043,
+      cord,
       body,
-      side * 0.044,
-      0.591,
-      -0.164,
+      side * 0.0435,
+      0.595,
+      -0.178,
     );
-    aglet.rotation.x = -0.14;
+    aglet.rotation.x = -0.18;
+    aglet.rotation.z = -side * 0.12;
+    aglet.name = "bound-cotton-cord-end";
   }
 
   // A cloth pocket follows the actual curvature of the belly; its centre has
@@ -355,17 +370,7 @@ export function buildCharacterBody(
       arm,
       { rows: 20 },
     );
-    const paw = ellipsoid(
-      0.044,
-      0.038,
-      0.043,
-      fur,
-      arm,
-      side * 0.024,
-      -0.316,
-      -0.019,
-    );
-    pile(arm, paw, 70, 0.0011);
+    buildCharacterPaw(builder, arm, side);
   }
 
   const legs: THREE.Group[] = [];
@@ -405,247 +410,33 @@ export function buildCharacterBody(
       { rows: 20 },
     );
 
-    // Both sole and upper have rounded toes and heels. No rectangular bottom
-    // plate remains; the thin pale rim follows the same continuous outline.
+    // The soft rubber rim follows the foot; the cap and dark cloth upper share
+    // a sculpted surface so the large rounded pale toe is not an added sphere.
     const shoeSections = (values: number[][]) =>
       values.map(([y, rx, rz]) => ({
         y: y - 0.325,
         rx,
         rz,
         x: side * 0.004,
-        z: -0.025,
+        z: -0.024,
       }));
     loft(
       shoeSections([
         [0.001, 0, 0],
-        [0.002, 0.049, 0.077],
-        [0.006, 0.056, 0.084],
-        [0.02, 0.056, 0.084],
-        [0.025, 0.052, 0.08],
-        [0.026, 0, 0],
+        [0.002, 0.053, 0.08],
+        [0.005, 0.059, 0.087],
+        [0.012, 0.061, 0.089],
+        [0.018, 0.0605, 0.089],
+        [0.019, 0, 0],
       ]),
       shoeSole,
       leg,
       { rows: 24 },
     ).name = "rounded-thin-shoe-sole";
-    loft(
-      shoeSections([
-        [0.02, 0, 0],
-        [0.021, 0.053, 0.08],
-        [0.029, 0.061, 0.09],
-        [0.038, 0.062, 0.091],
-        [0.058, 0.053, 0.081],
-        [0.076, 0.03, 0.05],
-        [0.081, 0, 0],
-      ]),
-      shoeUpper,
-      leg,
-      { rows: 32 },
-    ).name = "soft-round-shoe-upper";
+    buildCharacterShoe(builder, leg, side);
   }
 
-  // The pack is a broad stuffed rectangle that sits against the back. Its side
-  // volume and seams matter from the user's requested side-by-side viewpoint.
-  const pack = new THREE.Group();
-  pack.name = "padded-canvas-backpack";
-  pack.position.set(0, 0.529, 0.205);
-  body.add(pack);
-  const packSections: Section[] = [
-    { y: -0.177, rx: 0, rz: 0 },
-    { y: -0.174, rx: 0.096, rz: 0.058 },
-    { y: -0.153, rx: 0.133, rz: 0.079 },
-    { y: -0.112, rx: 0.145, rz: 0.085 },
-    { y: 0.065, rx: 0.146, rz: 0.085 },
-    { y: 0.132, rx: 0.13, rz: 0.078 },
-    { y: 0.158, rx: 0.082, rz: 0.057 },
-    { y: 0.173, rx: 0, rz: 0 },
-  ];
-  loft(packSections, backpack, pack, { exponent: 0.62, rows: 40 });
-  const rearPocket = builder.padded(
-    0.25,
-    0.103,
-    0.06,
-    0.027,
-    backpackLight,
-    pack,
-    0,
-    -0.103,
-    0.084,
-  );
-  rearPocket.name = "backpack-sewn-front-pocket";
-  builder.padded(0.257, 0.019, 0.061, 0.008, backpack, pack, 0, -0.057, 0.092);
-  function packSeam(x: number, y: number) {
-    let low = 0;
-    let high = 1;
-    for (let iteration = 0; iteration < 20; iteration++) {
-      const middle = (low + high) * 0.5;
-      if (
-        interpolate(
-          packSections.map((s) => s.y),
-          middle,
-        ) < y
-      )
-        low = middle;
-      else high = middle;
-    }
-    const t = (low + high) * 0.5;
-    const rx = interpolate(
-      packSections.map((s) => s.rx),
-      t,
-    );
-    const rz = interpolate(
-      packSections.map((s) => s.rz),
-      t,
-    );
-    const cosine = Math.min(0.999, Math.abs(x / rx)) ** (1 / 0.62);
-    return [x, y, rz * (1 - cosine * cosine) ** (0.62 / 2) + 0.0008];
-  }
-  thread(
-    [
-      [-0.117, -0.126],
-      [-0.131, -0.067],
-      [-0.132, 0.076],
-      [-0.105, 0.135],
-      [0, 0.158],
-      [0.105, 0.135],
-      [0.132, 0.076],
-      [0.131, -0.067],
-      [0.117, -0.126],
-    ].map(([x, y]) => packSeam(x, y)),
-    0.0022,
-    backpackTrim,
-    pack,
-    64,
-  );
-  builder.padded(
-    0.009,
-    0.028,
-    0.006,
-    0.003,
-    backpackTrim,
-    pack,
-    -0.1,
-    -0.075,
-    0.122,
-  );
-
-  /** Padded webbing: a flattened rounded section, never cylindrical rope. */
-  function strap(
-    points: number[][],
-    width: number,
-    thickness: number,
-    material: THREE.Material,
-    parent: THREE.Object3D,
-    wideAxis = new THREE.Vector3(1, 0, 0),
-  ) {
-    const curve = new THREE.CatmullRomCurve3(
-      points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
-    );
-    const axis = wideAxis.clone().normalize();
-    return surface(
-      12,
-      40,
-      (u, v) => {
-        const center = curve.getPoint(v);
-        const tangent = curve.getTangent(v).normalize();
-        const across = axis
-          .clone()
-          .addScaledVector(tangent, -axis.dot(tangent))
-          .normalize();
-        const normal = new THREE.Vector3()
-          .crossVectors(tangent, across)
-          .normalize();
-        const theta = u * tau;
-        const a = Math.cos(theta);
-        const b = Math.sin(theta);
-        return center
-          .addScaledVector(
-            across,
-            Math.sign(a) * Math.abs(a) ** 0.6 * width * 0.5,
-          )
-          .addScaledVector(
-            normal,
-            Math.sign(b) * Math.abs(b) ** 0.6 * thickness * 0.5,
-          );
-      },
-      material,
-      parent,
-    );
-  }
-  for (const side of [-1, 1]) {
-    const sidePocket = builder.padded(
-      0.035,
-      0.117,
-      0.111,
-      0.016,
-      backpackLight,
-      pack,
-      side * 0.142,
-      -0.002,
-      -0.004,
-    );
-    sidePocket.name = "backpack-soft-side-pocket";
-    builder.padded(
-      0.04,
-      0.016,
-      0.114,
-      0.007,
-      backpack,
-      pack,
-      side * 0.144,
-      0.049,
-      -0.004,
-    );
-    strap(
-      [
-        [side * 0.103, 0.148, -0.005],
-        [side * 0.138, 0.113, -0.006],
-        [side * 0.146, 0.051, -0.007],
-        [side * 0.146, -0.008, -0.007],
-        [side * 0.144, -0.047, -0.007],
-      ],
-      0.012,
-      0.005,
-      backpackTrim,
-      pack,
-      new THREE.Vector3(0, 0, 1),
-    );
-    strap(
-      [
-        [side * 0.12, 0.66, 0.2],
-        [side * 0.16, 0.68, 0.12],
-        [side * 0.18, 0.695, 0.065],
-        [side * 0.184, 0.705, 0.015],
-        [side * 0.184, 0.687, -0.037],
-        [side * 0.184, 0.66, -0.067],
-        [side * 0.183, 0.626, -0.08],
-        [side * 0.184, 0.566, -0.101],
-        [side * 0.181, 0.503, -0.116],
-        [side * 0.171, 0.454, -0.107],
-        [side * 0.148, 0.417, -0.078],
-        [side * 0.118, 0.415, 0],
-        [side * 0.1, 0.42, 0.05],
-      ],
-      0.032,
-      0.01,
-      backpackLight,
-      body,
-    ).name = "flat-padded-shoulder-strap";
-  }
-  strap(
-    [
-      [-0.033, 0.144, -0.012],
-      [-0.031, 0.181, -0.01],
-      [0, 0.191, -0.01],
-      [0.031, 0.181, -0.01],
-      [0.033, 0.144, -0.012],
-    ],
-    0.015,
-    0.007,
-    backpackTrim,
-    pack,
-    new THREE.Vector3(0, 0, 1),
-  );
+  const pack = buildCharacterBackpack(builder, body);
 
   const tailRoot = new THREE.Group();
   tailRoot.name = "soft-tapered-tail";

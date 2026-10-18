@@ -24,17 +24,6 @@ export interface CharacterBuilder {
     y: number,
     z: number,
   ): THREE.Mesh;
-  padded(
-    w: number,
-    h: number,
-    d: number,
-    radius: number,
-    material: THREE.Material,
-    parent: THREE.Object3D,
-    x: number,
-    y: number,
-    z: number,
-  ): THREE.Mesh;
   thread(
     points: number[][],
     radius: number,
