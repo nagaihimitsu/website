@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { createRoomScene } from "./roomScene";
+import { createBirdMotion } from "./birdMotion";
 import {
   createPlayer,
   movementVector,
@@ -34,6 +35,7 @@ const DESKTOP_FIELD_OF_VIEW = 68;
 const PORTRAIT_FIELD_OF_VIEW = 76;
 const PUNCH_DURATION = 420;
 const PUNCH_IMPACT = 125;
+const BIRD_FLOOR_OFFSET = 0.012;
 const KEY_DIRECTIONS: Record<string, Direction> = {
   ArrowUp: "up",
   KeyW: "up",
@@ -228,6 +230,12 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     /* Storage is optional; a fresh room remains fully usable. */
   }
 
+  // Spawn after restoring the visitor so neither occupant begins inside the other.
+  let birdMotion = createBirdMotion(room.obstacles, player);
+  room.obstacles.push(birdMotion.collider);
+  room.bird.position.set(birdMotion.state.x, BIRD_FLOOR_OFFSET, birdMotion.state.z);
+  room.bird.rotation.y = birdMotion.state.heading;
+
   function savePosition() {
     try {
       sessionStorage.setItem(
@@ -291,6 +299,10 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       cameraZ: camera.position.z,
       punching: punchStarted !== null,
       brokenCount: room.breakables.filter((item) => item.broken).length,
+      birdX: birdMotion.state.x,
+      birdZ: birdMotion.state.z,
+      birdHeight: birdMotion.state.y,
+      birdMoving: birdMotion.state.moving,
     });
   }
 
@@ -762,6 +774,11 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     const digitalInput = movementVector(directions, yaw);
     const input =
       directions.size > 0 ? digitalInput : cameraRelativeInput(analog, yaw);
+    const birdChanged = birdMotion.update(
+      elapsed,
+      player,
+      reducedMotion || Boolean(opening) || opened,
+    );
     if (!opening && !opened) {
       if (Math.hypot(input.x, input.z) > 0.01) {
         const targetFacing = Math.atan2(-input.x, -input.z);
@@ -784,6 +801,12 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) > 0.0001;
     room.avatar.position.set(player.x, player.y, player.z);
     room.avatar.rotation.y = facing;
+    room.bird.position.set(
+      birdMotion.state.x,
+      birdMotion.state.y + BIRD_FLOOR_OFFSET,
+      birdMotion.state.z,
+    );
+    room.bird.rotation.y = birdMotion.state.heading;
     room.scene.updateMatrixWorld();
     if (opening) {
       const progress = Math.min(1, (time - opening.started) / 500);
@@ -809,6 +832,13 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     camera.updateMatrixWorld();
     try {
       room.animate(animationTime, moving, reducedMotion);
+      room.animateBird({
+        time: animationTime,
+        hopPhase: birdMotion.state.hopPhase,
+        heading: birdMotion.state.heading,
+        moving: birdMotion.state.moving,
+        reducedMotion,
+      });
       const punchProgress = updatePunch(time);
       room.animateAvatar({
         time: animationTime,
@@ -833,6 +863,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       }
       if (
         moving ||
+        birdChanged ||
         !player.grounded ||
         punchStarted !== null ||
         Math.abs(shortestAngle(oldFacing, facing)) > 0.0001
@@ -916,6 +947,15 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
         setHovered(null);
         aimTime = -Infinity;
       }
+      // Restored props may now occupy the bird's former route. Choose the
+      // nearest safe floor position, also respecting a relocated visitor.
+      const birdColliderIndex = room.obstacles.indexOf(birdMotion.collider);
+      birdMotion = createBirdMotion(room.obstacles, player, {
+        spawn: { x: birdMotion.state.x, z: birdMotion.state.z },
+      });
+      room.obstacles[birdColliderIndex] = birdMotion.collider;
+      room.bird.position.set(birdMotion.state.x, BIRD_FLOOR_OFFSET, birdMotion.state.z);
+      room.bird.rotation.y = birdMotion.state.heading;
       shadowDynamicUntil = performance.now() + 1000;
       renderer.shadowMap.needsUpdate = true;
       savePosition();

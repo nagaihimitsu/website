@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       validation:
-        description: "Validation scope (visual: appearance only; records: TXT/photo content only)"
+        description: "Validation scope (visual: appearance; records: TXT/photos; npc: room companion)"
         type: choice
         required: true
         default: full
-        options: [full, visual, records]
+        options: [full, visual, records, npc]
 permissions:
   contents: read
   pages: write
@@ -33,10 +33,16 @@ jobs:
       - name: Record parser tests
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'records' }}
         run: npx vitest run tests/parser.test.ts
+      - name: NPC collision and movement tests
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'npc' }}
+        run: npx vitest run tests/room-bird.test.ts tests/room-movement.test.ts
       - run: npx playwright install --with-deps chromium
       - name: Room rendering smoke test
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'visual' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.validation == 'visual' || inputs.validation == 'npc') }}
         run: npm run test:e2e -- tests/e2e/room.spec.ts --grep '小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆わない$' --reporter=list,github
+      - name: NPC interaction tests
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'npc' }}
+        run: npm run test:e2e -- tests/e2e/bird.spec.ts --reporter=list,github
       - name: Full browser tests
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation == 'full' }}
         run: npm run test:e2e -- --reporter=list,github

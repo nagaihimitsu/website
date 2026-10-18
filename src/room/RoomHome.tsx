@@ -115,6 +115,10 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     cameraZ: 0,
     punching: false,
     brokenCount: 0,
+    birdX: 0,
+    birdZ: 0,
+    birdHeight: 0,
+    birdMoving: false,
   });
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   const [held, setHeld] = useState<Set<Direction>>(new Set());
@@ -280,6 +284,10 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       data-camera-z={snapshot.cameraZ.toFixed(3)}
       data-punching={snapshot.punching}
       data-broken-count={snapshot.brokenCount}
+      data-bird-x={snapshot.birdX.toFixed(3)}
+      data-bird-z={snapshot.birdZ.toFixed(3)}
+      data-bird-height={snapshot.birdHeight.toFixed(3)}
+      data-bird-moving={snapshot.birdMoving}
     >
       <h1 className="room-sr-only">コレクションルーム</h1>
       <div

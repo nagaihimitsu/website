@@ -9,6 +9,7 @@ import type {
 } from "./types";
 import { createBreakables } from "./art/breakables";
 import { createCharacter } from "./art/character";
+import { createBird } from "./art/bird";
 import {
   createWorldMapTexture,
   createJapanMapTexture,
@@ -761,14 +762,19 @@ export function createRoomScene(archive: Archive): RoomScene {
   const character = createCharacter();
   const avatar = character.group;
   scene.add(avatar);
+  // The bird is a living, solid room occupant, never a destructible prop.
+  const bird = createBird();
+  scene.add(bird.group);
 
   return {
     scene,
     avatar,
+    bird: bird.group,
     portals,
     obstacles,
     breakables,
     animateAvatar: character.animate,
+    animateBird: bird.animate,
     breakObject(id, impulse) {
       const target = breakables.find((item) => item.id === id);
       if (!target || target.broken || !fractureSystem.breakObject(id, impulse))
@@ -808,6 +814,7 @@ export function createRoomScene(archive: Archive): RoomScene {
     dispose() {
       fractureSystem.dispose();
       character.dispose();
+      bird.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) geometries.add(object.geometry);

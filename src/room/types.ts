@@ -1,5 +1,6 @@
 import type * as THREE from "three";
 import type { Archive, Section } from "../data/model";
+import type { BirdAnimationState } from "./art/bird";
 
 export type Direction = "up" | "down" | "left" | "right";
 export interface RoomObstacle {
@@ -35,6 +36,7 @@ export interface RoomAvatarAnimation {
 export interface RoomScene {
   scene: THREE.Scene;
   avatar: THREE.Group;
+  bird: THREE.Group;
   portals: RoomPortal[];
   obstacles: RoomObstacle[];
   breakables: RoomBreakable[];
@@ -42,6 +44,7 @@ export interface RoomScene {
   resetObjects: () => void;
   animate: (time: number, moving: boolean, reducedMotion: boolean) => void;
   animateAvatar: (state: RoomAvatarAnimation) => void;
+  animateBird: (state: BirdAnimationState) => void;
   dispose: () => void;
 }
 export interface RoomSnapshot {
@@ -60,6 +63,10 @@ export interface RoomSnapshot {
   cameraZ: number;
   punching: boolean;
   brokenCount: number;
+  birdX: number;
+  birdZ: number;
+  birdHeight: number;
+  birdMoving: boolean;
 }
 export interface RoomEngineOptions {
   host: HTMLElement;
