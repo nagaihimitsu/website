@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { Archive, Section } from "../data/model";
 import { sections } from "../data/catalogs";
 import { createRoomEngine } from "./roomEngine";
@@ -82,6 +87,9 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const menu = useRef<HTMLDialogElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const joystick = useRef<HTMLDivElement>(null);
+  const stickPointer = useRef<number | null>(null);
+  const [stick, setStick] = useState({ x: 0, z: 0 });
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">(
     "loading",
   );
@@ -98,6 +106,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     supportId: null,
     yaw: 0,
     pitch: 0,
+    facing: 0,
+    cameraDistance: 2.75,
     punching: false,
     brokenCount: 0,
   });
@@ -154,6 +164,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   useEffect(() => {
     engine.current?.setPaused(menuOpen);
     setHeld(new Set());
+    releaseStick();
   }, [menuOpen, status]);
   useEffect(() => {
     if (menuOpen && !menu.current?.open) {
@@ -174,11 +185,14 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       for (const { direction } of arrows)
         engine.current?.direction(direction, false);
       setHeld(new Set());
+      releaseStick();
     };
     window.addEventListener("blur", clear);
+    document.addEventListener("visibilitychange", clear);
     return () => {
       preference.removeEventListener("change", update);
       window.removeEventListener("blur", clear);
+      document.removeEventListener("visibilitychange", clear);
     };
   }, []);
   const toggleMotion = () => {
@@ -199,6 +213,26 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       return next;
     });
   };
+  function releaseStick() {
+    const id = stickPointer.current;
+    stickPointer.current = null;
+    if (id !== null && joystick.current?.hasPointerCapture(id))
+      joystick.current.releasePointerCapture(id);
+    engine.current?.move(0, 0);
+    setStick({ x: 0, z: 0 });
+  }
+  function updateStick(event: ReactPointerEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const radius = bounds.width * 0.3;
+    const x = (event.clientX - bounds.left - bounds.width / 2) / radius;
+    const z = (event.clientY - bounds.top - bounds.height / 2) / radius;
+    const length = Math.hypot(x, z);
+    const magnitude = Math.max(0, Math.min(1, (length - 0.12) / 0.88));
+    const scale = length > 0 ? magnitude / length : 0;
+    const next = { x: x * scale, z: z * scale };
+    setStick(next);
+    engine.current?.move(next.x, next.z);
+  }
   const unavailable = status !== "ready" || Boolean(opening) || menuOpen;
   const links = (className: string) => (
     <nav className={className} aria-label="コレクションの記録">
@@ -224,9 +258,10 @@ export default function RoomHome({ archive }: { archive: Archive }) {
 
   return (
     <section
-      className={`room-home room-first-person${reducedMotion ? " is-still" : ""}${opening ? " is-opening" : ""}`}
+      className={`room-home room-third-person${reducedMotion ? " is-still" : ""}${opening ? " is-opening" : ""}`}
       aria-label="コレクションルーム"
-      data-view="first-person"
+      data-view="third-person"
+      data-character="traveler"
       data-room-status={status}
       data-player-x={snapshot.x.toFixed(3)}
       data-player-z={snapshot.z.toFixed(3)}
@@ -235,6 +270,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       data-support-id={snapshot.supportId ?? ""}
       data-yaw={snapshot.yaw.toFixed(3)}
       data-pitch={snapshot.pitch.toFixed(3)}
+      data-facing={snapshot.facing.toFixed(3)}
+      data-camera-distance={snapshot.cameraDistance.toFixed(3)}
       data-punching={snapshot.punching}
       data-broken-count={snapshot.brokenCount}
     >
@@ -242,7 +279,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       <div
         ref={host}
         className="room-canvas"
-        aria-label="ドラッグで見回す3Dの部屋"
+        aria-label="キャラクターを操作し、360度見回せる3Dの部屋"
       />
       <header className="room-hud-header">
         <span className="room-wordmark" aria-label="Personal Atlas">
@@ -255,23 +292,49 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           </svg>
           <span>ATLAS</span>
         </span>
-        <button
-          ref={menuButton}
-          className="room-menu-toggle"
-          aria-label="記録と設定を開く"
-          aria-expanded={menuOpen}
-          aria-controls="room-menu"
-          onClick={() => setMenuOpen(true)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M4 8h16M4 16h16"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+        <div className="room-hud-tools">
+          <button
+            className="room-view-reset"
+            aria-label="視点を背後に戻す"
+            title="視点を背後に戻す（R）"
+            disabled={unavailable}
+            onClick={() => engine.current?.resetView()}
+          >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M19 8a8 8 0 1 0 1 7M19 3v5h-5"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r="3"
+                stroke="currentColor"
+                strokeWidth="1.3"
+              />
+            </svg>
+          </button>
+          <button
+            ref={menuButton}
+            className="room-menu-toggle"
+            aria-label="記録と設定を開く"
+            aria-expanded={menuOpen}
+            aria-controls="room-menu"
+            onClick={() => setMenuOpen(true)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 8h16M4 16h16"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </header>
       {status === "loading" && (
         <div className="room-loading" role="status">
@@ -307,26 +370,60 @@ export default function RoomHome({ archive }: { archive: Archive }) {
         </div>
       )}
       <div className="room-controls">
-        <div className="direction-pad" role="group" aria-label="移動">
-          <span className="pad-center" aria-hidden="true" />
+        <div
+          ref={joystick}
+          className={`room-joystick${stickPointer.current !== null ? " is-held" : ""}`}
+          role="group"
+          aria-label="移動スティック"
+          aria-describedby="room-stick-help"
+          aria-disabled={unavailable}
+          data-stick-x={stick.x.toFixed(3)}
+          data-stick-z={stick.z.toFixed(3)}
+          onPointerDown={(event) => {
+            if (
+              unavailable ||
+              event.button !== 0 ||
+              stickPointer.current !== null ||
+              (event.target instanceof Element &&
+                event.target.closest("button"))
+            )
+              return;
+            event.preventDefault();
+            stickPointer.current = event.pointerId;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            updateStick(event);
+          }}
+          onPointerMove={(event) => {
+            if (stickPointer.current === event.pointerId) updateStick(event);
+          }}
+          onPointerUp={(event) => {
+            if (stickPointer.current === event.pointerId) releaseStick();
+          }}
+          onPointerCancel={(event) => {
+            if (stickPointer.current === event.pointerId) releaseStick();
+          }}
+          onLostPointerCapture={(event) => {
+            if (stickPointer.current === event.pointerId) releaseStick();
+          }}
+        >
+          <span id="room-stick-help" className="room-sr-only">
+            倒した方向に移動します。小さく倒すと歩き、大きく倒すと走ります。
+          </span>
+          <span className="room-stick-track" aria-hidden="true" />
+          <span
+            className="room-stick-thumb"
+            aria-hidden="true"
+            style={{
+              transform: `translate(${stick.x * 76}%, ${stick.z * 76}%)`,
+            }}
+          />
           {arrows.map(({ direction, label, rotation }) => (
             <button
               key={direction}
-              className={`direction-${direction}${held.has(direction) ? " is-held" : ""}`}
+              className={`room-stick-direction room-sr-only direction-${direction}`}
               aria-label={label}
+              aria-pressed={held.has(direction)}
               disabled={unavailable}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.currentTarget.setPointerCapture(event.pointerId);
-                press(direction, true);
-              }}
-              onPointerUp={(event) => {
-                press(direction, false);
-                if (event.currentTarget.hasPointerCapture(event.pointerId))
-                  event.currentTarget.releasePointerCapture(event.pointerId);
-              }}
-              onPointerCancel={() => press(direction, false)}
-              onLostPointerCapture={() => press(direction, false)}
               onKeyDown={(event) => {
                 if (event.key === " " || event.key === "Enter") {
                   event.preventDefault();
@@ -428,11 +525,15 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           <dl className="room-controls-guide">
             <div>
               <dt>見回す</dt>
-              <dd>ドラッグ / スワイプ</dd>
+              <dd>ドラッグ / スワイプ（360°）</dd>
             </div>
             <div>
               <dt>移動</dt>
-              <dd>WASD / 矢印 / 左下パッド</dd>
+              <dd>WASD / 矢印 / 左下スティック</dd>
+            </div>
+            <div>
+              <dt>視点を戻す</dt>
+              <dd>R / 右上の回転矢印</dd>
             </div>
             <div>
               <dt>ジャンプ</dt>

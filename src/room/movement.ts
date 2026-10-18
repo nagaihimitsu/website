@@ -3,7 +3,7 @@ import type { Direction, RoomObstacle } from "./types";
 export const ROOM_LIMITS = { minX: -4.7, maxX: 4.7, minZ: -3.7, maxZ: 3.7 };
 export const ROOM_CEILING = 4.55;
 export const AVATAR_RADIUS = 0.22;
-export const PLAYER_HEIGHT = 1.5;
+export const PLAYER_HEIGHT = 1.28;
 export const PLAYER_SPEED = 2.8;
 export const JUMP_SPEED = 6.6;
 export const GRAVITY = 12;

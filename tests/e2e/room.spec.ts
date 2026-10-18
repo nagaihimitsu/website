@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import sharp from "sharp";
+import { PerspectiveCamera, Vector3 } from "three";
 
 const destinations = {
   world: "世界地図を開く",
@@ -16,6 +17,7 @@ async function savedPosition(
     z: number;
     yaw: number;
     pitch?: number;
+    facing?: number;
     brokenIds?: string[];
   },
 ) {
@@ -23,8 +25,8 @@ async function savedPosition(
   await page.addInitScript(
     ({ key, value }) => sessionStorage.setItem(key, JSON.stringify(value)),
     {
-      key: "personal-atlas-room-position-v2",
-      value: { y: 0, pitch: 0, brokenIds: [], ...pose },
+      key: "personal-atlas-room-position-v3",
+      value: { y: 0, pitch: 0.16, facing: pose.yaw, brokenIds: [], ...pose },
     },
   );
 }
@@ -41,6 +43,8 @@ async function enterRoom(page: Page) {
     "player-height",
     "yaw",
     "pitch",
+    "facing",
+    "camera-distance",
   ])
     await expect(room).toHaveAttribute(
       `data-${coordinate}`,
@@ -55,7 +59,30 @@ async function position(page: Page) {
     height: Number(element.getAttribute("data-player-height")),
     yaw: Number(element.getAttribute("data-yaw")),
     pitch: Number(element.getAttribute("data-pitch")),
+    facing: Number(element.getAttribute("data-facing")),
+    cameraDistance: Number(element.getAttribute("data-camera-distance")),
   }));
+}
+async function renderReleasedInput(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+function angleDifference(a: number, b: number) {
+  return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+}
+async function dragView(page: Page, dx: number, dy = 0) {
+  const box = await page.locator(".room-canvas canvas").boundingBox();
+  const x = box!.x + box!.width * (dx > 0 ? 0.25 : 0.75);
+  const y = box!.y + box!.height * 0.4;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y + dy, { steps: 10 });
+  await page.mouse.up();
+  await renderReleasedInput(page);
 }
 async function blurControl(page: Page) {
   await page.evaluate(() => {
@@ -119,7 +146,7 @@ async function returnToRoom(page: Page) {
   );
 }
 
-test("部屋全体を一人称で描画し、大きな見出しや入口ラベルで覆わない", async ({
+test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆わない", async ({
   page,
 }) => {
   const external: string[] = [],
@@ -130,14 +157,16 @@ test("部屋全体を一人称で描画し、大きな見出しや入口ラベ�
       external.push(url);
   });
   page.on("pageerror", (error) => errors.push(error.message));
-  await enterRoom(page);
+  const room = await enterRoom(page);
+  await expect(room).toHaveAttribute("data-view", "third-person");
+  await expect(room).toHaveAttribute("data-character", "traveler");
   await expect(page.locator(".room-portal, .room-heading")).toHaveCount(0);
   await expect(page.locator(".room-menu")).not.toBeVisible();
   await expect(page.locator(".room-menu-toggle")).toHaveAttribute(
     "aria-expanded",
     "false",
   );
-  await expect(page.locator(".room-crosshair")).toBeVisible();
+  await expect(page.locator(".room-crosshair")).toHaveCSS("opacity", "0");
   const canvas = page.locator(".room-canvas canvas");
   const box = await canvas.boundingBox();
   expect(box!.width).toBeGreaterThanOrEqual(page.viewportSize()!.width * 0.95);
@@ -173,7 +202,7 @@ test("部屋全体を一人称で描画し、大きな見出しや入口ラベ�
   expect(external).toEqual([]);
 });
 
-test("マウスで見回し、その向きに歩き、Spaceで床へ着地する", async ({
+test("カメラの向きに歩いて旅人が振り向き、Spaceで床へ着地する", async ({
   page,
 }) => {
   const room = await enterRoom(page);
@@ -187,6 +216,7 @@ test("マウスで見回し、その向きに歩き、Spaceで床へ着地する
     { steps: 10 },
   );
   await page.mouse.up();
+  await renderReleasedInput(page);
   await expect
     .poll(async () => Math.abs((await position(page)).yaw - beforeLook.yaw))
     .toBeGreaterThan(0.1);
@@ -200,6 +230,9 @@ test("マウスで見回し、その向きに歩き、Spaceで床へ着地する
     (end.x - start.x) * -Math.sin(start.yaw) +
     (end.z - start.z) * -Math.cos(start.yaw);
   expect(forward).toBeGreaterThan(0.1);
+  await expect
+    .poll(async () => angleDifference((await position(page)).facing, start.yaw))
+    .toBeLessThan(0.18);
   await page.keyboard.press("Space");
   await expect
     .poll(async () => (await position(page)).height, {
@@ -218,6 +251,70 @@ test("マウスで見回し、その向きに歩き、Spaceで床へ着地する
   const later = await position(page);
   expect(later.x).toBeCloseTo(stopped.x, 2);
   expect(later.z).toBeCloseTo(stopped.z, 2);
+});
+
+test("360度見回しても旅人の向きは変わらず、ボタンとRで背後へ戻せる", async ({
+  page,
+}) => {
+  await savedPosition(page, { x: -0.6, z: 0.5, yaw: 0, facing: 0 });
+  await enterRoom(page);
+  const initial = await position(page);
+  let previous = initial.yaw;
+  let rotation = 0;
+  for (let turn = 0; turn < 5; turn++) {
+    await dragView(page, 440, turn === 0 ? -50 : 0);
+    const current = await position(page);
+    rotation += Math.atan2(
+      Math.sin(current.yaw - previous),
+      Math.cos(current.yaw - previous),
+    );
+    previous = current.yaw;
+    expect(angleDifference(current.facing, initial.facing)).toBeLessThan(0.01);
+    expect(current.x).toBeCloseTo(initial.x, 2);
+    expect(current.z).toBeCloseTo(initial.z, 2);
+  }
+  expect(Math.abs(rotation)).toBeGreaterThan(Math.PI * 2);
+  await page
+    .getByRole("button", { name: "視点を背後に戻す", exact: true })
+    .click();
+  await expect
+    .poll(async () =>
+      angleDifference((await position(page)).yaw, initial.facing),
+    )
+    .toBeLessThan(0.03);
+  const reset = await position(page);
+  expect(reset.pitch).toBeCloseTo(0.16, 1);
+  expect(reset.x).toBeCloseTo(initial.x, 2);
+  expect(reset.z).toBeCloseTo(initial.z, 2);
+  await dragView(page, -280, 40);
+  await page.keyboard.press("KeyR");
+  await expect
+    .poll(async () =>
+      angleDifference((await position(page)).yaw, initial.facing),
+    )
+    .toBeLessThan(0.03);
+});
+
+test("壁の近くでは追従カメラが縮まり、部屋の外へ抜けない", async ({ page }) => {
+  await savedPosition(page, { x: 0.95, z: 3.1, yaw: 0, facing: 0 });
+  await enterRoom(page);
+  await expect
+    .poll(async () => (await position(page)).cameraDistance)
+    .toBeLessThan(0.8);
+  const nearWall = await position(page);
+  await page.keyboard.down("KeyW");
+  try {
+    await expect
+      .poll(async () => nearWall.z - (await position(page)).z, {
+        intervals: [50, 100],
+      })
+      .toBeGreaterThan(0.9);
+  } finally {
+    await page.keyboard.up("KeyW");
+  }
+  await expect
+    .poll(async () => (await position(page)).cameraDistance)
+    .toBeGreaterThan(nearWall.cameraDistance + 0.5);
 });
 
 for (const furniture of [
@@ -277,14 +374,9 @@ for (const furniture of [
 test("遠い物は壊せず、近づいてパンチすると小物だけが壊れ、元に戻せる", async ({
   page,
 }) => {
-  // Aim down toward the small floor sculpture, outside the 2 m punch range.
-  // After approaching, aim again at the object's actual position on screen.
-  await savedPosition(page, {
-    x: 1.4,
-    z: 3.35,
-    yaw: 0,
-    pitch: -Math.atan2(1.3, 2.05),
-  });
+  // The sculpture starts beyond the character's reach. Walking up to it,
+  // rather than zooming the camera, must make a punch connect.
+  await savedPosition(page, { x: 1.4, z: 3.35, yaw: 0 });
   const room = await enterRoom(page);
   await page.keyboard.press("KeyF");
   await page.waitForTimeout(650);
@@ -293,43 +385,14 @@ test("遠い物は壊せず、近づいてパンチすると小物だけが壊�
   await page.keyboard.down("KeyW");
   try {
     await expect
-      .poll(
-        async () => {
-          const current = await position(page);
-          return Math.hypot(current.x - start.x, current.z - start.z);
-        },
-        { intervals: [25, 50] },
-      )
-      .toBeGreaterThan(0.5);
+      .poll(async () => start.z - (await position(page)).z, {
+        intervals: [25, 50],
+      })
+      .toBeGreaterThan(0.85);
   } finally {
     await page.keyboard.up("KeyW");
   }
-  // Software rendering may finish a held movement well past the first poll.
-  // Wait for released input to render, then look down from the observed pose.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
-  );
-  const current = await position(page);
-  const desiredPitch = Math.atan2(
-    0.7 - (current.height + 1.5),
-    Math.hypot(current.x - 1.4, current.z - 1.3),
-  );
-  const canvasBox = await page.locator(".room-canvas canvas").boundingBox();
-  const pointerX = canvasBox!.x + canvasBox!.width / 2;
-  const pointerY = canvasBox!.y + canvasBox!.height / 2;
-  await page.mouse.move(pointerX, pointerY);
-  await page.mouse.down();
-  await page.mouse.move(
-    pointerX,
-    pointerY + (current.pitch - desiredPitch) / 0.0036,
-    {
-      steps: 12,
-    },
-  );
-  await page.mouse.up();
+  await renderReleasedInput(page);
   await page.keyboard.press("KeyF");
   await expect(room).toHaveAttribute("data-broken-count", "1");
   await openCollection(page, "pokemon");
@@ -377,11 +440,33 @@ test("壊した小物の場所に立ったまま復元しても閉じ込めら�
 });
 
 test("スマートフォン本体をクリックすると図鑑を開く", async ({ page }) => {
-  // A legitimate saved floor position in front of the desk, aimed at the glass.
-  await savedPosition(page, { x: 2.15, z: -0.65, yaw: -0.3085, pitch: 0.231 });
+  // Project the actual glass center into the follow camera's visible image.
+  // This clicks the Three.js phone mesh, not a replacement HTML link.
+  await savedPosition(page, {
+    x: 2.15,
+    z: -0.65,
+    yaw: -0.3085,
+    facing: -0.3085,
+  });
   await enterRoom(page);
+  const pose = await position(page);
   const box = await page.locator(".room-canvas canvas").boundingBox();
-  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  const camera = new PerspectiveCamera(68, box!.width / box!.height, 0.035, 60);
+  const target = new Vector3(pose.x, pose.height + 1.02, pose.z);
+  camera.position.set(
+    target.x + Math.sin(pose.yaw) * Math.cos(pose.pitch) * pose.cameraDistance,
+    target.y + Math.sin(pose.pitch) * pose.cameraDistance,
+    target.z + Math.cos(pose.yaw) * Math.cos(pose.pitch) * pose.cameraDistance,
+  );
+  camera.lookAt(target);
+  camera.updateMatrixWorld();
+  const glass = new Vector3(2.72, 1.96, -2.41).project(camera);
+  expect(Math.abs(glass.x)).toBeLessThan(1);
+  expect(Math.abs(glass.y)).toBeLessThan(1);
+  await page.mouse.click(
+    box!.x + ((glass.x + 1) / 2) * box!.width,
+    box!.y + ((1 - glass.y) / 2) * box!.height,
+  );
   await expect(page).toHaveURL(/#\/pokemon$/);
   await expect(page.locator(".page-count strong")).toHaveText("0");
 });
@@ -402,6 +487,7 @@ test("隠したメニューから4コレクションへ進み、戻ると位置�
     expect(restored.z).toBeCloseTo(before.z, 1);
     expect(restored.yaw).toBeCloseTo(before.yaw, 2);
     expect(restored.pitch).toBeCloseTo(before.pitch, 2);
+    expect(restored.facing).toBeCloseTo(before.facing, 2);
   }
 });
 
@@ -493,50 +579,82 @@ test.describe("タッチ操作", () => {
     isMobile: true,
   });
 
-  test("指で見回し、方向パッド長押しとジャンプ・パンチを操作できる", async ({
+  test("アナログスティックで移動中も別の指で見回し、ジャンプとパンチを操作できる", async ({
     page,
     context,
   }) => {
     const room = await enterRoom(page);
     const cdp = await context.newCDPSession(page);
-    const beforeLook = await position(page);
-    await cdp.send("Input.dispatchTouchEvent", {
-      type: "touchStart",
-      touchPoints: [{ x: 180, y: 320 }],
+    const stick = page.getByRole("group", {
+      name: "移動スティック",
+      exact: true,
     });
-    for (let step = 1; step <= 6; step++)
-      await cdp.send("Input.dispatchTouchEvent", {
-        type: "touchMove",
-        touchPoints: [{ x: 180 + step * 12, y: 320 - step * 4 }],
-      });
-    await cdp.send("Input.dispatchTouchEvent", {
-      type: "touchEnd",
-      touchPoints: [],
-    });
-    await expect
-      .poll(async () => Math.abs((await position(page)).yaw - beforeLook.yaw))
-      .toBeGreaterThan(0.1);
-    await expect(page).toHaveURL(/#\/$/);
-    const box = await page
-      .getByRole("button", { name: "右へ", exact: true })
-      .boundingBox();
+    const box = await stick.boundingBox();
+    const center = {
+      x: box!.x + box!.width / 2,
+      y: box!.y + box!.height / 2,
+      id: 1,
+    };
     const start = await position(page);
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchStart",
-      touchPoints: [
-        { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 },
-      ],
+      touchPoints: [center],
+    });
+    const gentle = { ...center, y: center.y - box!.width * 0.13 };
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [gentle],
+    });
+    const intensity = async () =>
+      stick.evaluate((element) =>
+        Math.hypot(
+          Number(element.getAttribute("data-stick-x")),
+          Number(element.getAttribute("data-stick-z")),
+        ),
+      );
+    await expect.poll(intensity).toBeGreaterThan(0.1);
+    expect(await intensity()).toBeLessThan(0.75);
+    await expect
+      .poll(async () => start.z - (await position(page)).z, {
+        intervals: [50, 100],
+      })
+      .toBeGreaterThan(0.1);
+    const full = { ...center, y: center.y - box!.width * 0.4 };
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [full],
+    });
+    await expect.poll(intensity).toBeGreaterThan(0.95);
+    const beforeLook = await position(page);
+    const lookingFinger = { x: 270, y: 320, id: 2 };
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [full, lookingFinger],
     });
     try {
+      for (let step = 1; step <= 6; step++)
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [
+            full,
+            {
+              ...lookingFinger,
+              x: lookingFinger.x - step * 12,
+              y: lookingFinger.y - step * 3,
+            },
+          ],
+        });
       await expect
-        .poll(
-          async () => {
-            const current = await position(page);
-            return Math.hypot(current.x - start.x, current.z - start.z);
-          },
-          { intervals: [50, 100] },
+        .poll(async () =>
+          angleDifference((await position(page)).yaw, beforeLook.yaw),
         )
-        .toBeGreaterThan(0.15);
+        .toBeGreaterThan(0.1);
+      await expect
+        .poll(async () => {
+          const current = await position(page);
+          return Math.hypot(current.x - beforeLook.x, current.z - beforeLook.z);
+        })
+        .toBeGreaterThan(0.1);
     } finally {
       await cdp.send("Input.dispatchTouchEvent", {
         type: "touchEnd",
@@ -544,6 +662,14 @@ test.describe("タッチ操作", () => {
       });
       await cdp.detach();
     }
+    await expect.poll(intensity).toBe(0);
+    await expect(page).toHaveURL(/#\/$/);
+    await page.waitForTimeout(150);
+    const stopped = await position(page);
+    await page.waitForTimeout(250);
+    const later = await position(page);
+    expect(later.x).toBeCloseTo(stopped.x, 2);
+    expect(later.z).toBeCloseTo(stopped.z, 2);
     await page.getByRole("button", { name: "ジャンプ", exact: true }).tap();
     await expect
       .poll(async () => (await position(page)).height, {
@@ -557,11 +683,25 @@ test.describe("タッチ操作", () => {
     await page.getByRole("button", { name: "パンチ", exact: true }).tap();
     await expect(room).toHaveAttribute("data-punching", "true");
     await expect(room).toHaveAttribute("data-punching", "false");
+    await page
+      .getByRole("button", { name: "視点を背後に戻す", exact: true })
+      .tap();
+    await expect
+      .poll(async () => {
+        const current = await position(page);
+        return angleDifference(current.yaw, current.facing);
+      })
+      .toBeLessThan(0.03);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    await page.screenshot({
+      path: "docs/screenshots/home-mobile.png",
+      fullPage: true,
+      animations: "disabled",
+    });
   });
 
   test("横向きでも操作部が画面に収まり、メニューから記録を開ける", async ({
@@ -570,10 +710,7 @@ test.describe("タッチ操作", () => {
     await page.setViewportSize({ width: 844, height: 390 });
     await enterRoom(page);
     for (const name of [
-      "前へ",
-      "後ろへ",
-      "左へ",
-      "右へ",
+      "視点を背後に戻す",
       "ジャンプ",
       "パンチ",
       "記録と設定を開く",
@@ -586,6 +723,13 @@ test.describe("タッチ操作", () => {
       expect(box!.x + box!.width).toBeLessThanOrEqual(844);
       expect(box!.y + box!.height).toBeLessThanOrEqual(390);
     }
+    const stick = await page
+      .getByRole("group", { name: "移動スティック", exact: true })
+      .boundingBox();
+    expect(stick!.x).toBeGreaterThanOrEqual(0);
+    expect(stick!.y).toBeGreaterThanOrEqual(0);
+    expect(stick!.x + stick!.width).toBeLessThanOrEqual(844);
+    expect(stick!.y + stick!.height).toBeLessThanOrEqual(390);
     expect(
       await page.evaluate(() => ({
         horizontal: document.documentElement.scrollWidth > innerWidth,

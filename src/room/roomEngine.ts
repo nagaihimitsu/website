@@ -14,11 +14,23 @@ import type {
   RoomPortal,
 } from "./types";
 import type { Section } from "../data/model";
+import {
+  CAMERA_RADIUS,
+  DEFAULT_CAMERA_PITCH,
+  FOLLOW_DISTANCE,
+  FOLLOW_TARGET_HEIGHT,
+  INITIAL_PLAYER_POSITION,
+  MAX_CAMERA_PITCH,
+  MIN_CAMERA_PITCH,
+  cameraBoomLimit,
+  orbitDirection,
+  recoverCameraDistance,
+  shortestAngle,
+} from "./followCamera";
 
-const STORAGE_KEY = "personal-atlas-room-position-v2";
-const EYE_HEIGHT = 1.5;
+const STORAGE_KEY = "personal-atlas-room-position-v3";
 const DESKTOP_FIELD_OF_VIEW = 68;
-const PORTRAIT_FIELD_OF_VIEW = 86;
+const PORTRAIT_FIELD_OF_VIEW = 76;
 const PUNCH_DURATION = 420;
 const PUNCH_IMPACT = 125;
 const KEY_DIRECTIONS: Record<string, Direction> = {
@@ -71,7 +83,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   canvas.tabIndex = 0;
   canvas.setAttribute(
     "aria-label",
-    "部屋の3D表示。ドラッグで見回す、矢印キーで移動。",
+    "部屋の3D表示。ドラッグで360度見回す、矢印キーで移動、Rで視点を戻す。",
   );
   canvas.style.touchAction = "none";
   host.append(canvas);
@@ -84,56 +96,49 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   );
   camera.rotation.order = "YXZ";
   room.scene.add(camera);
-  room.avatar.visible = false;
-
-  // Original, deliberately simple view model: a sleeve, fist and four knuckles.
-  const hand = new THREE.Group();
-  hand.userData.roomRaycastIgnore = true;
-  const handGeometries: THREE.BufferGeometry[] = [];
-  const skin = new THREE.MeshStandardMaterial({
-    color: "#c9a481",
-    roughness: 0.85,
-    depthTest: false,
-    depthWrite: false,
+  room.avatar.visible = true;
+  room.avatar.userData.roomRaycastIgnore = true;
+  const avatarMaterials = new Map<
+    THREE.Material,
+    {
+      opacity: number;
+      transparent: boolean;
+      depthWrite: boolean;
+    }
+  >();
+  room.avatar.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+    for (const material of materials)
+      avatarMaterials.set(material, {
+        opacity: material.opacity,
+        transparent: material.transparent,
+        depthWrite: material.depthWrite,
+      });
   });
-  const sleeve = new THREE.MeshStandardMaterial({
-    color: "#687c73",
-    roughness: 0.95,
-    depthTest: false,
-    depthWrite: false,
-  });
-  const handMesh = (
-    geometry: THREE.BufferGeometry,
-    material: THREE.Material,
-  ) => {
-    handGeometries.push(geometry);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.renderOrder = 20;
-    hand.add(mesh);
-    return mesh;
-  };
-  const arm = handMesh(
-    new THREE.CylinderGeometry(0.078, 0.105, 0.28, 12),
-    sleeve,
-  );
-  arm.rotation.x = Math.PI / 2;
-  arm.position.set(0, -0.035, 0.18);
-  const fist = handMesh(new THREE.SphereGeometry(0.095, 12, 10), skin);
-  fist.scale.set(1, 0.82, 1.18);
-  for (const x of [-0.057, -0.019, 0.019, 0.057]) {
-    const knuckle = handMesh(new THREE.SphereGeometry(0.026, 8, 6), skin);
-    knuckle.position.set(x, 0.03, -0.068);
-  }
-  camera.add(hand);
+  let lastAvatarOpacity = 1;
+  const cameraTarget = new THREE.Vector3();
+  const boomDirection = new THREE.Vector3();
+  const cameraRay = new THREE.Raycaster();
+  let cameraDistance = FOLLOW_DISTANCE;
+  let cameraInitialized = false;
+  let returningView: { yaw: number } | null = null;
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const centerPointer = new THREE.Vector2();
   const keyboard = new Set<string>();
   const pad = new Set<Direction>();
-  let player = createPlayer(0.95, 3.05);
+  const analog = { x: 0, z: 0 };
+  let player = createPlayer(
+    INITIAL_PLAYER_POSITION.x,
+    INITIAL_PLAYER_POSITION.z,
+  );
   let yaw = 0;
-  let pitch = -0.04;
+  let pitch = DEFAULT_CAMERA_PITCH;
+  let facing = 0;
   let reducedMotion = options.reducedMotion;
   let paused = false;
   let disposed = false;
@@ -203,7 +208,17 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
             typeof saved.pitch === "number" &&
             Number.isFinite(saved.pitch)
           )
-            pitch = THREE.MathUtils.clamp(saved.pitch, -1.18, 1.18);
+            pitch = THREE.MathUtils.clamp(
+              saved.pitch,
+              MIN_CAMERA_PITCH,
+              MAX_CAMERA_PITCH,
+            );
+          if (
+            "facing" in saved &&
+            typeof saved.facing === "number" &&
+            Number.isFinite(saved.facing)
+          )
+            facing = saved.facing % (2 * Math.PI);
         }
       }
     }
@@ -221,6 +236,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
           z: player.z,
           yaw,
           pitch,
+          facing,
           brokenIds: room.breakables
             .filter((item) => item.broken)
             .map((item) => item.id),
@@ -240,6 +256,8 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   function clearInputs() {
     keyboard.clear();
     pad.clear();
+    analog.x = 0;
+    analog.z = 0;
     jumpRequested = false;
     releaseViewPointer();
   }
@@ -263,6 +281,8 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       supportId: player.supportId,
       yaw,
       pitch,
+      facing,
+      cameraDistance,
       punching: punchStarted !== null,
       brokenCount: room.breakables.filter((item) => item.broken).length,
     });
@@ -302,7 +322,16 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   ): THREE.Intersection | undefined {
     raycaster.setFromCamera(ndc, camera);
     raycaster.far = reach;
-    const hits = raycaster.intersectObjects(room.scene.children, true);
+    return firstVisibleHit(
+      raycaster.intersectObjects(room.scene.children, true),
+      includeHitAreas,
+    );
+  }
+
+  function firstVisibleHit(
+    hits: THREE.Intersection[],
+    includeHitAreas = false,
+  ) {
     for (const hit of hits) {
       let visible = true;
       for (
@@ -423,29 +452,65 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   }
 
   function strike() {
-    const hit = visibleHit(centerPointer, 2, false);
-    for (
-      let object: THREE.Object3D | null = hit?.object ?? null;
-      object;
-      object = object.parent
-    ) {
-      const id: unknown = object.userData.breakableId;
-      if (typeof id !== "string") continue;
-      const item = room.breakables.find(
-        (candidate) => candidate.id === id && !candidate.broken,
+    // The action belongs to the character: orbiting the camera cannot strike
+    // something behind their back or extend the fist from the camera position.
+    const origin = new THREE.Vector3(player.x, player.y + 0.76, player.z);
+    const forward = new THREE.Vector3(-Math.sin(facing), 0, -Math.cos(facing));
+    const candidates = room.breakables
+      .flatMap((item) => {
+        if (item.broken) return [];
+        const bounds = new THREE.Box3().setFromObject(item.object);
+        const center = bounds.getCenter(new THREE.Vector3());
+        const nearest = bounds.clampPoint(origin, new THREE.Vector3());
+        const flatDirection = center.clone().sub(origin).setY(0).normalize();
+        if (
+          nearest.distanceTo(origin) > 1.25 ||
+          flatDirection.dot(forward) < 0.55
+        )
+          return [];
+        return [{ item, center, distance: nearest.distanceTo(origin) }];
+      })
+      .sort((a, b) => a.distance - b.distance);
+    for (const { item, center } of candidates) {
+      const direction = center.clone().sub(origin);
+      raycaster.set(origin, direction.clone().normalize());
+      raycaster.far = direction.length() + 0.03;
+      const hit = firstVisibleHit(
+        raycaster.intersectObjects(room.scene.children, true),
       );
-      if (!item) return;
-      const impulse = new THREE.Vector3(0, 0.4, -1)
-        .applyQuaternion(camera.quaternion)
-        .normalize()
-        .multiplyScalar(3);
-      if (room.breakObject(id, impulse)) {
+      let hitId: unknown;
+      for (
+        let object: THREE.Object3D | null = hit?.object ?? null;
+        object;
+        object = object.parent
+      ) {
+        if (typeof object.userData.breakableId === "string") {
+          hitId = object.userData.breakableId;
+          break;
+        }
+      }
+      if (hitId !== item.id) continue;
+      const impulse = forward.clone().setY(0.4).normalize().multiplyScalar(3);
+      if (room.breakObject(item.id, impulse)) {
         shadowDynamicUntil = performance.now() + 2500;
         options.onBreak(item.label);
         savePosition();
         snapshot();
       }
       return;
+    }
+  }
+
+  function resetView() {
+    if (disposed || failed || opening || opened) return;
+    returningView = { yaw: facing };
+    if (reducedMotion) {
+      yaw = facing;
+      pitch = DEFAULT_CAMERA_PITCH;
+      returningView = null;
+      setCameraFromPlayer(0);
+      camera.updateMatrixWorld();
+      snapshot();
     }
   }
 
@@ -478,6 +543,9 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     } else if (event.code === "KeyF" || event.code === "KeyJ") {
       event.preventDefault();
       if (!event.repeat) punch();
+    } else if (event.code === "KeyR") {
+      event.preventDefault();
+      if (!event.repeat) resetView();
     } else if (event.code === "KeyE") {
       event.preventDefault();
       if (!event.repeat) {
@@ -517,11 +585,12 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       )
         viewPointer.moved = true;
       if (viewPointer.moved) {
+        returningView = null;
         yaw -= (event.clientX - viewPointer.x) * 0.0042;
         pitch = THREE.MathUtils.clamp(
-          pitch - (event.clientY - viewPointer.y) * 0.0036,
-          -1.18,
-          1.18,
+          pitch + (event.clientY - viewPointer.y) * 0.0036,
+          MIN_CAMERA_PITCH,
+          MAX_CAMERA_PITCH,
         );
         yaw %= 2 * Math.PI;
         aimTime = -Infinity;
@@ -589,49 +658,78 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     }
   }
 
-  function setCameraFromPlayer(moving: boolean) {
-    const bob =
-      !reducedMotion && moving && player.grounded
-        ? Math.sin(animationTime * 12) * 0.009
-        : 0;
-    camera.position.set(player.x, player.y + EYE_HEIGHT + bob, player.z);
-    camera.rotation.set(pitch, yaw, 0, "YXZ");
+  function setCameraFromPlayer(elapsed: number) {
+    if (returningView) {
+      const blend = 1 - Math.exp(-10 * elapsed);
+      yaw += shortestAngle(yaw, returningView.yaw) * blend;
+      pitch += (DEFAULT_CAMERA_PITCH - pitch) * blend;
+      if (
+        Math.abs(shortestAngle(yaw, returningView.yaw)) < 0.001 &&
+        Math.abs(pitch - DEFAULT_CAMERA_PITCH) < 0.001
+      ) {
+        yaw = returningView.yaw;
+        pitch = DEFAULT_CAMERA_PITCH;
+        returningView = null;
+      }
+    }
+    cameraTarget.set(player.x, player.y + FOLLOW_TARGET_HEIGHT, player.z);
+    const direction = orbitDirection(yaw, pitch);
+    boomDirection.set(direction.x, direction.y, direction.z);
+    const wantedDistance = FOLLOW_DISTANCE + (camera.aspect < 0.8 ? 0.1 : 0);
+    let safeDistance = cameraBoomLimit(
+      cameraTarget,
+      boomDirection,
+      wantedDistance,
+      room.obstacles,
+    );
+    // The swept volume covers the furniture solids and room boundaries. This
+    // extra ray catches smaller visible fixtures such as lamps and picture ledges.
+    cameraRay.set(cameraTarget, boomDirection);
+    cameraRay.far = safeDistance + CAMERA_RADIUS;
+    const hit = firstVisibleHit(
+      cameraRay.intersectObjects(room.scene.children, true),
+    );
+    if (hit)
+      safeDistance = Math.max(
+        0.035,
+        Math.min(safeDistance, hit.distance - CAMERA_RADIUS),
+      );
+    cameraDistance = cameraInitialized
+      ? recoverCameraDistance(cameraDistance, safeDistance, elapsed)
+      : safeDistance;
+    cameraInitialized = true;
+    camera.position
+      .copy(cameraTarget)
+      .addScaledVector(boomDirection, cameraDistance);
+    camera.lookAt(cameraTarget);
     camera.fov = baseFov();
     camera.updateProjectionMatrix();
+    // In an unavoidable wall corner, keep the room visible instead of putting
+    // the camera inside an opaque head. The normal following view is fully solid.
+    const opacity = THREE.MathUtils.smoothstep(cameraDistance, 0.12, 0.78);
+    if (Math.abs(lastAvatarOpacity - opacity) > 0.001) {
+      for (const [material, initial] of avatarMaterials) {
+        material.transparent = opacity < 1 || initial.transparent;
+        material.opacity = opacity * initial.opacity;
+        material.depthWrite = opacity > 0.5 && initial.depthWrite;
+      }
+      lastAvatarOpacity = opacity;
+    }
   }
 
-  function updateHand(time: number, moving: boolean) {
-    let extension = 0;
-    if (punchStarted !== null) {
-      const elapsed = time - punchStarted;
-      if (elapsed >= PUNCH_IMPACT && !punchImpacted) {
-        punchImpacted = true;
-        strike();
-      }
-      const phase = Math.min(1, elapsed / PUNCH_DURATION);
-      extension =
-        phase < 0.3
-          ? 1 - (1 - phase / 0.3) ** 3
-          : (1 - (phase - 0.3) / 0.7) ** 2;
-      if (phase >= 1) punchStarted = null;
+  function updatePunch(time: number) {
+    if (punchStarted === null) return null;
+    const elapsed = time - punchStarted;
+    if (elapsed >= PUNCH_IMPACT && !punchImpacted) {
+      punchImpacted = true;
+      strike();
     }
-    if (reducedMotion) extension = 0.25;
-    const baseX = Math.min(
-      0.29,
-      Math.tan(THREE.MathUtils.degToRad(baseFov() / 2)) *
-        camera.aspect *
-        0.55 *
-        0.72,
-    );
-    const bob =
-      !reducedMotion && moving ? Math.sin(animationTime * 12) * 0.006 : 0;
-    hand.position.set(
-      baseX * (1 - extension * 0.6),
-      -0.31 + extension * 0.17 + bob,
-      -0.53 - extension * 0.47,
-    );
-    hand.rotation.set(-0.12 - extension * 0.12, -0.15, -0.2 + extension * 0.28);
-    hand.visible = punchStarted !== null && !opening && !opened;
+    const progress = Math.min(1, elapsed / PUNCH_DURATION);
+    if (progress >= 1) {
+      punchStarted = null;
+      return null;
+    }
+    return progress;
   }
 
   function render(time: number) {
@@ -642,18 +740,36 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     const directions = new Set(pad);
     for (const code of keyboard) directions.add(KEY_DIRECTIONS[code]);
     const oldPosition = { x: player.x, y: player.y, z: player.z };
-    if (!opening && !opened)
+    const oldFacing = facing;
+    const digitalInput = movementVector(directions, yaw);
+    const input =
+      directions.size > 0
+        ? digitalInput
+        : {
+            x: analog.x * Math.cos(yaw) + analog.z * Math.sin(yaw),
+            z: -analog.x * Math.sin(yaw) + analog.z * Math.cos(yaw),
+          };
+    if (!opening && !opened) {
+      if (Math.hypot(input.x, input.z) > 0.01) {
+        const targetFacing = Math.atan2(-input.x, -input.z);
+        facing +=
+          shortestAngle(facing, targetFacing) * (1 - Math.exp(-18 * elapsed));
+        facing %= Math.PI * 2;
+      }
       player = stepPlayer(
         player,
-        movementVector(directions, yaw),
+        input,
         elapsed,
         room.obstacles,
         jumpRequested,
       );
+    }
     jumpRequested = false;
     const moving =
       Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) > 0.0001;
     room.avatar.position.set(player.x, player.y, player.z);
+    room.avatar.rotation.y = facing;
+    room.scene.updateMatrixWorld();
     if (opening) {
       const progress = Math.min(1, (time - opening.started) / 500);
       const eased = progress * progress * (3 - 2 * progress);
@@ -674,16 +790,39 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
         options.onOpen(opening.portal.section);
         if (disposed) return;
       }
-    } else setCameraFromPlayer(moving);
+    } else setCameraFromPlayer(elapsed);
     camera.updateMatrixWorld();
     try {
       room.animate(animationTime, moving, reducedMotion);
+      const punchProgress = updatePunch(time);
+      room.animateAvatar({
+        time: animationTime,
+        speed:
+          elapsed > 0
+            ? Math.min(
+                1,
+                Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) /
+                  elapsed /
+                  2.8,
+              )
+            : 0,
+        grounded: player.grounded,
+        velocityY: player.velocityY,
+        punchProgress,
+        reducedMotion,
+      });
       room.scene.updateMatrixWorld();
-      updateHand(time, moving);
       if (time - aimTime >= 100 && !opening && !opened) {
         aimTime = time;
         setHovered(portalAt(visibleHit(centerPointer))?.section ?? null);
       }
+      if (
+        moving ||
+        !player.grounded ||
+        punchStarted !== null ||
+        Math.abs(shortestAngle(oldFacing, facing)) > 0.0001
+      )
+        shadowDynamicUntil = Math.max(shadowDynamicUntil, time + 120);
       renderer.shadowMap.needsUpdate =
         renderer.shadowMap.needsUpdate || time < shadowDynamicUntil;
       renderer.render(room.scene, camera);
@@ -716,7 +855,10 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   canvas.addEventListener("pointerleave", pointerLeave);
   canvas.addEventListener("webglcontextlost", contextLost);
   resize();
-  setCameraFromPlayer(false);
+  room.avatar.position.set(player.x, player.y, player.z);
+  room.avatar.rotation.y = facing;
+  room.scene.updateMatrixWorld();
+  setCameraFromPlayer(0);
   camera.updateMatrixWorld();
   snapshot();
   frame = requestAnimationFrame(render);
@@ -727,22 +869,34 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       if (pressed) pad.add(direction);
       else pad.delete(direction);
     },
+    move(x, z) {
+      if (disposed || failed || paused || opening || opened) return;
+      const length = Math.hypot(x, z);
+      if (!Number.isFinite(length)) return;
+      analog.x = x / Math.max(1, length);
+      analog.z = z / Math.max(1, length);
+    },
     jump,
     punch,
     open,
+    resetView,
     resetObjects() {
       if (disposed || failed) return;
       clearInputs();
       punchStarted = null;
       punchImpacted = false;
-      hand.visible = false;
       room.resetObjects();
       // A restored prop may occupy the spot the visitor walked into after
       // breaking it. Preserve valid airborne positions, but escape solid overlap.
       if (!positionIsClear(player.x, player.z, room.obstacles, player.y)) {
-        player = createPlayer(0.95, 3.05);
+        player = createPlayer(
+          INITIAL_PLAYER_POSITION.x,
+          INITIAL_PLAYER_POSITION.z,
+        );
         room.avatar.position.set(player.x, player.y, player.z);
-        setCameraFromPlayer(false);
+        room.scene.updateMatrixWorld();
+        cameraInitialized = false;
+        setCameraFromPlayer(0);
         camera.updateMatrixWorld();
         setHovered(null);
         aimTime = -Infinity;
@@ -790,11 +944,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       canvas.removeEventListener("lostpointercapture", pointerCancel);
       canvas.removeEventListener("pointerleave", pointerLeave);
       canvas.removeEventListener("webglcontextlost", contextLost);
-      camera.remove(hand);
       room.scene.remove(camera);
-      handGeometries.forEach((geometry) => geometry.dispose());
-      skin.dispose();
-      sleeve.dispose();
       room.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

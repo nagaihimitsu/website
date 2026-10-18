@@ -24,6 +24,14 @@ export interface RoomPortal {
   anchor: THREE.Vector3;
   lookAt: THREE.Vector3;
 }
+export interface RoomAvatarAnimation {
+  time: number;
+  speed: number;
+  grounded: boolean;
+  velocityY: number;
+  punchProgress: number | null;
+  reducedMotion: boolean;
+}
 export interface RoomScene {
   scene: THREE.Scene;
   avatar: THREE.Group;
@@ -33,6 +41,7 @@ export interface RoomScene {
   breakObject: (id: string, impulse: THREE.Vector3) => boolean;
   resetObjects: () => void;
   animate: (time: number, moving: boolean, reducedMotion: boolean) => void;
+  animateAvatar: (state: RoomAvatarAnimation) => void;
   dispose: () => void;
 }
 export interface RoomSnapshot {
@@ -44,6 +53,8 @@ export interface RoomSnapshot {
   supportId: string | null;
   yaw: number;
   pitch: number;
+  facing: number;
+  cameraDistance: number;
   punching: boolean;
   brokenCount: number;
 }
@@ -61,6 +72,8 @@ export interface RoomEngineOptions {
 }
 export interface RoomEngine {
   direction: (direction: Direction, pressed: boolean) => void;
+  move: (x: number, z: number) => void;
+  resetView: () => void;
   jump: () => void;
   punch: () => void;
   resetObjects: () => void;

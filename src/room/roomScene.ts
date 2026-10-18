@@ -8,6 +8,7 @@ import type {
   RoomBreakable,
 } from "./types";
 import { createBreakables } from "./art/breakables";
+import { createCharacter } from "./art/character";
 import {
   createWorldMapTexture,
   createJapanMapTexture,
@@ -579,12 +580,13 @@ export function createRoomScene(archive: Archive): RoomScene {
   obstruction("mountain-console", 4.15, 0.05, 1.22, 1.3, 1.67);
 
   // Woven rug, with a restrained stitched border, and a softly upholstered sofa.
-  rounded(4.6, 0.035, 3.6, linen, 0.08, scene, -0.05, 0.035, 1.55);
+  // A thin woven surface rests on the planks instead of swallowing the avatar's shoes.
+  rounded(4.6, 0.008, 3.6, linen, 0.08, scene, -0.05, 0.0115, 1.55);
   const rugThread = mat("#b5af96");
   for (let i = 0; i < 30; i++)
-    box(4.25, 0.003, 0.007, rugThread, scene, -0.05, 0.056, -0.05 + i * 0.11);
+    box(4.25, 0.001, 0.007, rugThread, scene, -0.05, 0.0165, -0.05 + i * 0.11);
   for (const z of [-0.13, 3.23])
-    box(4.35, 0.005, 0.025, clay, scene, -0.05, 0.06, z);
+    box(4.35, 0.002, 0.025, clay, scene, -0.05, 0.017, z);
   const sofa = group(-2.9, 0, 2.16);
   sofa.rotation.y = Math.PI / 2;
   for (const x of [-1.15, 1.15])
@@ -756,9 +758,8 @@ export function createRoomScene(archive: Archive): RoomScene {
   ]);
   obstruction("wood-blocks", -0.8, -1, 0.5, 0.45, 0.6);
 
-  // The runtime moves this invisible body and attaches the original first-person hand to its camera.
-  const avatar = new THREE.Group();
-  avatar.visible = false;
+  const character = createCharacter();
+  const avatar = character.group;
   scene.add(avatar);
 
   return {
@@ -767,6 +768,7 @@ export function createRoomScene(archive: Archive): RoomScene {
     portals,
     obstacles,
     breakables,
+    animateAvatar: character.animate,
     breakObject(id, impulse) {
       const target = breakables.find((item) => item.id === id);
       if (!target || target.broken || !fractureSystem.breakObject(id, impulse))
@@ -805,6 +807,7 @@ export function createRoomScene(archive: Archive): RoomScene {
     },
     dispose() {
       fractureSystem.dispose();
+      character.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) geometries.add(object.geometry);

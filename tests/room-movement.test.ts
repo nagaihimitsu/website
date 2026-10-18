@@ -127,7 +127,7 @@ describe("furniture platform jumps", () => {
   });
 
   it("cannot jump through the room ceiling from a high platform", () => {
-    const high = { ...bed, top: 2.4 };
+    const high = { ...bed, top: ROOM_CEILING - PLAYER_HEIGHT - 0.6 };
     const initial = validatePlayerPosition({ x: 0, y: high.top, z: 0 }, [
       high,
     ])!;
@@ -222,7 +222,7 @@ describe("saved room positions", () => {
     const table = { ...bed, width: 1, depth: 1 };
     expect(positionIsClear(0.6, 0.6, [table])).toBe(false);
     expect(positionIsClear(0.7, 0.7, [table])).toBe(true);
-    const tooHigh = { ...bed, top: 3.2 };
+    const tooHigh = { ...bed, top: ROOM_CEILING - PLAYER_HEIGHT + 0.1 };
     expect(
       validatePlayerPosition({ x: 0, y: tooHigh.top, z: 0 }, [tooHigh]),
     ).toBeNull();
