@@ -189,13 +189,23 @@ export function buildCharacterBody(
         back,
       );
       const height = interpolate(hoodHeight, v);
-      const lower = 0.67 - back * 0.01;
-      const thickness = 0.078 + back * 0.095;
+      const isFront = Math.sin(theta) < 0;
+      const lapelRise = Math.abs(Math.cos(theta));
+      // Each front half falls diagonally from the cheek to the low centre.
+      // A linear rise makes folded lapels instead of a horizontal neck ring.
+      const lower = isFront ? 0.632 + lapelRise * 0.033 : 0.67 - back * 0.01;
+      const thickness = isFront
+        ? 0.058 + lapelRise * 0.112
+        : 0.1675 + back * 0.005;
+      // Lower only the high cheek rim; the low V and lower folds keep their
+      // reference-aligned positions. The two half surfaces agree at the sides.
+      const upperRimDrop = 0.035 * (isFront ? lapelRise : 1 - Math.sin(theta));
+      const width = 0.252 - Math.max(0, Math.sin(theta)) * 0.044;
       const folds =
         Math.sin(theta * 3 + v * 4) * 0.0027 * Math.sin(Math.PI * v);
       return new THREE.Vector3(
-        Math.cos(theta) * 0.208 * radial,
-        lower + height * thickness + folds,
+        Math.cos(theta) * width * radial,
+        lower + height * thickness - upperRimDrop * height ** 2 + folds,
         0.012 + Math.sin(theta) * (0.135 + back * 0.045) * radial,
       );
     },
@@ -203,9 +213,37 @@ export function buildCharacterBody(
     body,
   );
   hood.name = "folded-fabric-hood";
+  // Two broad, padded folds cross at the low point of the V. Their ends disappear
+  // into the parent cloth, so the visible edges read as folded fabric surfaces.
+  for (const side of [-1, 1]) {
+    const lapel = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(side * 0.235, 0.775, -0.045),
+      new THREE.Vector3(side * 0.178, 0.746, -0.09),
+      new THREE.Vector3(side * 0.1, 0.709, -0.119),
+      new THREE.Vector3(side * 0.03, 0.677, -0.132 - (side < 0 ? 0.002 : 0)),
+      new THREE.Vector3(-side * 0.012, 0.667, -0.123),
+    ]);
+    surface(
+      40,
+      16,
+      (u, v) => {
+        const center = lapel.getPoint(u);
+        const tangent = lapel.getTangent(u).normalize();
+        const across = new THREE.Vector3(-tangent.y, tangent.x, 0).normalize();
+        const taper = Math.sin(Math.PI * u) ** 0.3;
+        const phi = v * tau;
+        const halfWidth = (0.042 - u * 0.022) * taper;
+        return center
+          .addScaledVector(across, Math.cos(phi) * halfWidth)
+          .add(new THREE.Vector3(0, 0, -Math.sin(phi) * 0.012 * taper));
+      },
+      hoodie,
+      body,
+    ).name = "overlapping-hood-lapel";
+  }
   // The inner cloth comes up under the jaw. No exposed neck/bib sits between
   // the plush head and its dropped hood in the supplied reference.
-  ellipsoid(0.15, 0.06, 0.12, hoodInterior, body, 0, 0.735, 0.006).name =
+  ellipsoid(0.13, 0.05, 0.065, hoodInterior, body, 0, 0.72, 0.07).name =
     "hood-inner-fold";
   // The shadowed inside follows the opening instead of a separate collar bead.
   surface(
@@ -214,9 +252,13 @@ export function buildCharacterBody(
     (u, v) => {
       const theta = u * tau;
       const back = (Math.sin(theta) + 1) * 0.5;
+      const openingY =
+        Math.sin(theta) < 0
+          ? 0.674 + Math.abs(Math.cos(theta)) * 0.09
+          : 0.764 + Math.sin(theta) * 0.053;
       return new THREE.Vector3(
-        Math.cos(theta) * (0.155 + v * 0.016),
-        0.723 + back * 0.052 + v * 0.016,
+        Math.cos(theta) * (0.19 + v * 0.018),
+        openingY + v * 0.016,
         0.013 + Math.sin(theta) * (0.109 + back * 0.032 + v * 0.008),
       );
     },
@@ -227,17 +269,17 @@ export function buildCharacterBody(
   for (const side of [-1, 1]) {
     thread(
       [
-        [side * 0.045, 0.731, -0.139],
-        [side * 0.043, 0.633, -0.157],
-        [side * 0.047, 0.583, -0.162],
-        [side * 0.044, 0.565, -0.166],
+        [side * 0.045, 0.708, -0.143],
+        [side * 0.043, 0.663, -0.151],
+        [side * 0.047, 0.622, -0.16],
+        [side * 0.044, 0.602, -0.164],
       ],
       0.0046,
       ivory,
       body,
       28,
     );
-    ellipsoid(0.007, 0.006, 0.007, ivory, body, side * 0.045, 0.57, -0.166);
+    ellipsoid(0.007, 0.006, 0.007, ivory, body, side * 0.045, 0.607, -0.164);
     const aglet = ellipsoid(
       0.004,
       0.01,
@@ -245,8 +287,8 @@ export function buildCharacterBody(
       ivory,
       body,
       side * 0.044,
-      0.554,
-      -0.166,
+      0.591,
+      -0.164,
     );
     aglet.rotation.x = -0.14;
   }

@@ -1,9 +1,16 @@
 import * as THREE from "three";
 import type { CharacterBuilder } from "./characterBuilder";
 
-const HEAD_WIDTH = 0.242;
-const HEAD_HEIGHT = 0.208;
+const HEAD_WIDTH = 0.252;
+const HEAD_HEIGHT = 0.222;
 const HEAD_DEPTH = 0.205;
+const EYE_X = 0.116;
+const EYE_Y = 0.012;
+const EYE_RADIUS_X = 0.045;
+const EYE_RADIUS_Y = 0.054;
+
+// The reference has a narrow crown and broad low cheeks, not a round ball.
+const skullWidth = (height: number) => HEAD_WIDTH * (1 - height * 0.26);
 
 /**
  * The cheek, muzzle and forehead are one continuous piece of plush. The small
@@ -15,7 +22,7 @@ function muzzleSwell(y: number, front: number) {
   // The taper closes the polar rings at one point without a pinched seam.
   const pole = THREE.MathUtils.smoothstep(y, -HEAD_HEIGHT, -0.18);
   return (
-    (0.044 * Math.exp(-(((y + 0.07) / 0.075) ** 2)) * front ** 4 +
+    (0.061 * Math.exp(-(((y + 0.045) / 0.07) ** 2)) * front ** 4 +
       0.072 * Math.exp(-(((y + 0.15) / 0.072) ** 2)) * front ** 2.4 +
       // Full forehead, a shallow bridge, then a short round snout. This
       // changes the profile's curvature without narrowing the rounded jaw.
@@ -30,7 +37,7 @@ function muzzleSwell(y: number, front: number) {
 function faceDepth(x: number, y: number) {
   const height = THREE.MathUtils.clamp(y / HEAD_HEIGHT, -0.9999, 0.9999);
   const latitude = Math.sqrt(1 - height * height);
-  const width = HEAD_WIDTH * (1 - height * 0.1);
+  const width = skullWidth(height);
   const front = Math.sqrt(Math.max(0, latitude * latitude - (x / width) ** 2));
   return (
     -front * HEAD_DEPTH * (1 - height * 0.075) -
@@ -54,7 +61,7 @@ export function buildCharacterHead(
 ): THREE.Group {
   const { remember, smoothNormals, mesh, ellipsoid, thread, pile, surfaces } =
     builder;
-  const { fur, earInner, feature, eye, eyeLight } = surfaces;
+  const { fur, earInner, feature, eye, eyeRim, eyeLight } = surfaces;
   const head = new THREE.Group();
   head.name = "traveller-sculpted-head";
   head.position.set(0, 0.914, -0.006);
@@ -70,7 +77,7 @@ export function buildCharacterHead(
     const front = latitude > 0 ? Math.max(0, -z / latitude) : 0;
     positions.setXYZ(
       index,
-      x * HEAD_WIDTH * (1 - y * 0.1),
+      x * skullWidth(y),
       y * HEAD_HEIGHT,
       z * HEAD_DEPTH * (1 - y * 0.075) - muzzleSwell(y * HEAD_HEIGHT, front),
     );
@@ -83,8 +90,8 @@ export function buildCharacterHead(
   pile(head, skullMesh, 1500, 0.00085, (point) => {
     if (point.z > -0.125) return true;
     const eyeDistance =
-      ((Math.abs(point.x) - 0.124) / 0.045) ** 2 +
-      ((point.y - 0.009) / 0.059) ** 2;
+      ((Math.abs(point.x) - EYE_X) / (EYE_RADIUS_X * 1.15)) ** 2 +
+      ((point.y - EYE_Y) / (EYE_RADIUS_Y * 1.15)) ** 2;
     return eyeDistance > 1.2 && !(Math.abs(point.x) < 0.08 && point.y < -0.035);
   });
 
@@ -120,7 +127,7 @@ export function buildCharacterHead(
     for (let slice = 0; slice <= earSlices; slice++) {
       const theta = (slice / earSlices) * Math.PI * 2;
       earPositions.push(
-        Math.cos(theta) * radius * 0.101,
+        Math.cos(theta) * radius * 0.114,
         Math.sin(theta) * radius * 0.117,
         depth,
       );
@@ -149,35 +156,46 @@ export function buildCharacterHead(
   for (const side of [-1, 1]) {
     const ear = new THREE.Group();
     ear.name = side < 0 ? "left-stuffed-ear" : "right-stuffed-ear";
-    ear.position.set(side * 0.17, 0.207, 0.022);
-    ear.rotation.set(0.025, -side * 0.34, -side * 0.23);
+    ear.position.set(side * 0.158, 0.207, 0.022);
+    ear.rotation.set(0.025, -side * 0.3, -side * 0.28);
     head.add(ear);
     const shell = mesh(earGeometry, fur, ear);
     shell.material = [fur, earInner];
     // The root is hidden inside the skull, like sewn plush ears rather than
     // an upright disc balanced on the crown.
+    ear.updateMatrix();
     for (let tuft = 0; tuft < 3; tuft++) {
-      const tuftMesh = ellipsoid(
-        0.0115,
-        0.02 - tuft * 0.001,
-        0.013,
-        fur,
-        ear,
-        -side * (0.055 - tuft * 0.015),
-        -0.057 + tuft * 0.014,
+      // The tallest tuft is on the inside, rising toward the crown. Sample the
+      // forehead so each little tuft emerges from the plush instead of sinking
+      // behind the expanded head or hovering in front of the ear bowl.
+      const root = new THREE.Vector3(
+        -side * (0.067 - tuft * 0.035),
+        -0.008 - tuft * 0.026,
         -0.047,
+      ).applyMatrix4(ear.matrix);
+      root.z = Math.min(root.z, faceDepth(root.x, root.y) + 0.004);
+      const tuftMesh = ellipsoid(
+        0.0135 - tuft * 0.001,
+        0.026 - tuft * 0.003,
+        0.014,
+        fur,
+        head,
+        root.x,
+        root.y,
+        root.z,
       );
-      tuftMesh.rotation.z = side * (0.5 + tuft * 0.16);
+      tuftMesh.quaternion.copy(ear.quaternion);
+      tuftMesh.rotateZ(side * (0.5 + tuft * 0.16));
     }
   }
 
   // Eyes are shallow lenses directly sampled from the cheek surface. Even in
   // exact side view the far eye remains occluded and no eyeball floats out.
   for (const side of [-1, 1]) {
-    const eyeX = side * 0.124;
-    const eyeY = 0.009;
-    const radiusX = 0.0345;
-    const radiusY = 0.0475;
+    const eyeX = side * EYE_X;
+    const eyeY = EYE_Y;
+    const radiusX = EYE_RADIUS_X;
+    const radiusY = EYE_RADIUS_Y;
     const lensPoint = (x: number, y: number, extra = 0) => {
       const radiusSquared =
         ((x - eyeX) / radiusX) ** 2 + ((y - eyeY) / radiusY) ** 2;
@@ -185,13 +203,13 @@ export function buildCharacterHead(
         0.0005 + 0.0055 * Math.max(0, 1 - radiusSquared) ** 0.72 + extra;
       return facePoint(x, y, lift);
     };
-    const lensRings = 16;
+    const lensRings = 17;
     const lensSlices = 48;
     const lensPositions: number[] = [];
     const lensUvs: number[] = [];
     const lensIndices: number[] = [];
     for (let ring = 0; ring <= lensRings; ring++) {
-      const radius = ring / lensRings;
+      const radius = ring <= 16 ? ring / 16 : 1.065;
       for (let slice = 0; slice <= lensSlices; slice++) {
         const theta = (slice / lensSlices) * Math.PI * 2;
         const point = lensPoint(
@@ -220,40 +238,70 @@ export function buildCharacterHead(
       new THREE.Float32BufferAttribute(lensUvs, 2),
     );
     lensGeometry.setIndex(lensIndices);
+    lensGeometry.addGroup(0, 16 * lensSlices * 6, 0);
+    lensGeometry.addGroup(16 * lensSlices * 6, lensSlices * 6, 1);
     smoothNormals(lensGeometry);
     const lens = mesh(lensGeometry, eye, head);
+    lens.material = [eye, eyeRim];
     lens.name = side < 0 ? "left-inset-eye" : "right-inset-eye";
 
-    for (const [offsetX, offsetY, radius] of [
-      [-0.007, 0.016, 0.0105],
-      [0.011, -0.021, 0.006],
+    // Mirror the highlights: a soft five-point star at the upper inner corner,
+    // and a small four-point sparkle at the lower outer corner of each eye.
+    for (const [offsetX, offsetY, radius, points, inner] of [
+      [-side * 0.008, 0.018, 0.0185, 5, 0.55],
+      [side * 0.022, -0.023, 0.0095, 4, 0.28],
     ]) {
       const star = new THREE.Shape();
-      for (let index = 0; index < 10; index++) {
-        const theta = Math.PI / 2 + (index * Math.PI) / 5;
-        const size = radius * (index % 2 === 0 ? 1 : 0.47);
-        const x = Math.cos(theta) * size;
-        const y = Math.sin(theta) * size;
-        if (index === 0) star.moveTo(x, y);
-        else star.lineTo(x, y);
+      const corners = Array.from({ length: points * 2 }, (_, index) => {
+        const theta = Math.PI / 2 + (index * Math.PI) / points;
+        const size = radius * (index % 2 === 0 ? 1 : inner);
+        return new THREE.Vector2(
+          Math.cos(theta) * size,
+          Math.sin(theta) * size,
+        );
+      });
+      for (let index = 0; index < corners.length; index++) {
+        const corner = corners[index];
+        const previous = corners[(index + corners.length - 1) % corners.length];
+        const next = corners[(index + 1) % corners.length];
+        const start = corner.clone().lerp(previous, 0.22);
+        const end = corner.clone().lerp(next, 0.22);
+        if (index === 0) star.moveTo(start.x, start.y);
+        else star.lineTo(start.x, start.y);
+        star.quadraticCurveTo(corner.x, corner.y, end.x, end.y);
       }
       star.closePath();
-      const starGeometry = remember(new THREE.ShapeGeometry(star));
-      const starPositions = starGeometry.getAttribute("position");
-      for (let index = 0; index < starPositions.count; index++) {
-        const point = lensPoint(
-          eyeX + offsetX + starPositions.getX(index),
-          eyeY + offsetY + starPositions.getY(index),
-          0.00045,
-        );
-        starPositions.setXYZ(index, point.x, point.y, point.z);
+      const outline = star.getPoints(5);
+      if (outline[0].distanceToSquared(outline[outline.length - 1]) < 1e-12)
+        outline.pop();
+      const starPositions: number[] = [];
+      const starIndices: number[] = [];
+      const rings = 6;
+      const slices = outline.length;
+      // Tessellate the interior as well as the outline. Large flat triangles
+      // otherwise cut through the curved lens and leave a dark hole in a star.
+      for (let ring = 0; ring <= rings; ring++) {
+        for (let slice = 0; slice <= slices; slice++) {
+          const edge = outline[slice % slices];
+          const point = lensPoint(
+            eyeX + offsetX + (edge.x * ring) / rings,
+            eyeY + offsetY + (edge.y * ring) / rings,
+            0.0006,
+          );
+          starPositions.push(point.x, point.y, point.z);
+          if (ring < rings && slice < slices) {
+            const a = ring * (slices + 1) + slice;
+            const b = a + slices + 1;
+            starIndices.push(a, b + 1, b, a, a + 1, b + 1);
+          }
+        }
       }
-      const indices = starGeometry.getIndex()!;
-      for (let index = 0; index < indices.count; index += 3) {
-        const second = indices.getX(index + 1);
-        indices.setX(index + 1, indices.getX(index + 2));
-        indices.setX(index + 2, second);
-      }
+      const starGeometry = remember(new THREE.BufferGeometry());
+      starGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(starPositions, 3),
+      );
+      starGeometry.setIndex(starIndices);
       starGeometry.computeVertexNormals();
       const sparkle = mesh(starGeometry, eyeLight, head);
       sparkle.castShadow = false;
@@ -261,31 +309,43 @@ export function buildCharacterHead(
     }
   }
 
-  const nosePoint = facePoint(0, -0.065, 0.004);
-  const nose = ellipsoid(
-    0.0245,
-    0.017,
-    0.016,
+  const nosePoint = facePoint(0, -0.04, 0.006);
+  const noseGeometry = remember(new THREE.SphereGeometry(1, 40, 28));
+  const nosePositions = noseGeometry.getAttribute("position");
+  for (let index = 0; index < nosePositions.count; index++) {
+    const y = nosePositions.getY(index);
+    // A wide, domed top and a softly tapered lower point, like a plush nose.
+    nosePositions.setXYZ(
+      index,
+      nosePositions.getX(index) * 0.033 * (1 + y * 0.32),
+      y * 0.023,
+      nosePositions.getZ(index) * 0.018,
+    );
+  }
+  smoothNormals(noseGeometry);
+  const nose = mesh(
+    noseGeometry,
     feature,
     head,
     nosePoint.x,
     nosePoint.y,
     nosePoint.z,
   );
-  nose.rotation.x = -0.18;
-  nose.name = "soft-button-nose";
+  nose.name = "rounded-triangular-nose";
   const smile = [
-    [-0.058, -0.096],
-    [-0.047, -0.111],
-    [-0.029, -0.115],
-    [-0.013, -0.111],
-    [0, -0.099],
-    [0.013, -0.111],
-    [0.029, -0.115],
-    [0.047, -0.111],
-    [0.058, -0.096],
-  ].map(([x, y]) => facePoint(x, y, 0.0012).toArray());
-  const mouth = thread(smile, 0.0032, feature, head, 48);
+    [-0.064, -0.075],
+    [-0.052, -0.091],
+    [-0.033, -0.098],
+    [-0.015, -0.092],
+    [0, -0.078],
+    [0.015, -0.092],
+    [0.033, -0.098],
+    [0.052, -0.091],
+    [0.064, -0.075],
+  ].map(([x, y]) => facePoint(x, y, 0.0019).toArray());
+  const mouth = thread(smile, 0.0045, feature, head, 64);
   mouth.name = "surface-following-embroidered-smile";
+  for (const end of [smile[0], smile[smile.length - 1]])
+    ellipsoid(0.0045, 0.0045, 0.0045, feature, head, end[0], end[1], end[2]);
   return head;
 }

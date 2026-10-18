@@ -261,11 +261,14 @@ export function createCharacterMaterials() {
   );
   const eye = own(
     new THREE.MeshPhysicalMaterial({
-      color: "#181517",
-      roughness: 0.12,
+      color: "#291d1a",
+      roughness: 0.18,
       clearcoat: 0.9,
       clearcoatRoughness: 0.12,
     }),
+  );
+  const eyeRim = own(
+    new THREE.MeshStandardMaterial({ color: "#60483c", roughness: 0.72 }),
   );
   const eyeLight = own(new THREE.MeshBasicMaterial({ color: "#fffdf5" }));
   // Opaque short strands avoid transparent shell sorting and depth artefacts.
@@ -295,6 +298,7 @@ export function createCharacterMaterials() {
     backpackLight,
     feature,
     eye,
+    eyeRim,
     eyeLight,
     fibers,
     textures: textures as readonly THREE.DataTexture[],
