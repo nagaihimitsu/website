@@ -114,20 +114,29 @@ export function createBird() {
   }
 
   // Three tangent-continuous Bezier arcs: round belly, quiet upright cheeks,
-  // and a domed crown. Sampling the outline avoids pinches between control rings.
+  // and a domed crown. The side silhouette is sculpted separately below.
   const outline = new THREE.CurvePath<THREE.Vector2>();
   const arc = (points: number[][]) => outline.add(new THREE.CubicBezierCurve(
     ...points.map(([x, y]) => new THREE.Vector2(x, y)) as [THREE.Vector2, THREE.Vector2, THREE.Vector2, THREE.Vector2],
   ));
   arc([[0, 0.069], [0.080, 0.069], [0.141, 0.117], [0.141, 0.183]]);
-  arc([[0.141, 0.183], [0.141, 0.242], [0.111, 0.277], [0.111, 0.337]]);
-  arc([[0.111, 0.337], [0.111, 0.408], [0.081, 0.451], [0, 0.451]]);
+  arc([[0.141, 0.183], [0.141, 0.242], [0.115, 0.277], [0.115, 0.337]]);
+  arc([[0.115, 0.337], [0.115, 0.408], [0.084, 0.451], [0, 0.451]]);
   const bodyProfile = outline.getPoints(32);
+  // The white rump projects behind the head; the breast stays quieter. This
+  // is the body beneath the feathers, not a bulge faked by oversized wings.
+  const bodyDepthAt = (height: number, depth: number, radius: number) => {
+    const rear = radius > 0.000001 ? Math.max(0, depth / radius) : 0;
+    const rump = 0.032 * Math.exp(-(((height - 0.218) / 0.100) ** 2))
+      * THREE.MathUtils.smoothstep(radius, 0, 0.08);
+    const headForward = 0.006 * THREE.MathUtils.smoothstep(height, 0.265, 0.365);
+    return depth * 0.94 + rear * rear * rump - headForward;
+  };
   const bodyGeometry = new THREE.LatheGeometry(bodyProfile, 64);
   const bodyPositions = bodyGeometry.getAttribute("position");
-  // Slightly fuller breast than crown, continuous depth in front and behind.
   for (let i = 0; i < bodyPositions.count; i++) {
-    bodyPositions.setZ(i, bodyPositions.getZ(i) * 0.94);
+    const radius = Math.hypot(bodyPositions.getX(i), bodyPositions.getZ(i));
+    bodyPositions.setZ(i, bodyDepthAt(bodyPositions.getY(i), bodyPositions.getZ(i), radius));
   }
   mesh("bird-continuous-white-pear", smoothSculpt(bodyGeometry), white);
   const bodyRadiusAt = (height: number) => {
@@ -155,7 +164,7 @@ export function createBird() {
     wingPositions.setXYZ(i,
       Math.cos(angle) * (radius + 0.007) + x * 0.018 - 0.11,
       height - 0.285,
-      Math.sin(angle) * (radius * 0.94 + 0.012),
+      bodyDepthAt(height, Math.sin(angle) * radius, radius) + Math.sin(angle) * 0.012,
     );
     const dark = THREE.MathUtils.smoothstep(t + z * 0.35, 0.76, 0.82);
     color.copy(shoulderColor).lerp(featherColor, dark);
@@ -175,20 +184,36 @@ export function createBird() {
 
   const tail = new THREE.Group();
   tail.name = "bird-tail-pivot";
-  tail.position.set(0, 0.156, 0.103);
+  tail.position.set(0, 0.173, 0.130);
   sculpture.add(tail);
-  const tailShape = oval("bird-short-tail", [0.034, 0.019, 0.041], [0, 0, 0.028], tailMaterial, tail);
-  tailShape.rotation.x = 0.15;
+  // A single flattened feather: broad at the rump, thin and gently pointed
+  // behind. Its downward sweep also makes a rounded point in the back view.
+  const tailGeometry = new THREE.SphereGeometry(1, 40, 28);
+  const tailPositions = tailGeometry.getAttribute("position");
+  for (let i = 0; i < tailPositions.count; i++) {
+    const x = tailPositions.getX(i), y = tailPositions.getY(i), z = tailPositions.getZ(i);
+    const t = (z + 1) / 2;
+    tailPositions.setXYZ(i,
+      x * 0.043 * (1 - t * 0.55),
+      y * 0.015 * (1 - t * 0.25) - THREE.MathUtils.smoothstep(t, 0, 1) * 0.027,
+      -0.008 + t * 0.083,
+    );
+  }
+  mesh("bird-short-tail", smoothSculpt(tailGeometry), tailMaterial, tail);
 
   const eyes = [-1, 1].map((side) => {
     const root = new THREE.Group();
     root.name = side < 0 ? "bird-left-eye" : "bird-right-eye";
-    root.position.set(side * 0.061, 0.356, -0.084);
+    const eyeHeight = 0.356;
+    const eyeX = 0.061;
+    const faceRadius = bodyRadiusAt(eyeHeight);
+    const faceDepth = bodyDepthAt(eyeHeight, -Math.sqrt(faceRadius ** 2 - eyeX ** 2), faceRadius);
+    root.position.set(side * eyeX, eyeHeight, faceDepth);
     root.rotation.y = side * -0.49;
     root.rotation.x = -0.02;
     sculpture.add(root);
-    oval("bird-glossy-eye", [0.0105, 0.0135, 0.0064], [0, 0, -0.001], eyeMaterial, root);
-    const glint = oval("bird-eye-small-softbox", [0.0016, 0.0023, 0.0006], [-0.0025, 0.0049, -0.0062], glintMaterial, root);
+    oval("bird-glossy-eye", [0.0128, 0.0120, 0.0072], [0, 0, -0.0005], eyeMaterial, root);
+    const glint = oval("bird-eye-small-softbox", [0.0016, 0.0023, 0.0006], [-0.0028, 0.0042, -0.0071], glintMaterial, root);
     glint.castShadow = false;
     glint.receiveShadow = false;
     return root;
@@ -205,15 +230,18 @@ export function createBird() {
     const x = beakPositions.getX(i), y = beakPositions.getY(i), z = beakPositions.getZ(i);
     const front = (1 - z) / 2;
     beakPositions.setXYZ(i,
-      x * 0.036 * (1 - front * 0.38),
-      y * 0.022 * (1 - front * 0.35) - front * 0.003,
-      z * 0.030,
+      x * 0.039 * (1 - front * 0.55),
+      y * 0.024 * (1 - front * 0.45) - front * 0.003,
+      0.027 - front * 0.065,
     );
     color.copy(lowerBeak).lerp(upperBeak, THREE.MathUtils.smoothstep(y, -0.32, 0.19));
     beakColors.push(color.r, color.g, color.b);
   }
   beakGeometry.setAttribute("color", new THREE.Float32BufferAttribute(beakColors, 3));
-  mesh("bird-rounded-yellow-bill", smoothSculpt(beakGeometry), beakMaterial).position.set(0, 0.340, -0.120);
+  const billHeight = 0.340;
+  const billRadius = bodyRadiusAt(billHeight);
+  const billRoot = bodyDepthAt(billHeight, -billRadius, billRadius);
+  mesh("bird-rounded-yellow-bill", smoothSculpt(beakGeometry), beakMaterial).position.set(0, billHeight, billRoot - 0.017);
 
   const feet = [-1, 1].map((side) => {
     const root = new THREE.Group();
