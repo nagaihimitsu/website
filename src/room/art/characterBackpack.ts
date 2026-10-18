@@ -91,7 +91,9 @@ export function buildCharacterBackpack(
   // A small inward roll at the top fits beneath the hanging hood, while the
   // broad canvas panel beneath remains upright and softly convex.
   function topDomeOffset(y: number) {
-    return -0.01 * THREE.MathUtils.smoothstep(y, 0.11, 0.175);
+    // The upper stuffing compresses beneath the hood. Tuck only this rounded
+    // shoulder toward the wearer, keeping the main rear panel upright.
+    return -0.035 * THREE.MathUtils.smoothstep(y, 0.06, 0.14);
   }
   function profile(y: number) {
     let low = 0;
@@ -107,8 +109,9 @@ export function buildCharacterBackpack(
   function rearDepth(x: number, y: number) {
     const { rx, rz } = profile(y);
     const a = Math.min(0.9999, Math.abs(x / Math.max(0.0001, rx)));
-    return topDomeOffset(y) +
-      rz * Math.max(0, 1 - a ** (2 / exponent)) ** (exponent / 2);
+    const section = Math.max(0, 1 - a ** (2 / exponent));
+    return topDomeOffset(y) + rz * section ** (exponent / 2) +
+      0.005 * section ** 2 * Math.exp(-(((y + 0.025) / 0.14) ** 2));
   }
   function sideWidth(y: number, z: number) {
     const { rx, rz } = profile(y);
@@ -125,8 +128,8 @@ export function buildCharacterBackpack(
   pack.scale.x = 1.22;
   body.add(pack);
   surface(
-    64,
-    48,
+    80,
+    56,
     (u, v) => {
       const theta = u * tau;
       const c = Math.cos(theta);
@@ -135,7 +138,9 @@ export function buildCharacterBackpack(
         Math.sign(c) * Math.abs(c) ** exponent * interpolate(rxs, v),
         interpolate(ys, v),
         topDomeOffset(interpolate(ys, v)) +
-          Math.sign(s) * Math.abs(s) ** exponent * interpolate(rzs, v),
+          Math.sign(s) * Math.abs(s) ** exponent * interpolate(rzs, v) +
+          0.005 * Math.max(0, s) ** 4 *
+            Math.exp(-(((interpolate(ys, v) + 0.025) / 0.14) ** 2)),
       );
     },
     backpack,
@@ -189,6 +194,16 @@ export function buildCharacterBackpack(
         const outward = followsTorso
           ? new THREE.Vector3(center.x / 0.17 ** 2, 0, center.z / 0.135 ** 2).normalize()
           : null;
+        if (outward) {
+          // Padding turns around the shoulder's inner edge. Keep its broad
+          // face lateral here, rather than presenting two loose flat strips
+          // across the chest when the traveller is seen straight on.
+          const shoulderTurn = THREE.MathUtils.smoothstep(center.y, 0.5, 0.56) *
+            (1 - THREE.MathUtils.smoothstep(center.y, 0.63, 0.68)) *
+            THREE.MathUtils.smoothstep(-center.z, 0.035, 0.08) * 0.75;
+          outward.lerp(new THREE.Vector3(Math.sign(center.x), 0, 0), shoulderTurn)
+            .normalize();
+        }
         const across = outward
           ? new THREE.Vector3().crossVectors(outward, tangent).normalize()
           : axis.clone().addScaledVector(tangent, -axis.dot(tangent)).normalize();
@@ -209,17 +224,17 @@ export function buildCharacterBackpack(
   // the middle holds a little air; rounded corners recede into the sewn edge.
   function pocketDepth(x: number, y: number) {
     const radius = (
-      Math.abs(x / 0.12) ** (2 / 0.52) +
-      Math.abs((y + 0.105) / 0.052) ** (2 / 0.52)
+      Math.abs(x / 0.112) ** (2 / 0.52) +
+      Math.abs((y + 0.1) / 0.06) ** (2 / 0.52)
     ) ** (0.52 / 2);
     return rearDepth(x, y) + 0.001 +
-      0.026 * (1 - THREE.MathUtils.smoothstep(radius, 0.76, 1));
+      0.03 * (1 - THREE.MathUtils.smoothstep(radius, 0.72, 1));
   }
   function pocketPoint(angle: number, radius: number) {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
-    const x = radius * Math.sign(c) * Math.abs(c) ** 0.52 * 0.12;
-    const y = -0.105 + radius * Math.sign(s) * Math.abs(s) ** 0.52 * 0.052;
+    const x = radius * Math.sign(c) * Math.abs(c) ** 0.52 * 0.112;
+    const y = -0.1 + radius * Math.sign(s) * Math.abs(s) ** 0.52 * 0.06;
     const z = pocketDepth(x, y);
     return new THREE.Vector3(x, y, z);
   }
@@ -236,26 +251,26 @@ export function buildCharacterBackpack(
       const point = pocketPoint(index / 64 * tau, 0.995);
       return [point.x, point.y, point.z + 0.0007];
     }),
-    0.0009,
+    0.00075,
     backpackTrim,
     pack,
     80,
   ).name = "stitched-pocket-perimeter";
   const pocketLip = [-1, -0.75, -0.35, 0, 0.35, 0.75, 1].map((t) => {
-    const x = t * 0.109;
-    const y = -0.065 + (1 - t * t) * 0.003;
+    const x = t * 0.101;
+    const y = -0.054 + (1 - t * t) * 0.002;
     return [x, y, pocketDepth(x, y) + 0.0018];
   });
-  strap(pocketLip, 0.011, 0.004, backpack, pack, new THREE.Vector3(0, 1, 0), 32)
+  strap(pocketLip, 0.014, 0.005, backpack, pack, new THREE.Vector3(0, 1, 0), 40)
     .name = "sewn-pocket-zipper-lip";
   strap(
     [
-      [-0.094, -0.064, pocketDepth(-0.094, -0.064) + 0.0018],
-      [-0.096, -0.077, pocketDepth(-0.096, -0.077) + 0.002],
-      [-0.096, -0.09, pocketDepth(-0.096, -0.09) + 0.001],
+      [-0.086, -0.052, pocketDepth(-0.086, -0.052) + 0.0018],
+      [-0.089, -0.066, pocketDepth(-0.089, -0.066) + 0.002],
+      [-0.089, -0.079, pocketDepth(-0.089, -0.079) + 0.001],
     ],
-    0.007,
-    0.003,
+    0.0085,
+    0.004,
     backpackTrim,
     pack,
     new THREE.Vector3(1, 0, 0),
@@ -283,7 +298,7 @@ export function buildCharacterBackpack(
       .name = "flush-side-pocket-binding";
 
     const sideZip = Array.from({ length: 25 }, (_, index) => {
-      const y = THREE.MathUtils.lerp(0.142, -0.035, index / 24);
+      const y = THREE.MathUtils.lerp(0.14, -0.026, index / 24);
       const z = topDomeOffset(y) - 0.004;
       const v = THREE.MathUtils.clamp((y + 0.062) / 0.108, 0, 1);
       // Follow the pocket's actual padding as well as the underlying shell;
@@ -291,7 +306,7 @@ export function buildCharacterBackpack(
       const raised = 0.0025 + 0.007 * Math.sin(Math.PI * v) ** 0.65;
       return [side * (sideWidth(y, z) + raised), y, z];
     });
-    strap(sideZip, 0.011, 0.003, backpackTrim, pack, new THREE.Vector3(0, 0, 1), 32)
+    strap(sideZip, 0.014, 0.0024, backpackTrim, pack, new THREE.Vector3(0, 0, 1), 40)
       .name = "inset-side-zipper-placket";
 
     // The shoulder padding is one continuous sewn strap. Its top end is
@@ -304,19 +319,19 @@ export function buildCharacterBackpack(
         [side * 0.105, 0.691, 0.143],
         [side * 0.139, 0.691, 0.053],
         [side * 0.162, 0.663, -0.04],
-        [side * 0.15, 0.621, -0.098],
-        [side * 0.158, 0.573, -0.112],
-        [side * 0.167, 0.548, -0.107],
-        [side * 0.18, 0.519, -0.083],
+        [side * 0.16, 0.621, -0.087],
+        [side * 0.17, 0.573, -0.096],
+        [side * 0.18, 0.548, -0.089],
+        [side * 0.19, 0.519, -0.073],
         [side * 0.194, 0.486, -0.06],
         [side * 0.195, 0.46, -0.036],
-        [side * 0.187, 0.442, 0.009],
-        [side * 0.181, 0.44, 0.086],
+        [side * 0.187, 0.439, 0.009],
+        [side * 0.181, 0.436, 0.086],
         [side * 0.172, 0.442, 0.13],
         [side * 0.159, 0.446, 0.161],
         [side * 0.15, 0.448, 0.193],
       ],
-      0.043,
+      0.04,
       0.018,
       backpackLight,
       body,
@@ -328,13 +343,10 @@ export function buildCharacterBackpack(
     // A short reinforced tab sits on the side panel over each lower anchor;
     // both ends enter the canvas instead of leaving an unattached free tail.
     strap(
-      [
-        [side * 0.139, -0.09, -0.055],
-        [side * 0.146, -0.081, -0.035],
-        [side * 0.146, -0.076, -0.006],
-      ],
+      [[-0.09, -0.055], [-0.081, -0.035], [-0.076, -0.006]]
+        .map(([y, z]) => [side * (sideWidth(y, z) + 0.0008), y, z]),
       0.019,
-      0.004,
+      0.0025,
       backpack,
       pack,
       new THREE.Vector3(0, 1, 0),

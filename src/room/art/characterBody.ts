@@ -134,29 +134,25 @@ export function buildCharacterBody(
   }
 
   // The body is broad through the belly, with a dropped, softly gathered hem.
-  const torso = loft(
-    [
-      { y: 0.319, rx: 0, rz: 0, z: -0.006 },
-      { y: 0.323, rx: 0.162, rz: 0.134, z: -0.006 },
-      { y: 0.362, rx: 0.184, rz: 0.149, z: -0.008 },
-      { y: 0.438, rx: 0.191, rz: 0.153, z: -0.009 },
-      { y: 0.538, rx: 0.184, rz: 0.145, z: -0.006 },
-      { y: 0.615, rx: 0.177, rz: 0.129, z: 0.003 },
-      { y: 0.665, rx: 0.157, rz: 0.111, z: 0.01 },
-      { y: 0.697, rx: 0.113, rz: 0.081, z: 0.009 },
-      { y: 0.701, rx: 0, rz: 0, z: 0.009 },
-    ],
-    hoodie,
-    body,
-    { folds: 0.0014 },
-  );
+  const torsoSections: Section[] = [
+    { y: 0.319, rx: 0, rz: 0, z: -0.006 },
+    { y: 0.323, rx: 0.162, rz: 0.134, z: -0.006 },
+    { y: 0.362, rx: 0.184, rz: 0.149, z: -0.008 },
+    { y: 0.438, rx: 0.191, rz: 0.153, z: -0.009 },
+    { y: 0.538, rx: 0.184, rz: 0.145, z: -0.006 },
+    { y: 0.615, rx: 0.177, rz: 0.129, z: 0.003 },
+    { y: 0.665, rx: 0.157, rz: 0.111, z: 0.01 },
+    { y: 0.697, rx: 0.113, rz: 0.081, z: 0.009 },
+    { y: 0.701, rx: 0, rz: 0, z: 0.009 },
+  ];
+  const torso = loft(torsoSections, hoodie, body, { folds: 0.0014 });
   torso.name = "loose-cotton-body";
   loft(
     [
       { y: 0.314, rx: 0, rz: 0, z: -0.007 },
       { y: 0.315, rx: 0.157, rz: 0.13, z: -0.007 },
       { y: 0.319, rx: 0.175, rz: 0.144, z: -0.007 },
-      { y: 0.335, rx: 0.179, rz: 0.145, z: -0.007 },
+      { y: 0.334, rx: 0.181, rz: 0.147, z: -0.007 },
       { y: 0.343, rx: 0.175, rz: 0.139, z: -0.007 },
       { y: 0.344, rx: 0, rz: 0, z: -0.007 },
     ],
@@ -167,30 +163,55 @@ export function buildCharacterBody(
 
   buildCharacterHood(builder, body);
 
-  // A cloth pocket follows the actual curvature of the belly; its centre has
-  // enough volume to read in profile, while the sewn boundary sits on the body.
-  function pocketPoint(u: number, v: number) {
-    const width = interpolate([0.108, 0.134, 0.135, 0.115, 0.075], v);
-    const x = (u * 2 - 1) * width;
-    const y = 0.355 + v * 0.145;
-    const rx = 0.19;
-    const rz = 0.151;
-    const bulge =
-      Math.sin(Math.PI * u) ** 0.7 * Math.sin(Math.PI * v) ** 0.7 * 0.022;
-    return new THREE.Vector3(
-      x,
-      y,
-      -0.01 - rz * Math.sqrt(Math.max(0.01, 1 - (x / rx) ** 2)) - 0.002 - bulge,
-    );
+  // Evaluate the actual belly loft at the stitch height. A fixed ellipse used
+  // to let the pocket's opening cut into the body and leave sharp dark corners.
+  function bellyFront(x: number, y: number) {
+    let low = 0;
+    let high = 1;
+    const ys = torsoSections.map((section) => section.y);
+    for (let iteration = 0; iteration < 24; iteration++) {
+      const t = (low + high) * 0.5;
+      if (interpolate(ys, t) < y) low = t;
+      else high = t;
+    }
+    const t = (low + high) * 0.5;
+    const rx = interpolate(torsoSections.map((section) => section.rx), t);
+    const rz = interpolate(torsoSections.map((section) => section.rz), t);
+    const z = interpolate(torsoSections.map((section) => section.z ?? 0), t);
+    const theta = tau - Math.acos(THREE.MathUtils.clamp(x / rx, -1, 1));
+    const fold =
+      0.0014 *
+      Math.sin(Math.PI * t) ** 2 *
+      (Math.sin(theta * 5 + t * 4) * 0.55 + Math.sin(theta * 9 - t * 5) * 0.45);
+    return z + Math.sin(theta) * (rz + fold);
   }
-  surface(40, 24, pocketPoint, pocketFabric, body, true).name =
+
+  // The pocket has a softly tucked lower edge and padded openings. The edge
+  // remains just above the same garment surface, including at the two corners.
+  function pocketPoint(u: number, v: number) {
+    const width = interpolate([0.102, 0.132, 0.134, 0.113, 0.075], v);
+    const across = u * 2 - 1;
+    const x = across * width;
+    const y =
+      0.355 +
+      v * 0.145 +
+      Math.abs(across) ** 6 * 0.009 * (1 - v) ** 3 -
+      Math.sin(Math.PI * u) ** 2 * 0.002 * v ** 4;
+    const bulge =
+      Math.sin(Math.PI * u) ** 0.8 * Math.sin(Math.PI * v) ** 0.8 * 0.019;
+    return new THREE.Vector3(x, y, bellyFront(x, y) - 0.003 - bulge);
+  }
+  surface(48, 32, pocketPoint, pocketFabric, body, true).name =
     "sewn-kangaroo-pocket";
   for (const side of [0, 1]) {
-    const points = [0.5, 0.62, 0.76, 0.88, 1].map((v) => {
+    const points = [0.5, 0.57, 0.68, 0.8, 0.91, 1].map((v, index) => {
       const p = pocketPoint(side, v);
-      return [p.x, p.y, p.z - 0.001];
+      // Tuck both ends into the fabric instead of leaving a bright cut end.
+      const tuck = index === 0 || index === 5 ? 0.0024 : 0.0001;
+      return [p.x, p.y, p.z + tuck];
     });
-    thread(points, 0.0012, ribbing, body, 16);
+    thread(points, 0.0015, pocketFabric, body, 24).name =
+      "soft-folded-pocket-opening";
   }
 
   const arms: THREE.Group[] = [];
@@ -208,9 +229,11 @@ export function buildCharacterBody(
         { y: -0.195, rx: 0.083, rz: 0.086, x: side * 0.025, z: -0.011 },
         { y: -0.13, rx: 0.08, rz: 0.08, x: side * 0.022, z: 0.008 },
         { y: -0.063, rx: 0.076, rz: 0.077, x: side * 0.014, z: 0.011 },
-        { y: -0.013, rx: 0.067, rz: 0.068, x: side * 0.004, z: 0.006 },
-        { y: 0.021, rx: 0.042, rz: 0.041, x: -side * 0.006, z: 0.002 },
-        { y: 0.031, rx: 0, rz: 0, x: -side * 0.01 },
+        { y: -0.013, rx: 0.066, rz: 0.067, x: side * 0.004, z: 0.006 },
+        { y: 0.012, rx: 0.052, rz: 0.051, x: -side * 0.004, z: 0.004 },
+        { y: 0.029, rx: 0.032, rz: 0.032, x: -side * 0.008, z: 0.002 },
+        { y: 0.038, rx: 0.015, rz: 0.015, x: -side * 0.01, z: 0.001 },
+        { y: 0.041, rx: 0, rz: 0, x: -side * 0.01 },
       ],
       hoodie,
       arm,
@@ -219,10 +242,11 @@ export function buildCharacterBody(
     loft(
       [
         { y: -0.308, rx: 0, rz: 0, x: side * 0.024, z: -0.02 },
-        { y: -0.305, rx: 0.048, rz: 0.049, x: side * 0.024, z: -0.02 },
-        { y: -0.299, rx: 0.056, rz: 0.057, x: side * 0.024, z: -0.02 },
-        { y: -0.282, rx: 0.058, rz: 0.06, x: side * 0.024, z: -0.018 },
-        { y: -0.277, rx: 0.05, rz: 0.052, x: side * 0.024, z: -0.018 },
+        { y: -0.305, rx: 0.047, rz: 0.049, x: side * 0.024, z: -0.02 },
+        { y: -0.301, rx: 0.053, rz: 0.055, x: side * 0.024, z: -0.02 },
+        { y: -0.291, rx: 0.057, rz: 0.059, x: side * 0.024, z: -0.019 },
+        { y: -0.282, rx: 0.055, rz: 0.057, x: side * 0.024, z: -0.018 },
+        { y: -0.277, rx: 0.049, rz: 0.051, x: side * 0.024, z: -0.018 },
         { y: -0.276, rx: 0, rz: 0, x: side * 0.024, z: -0.018 },
       ],
       ribbing,
@@ -259,8 +283,10 @@ export function buildCharacterBody(
       [
         { y: -0.255, rx: 0, rz: 0, x: side * 0.004, z: -0.005 },
         { y: -0.252, rx: 0.05, rz: 0.053, x: side * 0.004, z: -0.005 },
-        { y: -0.246, rx: 0.062, rz: 0.063, x: side * 0.004, z: -0.005 },
-        { y: -0.222, rx: 0.064, rz: 0.067, x: side * 0.004, z: -0.004 },
+        { y: -0.247, rx: 0.058, rz: 0.060, x: side * 0.004, z: -0.005 },
+        { y: -0.24, rx: 0.063, rz: 0.065, x: side * 0.004, z: -0.005 },
+        { y: -0.229, rx: 0.064, rz: 0.066, x: side * 0.004, z: -0.004 },
+        { y: -0.22, rx: 0.061, rz: 0.063, x: side * 0.004, z: -0.004 },
         { y: -0.213, rx: 0.055, rz: 0.058, x: side * 0.004, z: -0.003 },
         { y: -0.212, rx: 0, rz: 0, x: side * 0.004, z: -0.003 },
       ],
@@ -283,10 +309,11 @@ export function buildCharacterBody(
       shoeSections([
         [0.001, 0, 0],
         [0.002, 0.053, 0.08],
-        [0.005, 0.059, 0.087],
-        [0.012, 0.061, 0.089],
-        [0.018, 0.0605, 0.089],
-        [0.019, 0, 0],
+        [0.005, 0.0595, 0.0875],
+        [0.011, 0.061, 0.0895],
+        [0.015, 0.061, 0.0895],
+        [0.017, 0.0595, 0.088],
+        [0.018, 0, 0],
       ]),
       shoeSole,
       leg,

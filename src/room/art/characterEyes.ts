@@ -53,7 +53,7 @@ export function buildCharacterEyes(builder: CharacterBuilder, head: THREE.Group,
   for (const eye of eyes) {
     const point = (u: number, v: number, lift = 0) => {
       const radiusSquared = (u / EYE_RADIUS_X) ** 2 + (v / EYE_RADIUS_Y) ** 2;
-      const dome = 0.009 * Math.max(0, 1 - radiusSquared);
+      const dome = 0.012 * Math.max(0, 1 - radiusSquared);
       return eye.centre.clone()
         .addScaledVector(eye.right, u)
         .addScaledVector(eye.up, v)
@@ -94,7 +94,7 @@ export function buildCharacterEyes(builder: CharacterBuilder, head: THREE.Group,
     // face. Stars retain their proportions as one rigid eye turns in 3D.
     for (const [offsetX, offsetY, radius, points, inner] of [
       [-eye.side * 0.009, 0.018, 0.0185, 5, 0.55],
-      [eye.side * 0.023, -0.020, 0.0095, 4, 0.28],
+      [eye.side * 0.023, -0.020, 0.0102, 4, 0.32],
     ]) {
       const star = new THREE.Shape();
       const corners = Array.from({ length: points * 2 }, (_, index) => {

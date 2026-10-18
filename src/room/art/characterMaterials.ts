@@ -229,15 +229,21 @@ function eyeReflection(): THREE.DataTexture {
     for (let x = 0; x < width; x++) {
       const longitude = Math.PI * 2 * ((x + 0.5) / width - 0.5);
       const dy = -Math.cos(latitude);
-      // Soft upper windows surround the whole room. A single forward-facing
-      // panel loses every reflection when the traveller turns toward +Z.
-      const panels = 0.32 + 0.16 * Math.cos(longitude * 2) ** 4;
-      const softbox = Math.exp(-(((dy - 0.55) / 0.17) ** 4)) * panels;
-      const bounce = Math.exp(-(((dy + 0.55) / 0.28) ** 2)) * 0.65;
+      // Separate, feathered windows make small curved glints. A continuous
+      // latitude band paints the entire upper eye grey, like a metal disc.
+      // Four panels keep the reflection present as the traveller turns.
+      let panels = 0;
+      for (let panel = 0; panel < 4; panel++) {
+        const centre = 0.28 + panel * Math.PI / 2;
+        const distance = Math.atan2(Math.sin(longitude - centre), Math.cos(longitude - centre));
+        panels += Math.exp(-((distance / 0.23) ** 2));
+      }
+      const softbox = Math.exp(-(((dy - 0.58) / 0.14) ** 2)) * panels;
+      const bounce = Math.exp(-(((dy + 0.48) / 0.32) ** 2)) * 0.13;
       const offset = (y * width + x) * 4;
-      data[offset] = 0.06 + softbox * 3.8 + bounce * 0.6;
-      data[offset + 1] = 0.055 + softbox * 3.72 + bounce * 0.4;
-      data[offset + 2] = 0.05 + softbox * 3.65 + bounce * 0.28;
+      data[offset] = 0.028 + softbox * 3.1 + bounce * 0.6;
+      data[offset + 1] = 0.024 + softbox * 3.0 + bounce * 0.4;
+      data[offset + 2] = 0.022 + softbox * 2.9 + bounce * 0.28;
       data[offset + 3] = 1;
     }
   }
@@ -293,8 +299,15 @@ export function createCharacterMaterials() {
   const pawFur = textile("#79513c", plush, 0.00065, 0.42, "#ad8265");
   // Muted warm lining is a distinct inset fabric, visibly darker and less
   // golden than the outer plush even when the open ear catches the key light.
-  const earOuter = textile("#a87c5e", plush, 0.00012, 0.45, "#c09a7f");
-  const earInner = textile("#785447", plush, 0.00008, 0.28, "#a77f70");
+  const earOuter = textile("#a87c5e", plush, 0.00005, 0.45, "#c09a7f");
+  const earInner = textile("#785447", plush, 0.00003, 0.28, "#a77f70");
+  // The smaller ears should carry a quiet, even velour finish. Repeating the
+  // head's colour nap across the bowls produces broad mottled stains at this
+  // scale; keep their fine relief and roughness, with the average yarn tone.
+  for (const ear of [earOuter, earInner]) {
+    ear.map = null;
+    ear.color.multiplyScalar(0.9);
+  }
   const hoodie = textile("#73747b", cotton, 0.00055, 0.35, "#a5a6af");
   const ribbing = textile("#6d6f76", ribs, 0.0009, 0.3, "#a3a5af");
   const hoodInterior = textile("#62656e", cotton, 0.0006, 0.3, "#959aa5");
@@ -309,9 +322,9 @@ export function createCharacterMaterials() {
     }),
   );
   const cord = textile("#eeede8", braid, 0.00018, 0.38, "#fffdf6");
-  const backpack = textile("#d1c8b9", canvas, 0.00065, 0.28, "#e5dac8");
-  const backpackTrim = textile("#b9ad9c", canvas, 0.00065, 0.25, "#d8cbb9");
-  const backpackLight = textile("#ddd3c3", canvas, 0.00065, 0.28, "#eae0d0");
+  const backpack = textile("#d8d0c5", canvas, 0.00065, 0.28, "#e7ddd0");
+  const backpackTrim = textile("#c3b8a9", canvas, 0.00065, 0.25, "#ddd2c3");
+  const backpackLight = textile("#e0d8cd", canvas, 0.00065, 0.28, "#ece3d7");
   const feature = own(
     new THREE.MeshStandardMaterial({
       color: "#29201d",
@@ -320,13 +333,13 @@ export function createCharacterMaterials() {
   );
   const eye = own(
     new THREE.MeshPhysicalMaterial({
-      color: "#291d1a",
-      roughness: 0.23,
-      specularIntensity: 0.55,
-      clearcoat: 0.25,
-      clearcoatRoughness: 0.24,
+      color: "#211715",
+      roughness: 0.19,
+      specularIntensity: 0.6,
+      clearcoat: 0.32,
+      clearcoatRoughness: 0.18,
       envMap: eyeEnvironment,
-      envMapIntensity: 3.5,
+      envMapIntensity: 2.3,
     }),
   );
   const eyeRim = own(

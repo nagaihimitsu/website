@@ -30,8 +30,8 @@ export function buildCharacterTufts(
     // exposed a long strip of each lobe along the forehead in side view.
     root.z = faceDepth(root.x, root.y) + 0.045;
     const tip = new THREE.Vector3(
-      0.107 + lock * 0.024,
-      0.218 - lock * 0.025,
+      0.115 + lock * 0.026,
+      0.228 - lock * 0.029,
       -0.023 - lock * 0.0015,
     );
     const up = tip.clone().sub(root).normalize();
@@ -62,9 +62,9 @@ export function buildCharacterTufts(
       const dy = y - centre.y;
       const dz = z - centre.z;
       const v = (dx * up.x + dy * up.y + dz * up.z) / radius.y;
-      // A soft rounded cone, rather than a bead: the hidden root is full,
-      // while the upper third narrows gently into the padded tip.
-      const taper = 1 - THREE.MathUtils.clamp(v, -1, 1) * 0.28;
+      // Broad rounded finger tips retain the soft stuffed locks in the
+      // reference. A strong linear taper made their ends pointed and beady.
+      const taper = 1 - THREE.MathUtils.clamp(v, -1, 1) * 0.16;
       const width = radius.x * taper;
       const thickness = radius.z * taper;
       const u = (dx * across.x + dy * across.y + dz * across.z) / width;
@@ -82,7 +82,7 @@ export function buildCharacterTufts(
   // the other ear; no per-frame sculpting or extra material is needed.
   const step = 0.0028;
   const min = new THREE.Vector3(0.08, 0.108, -0.125);
-  const [nx, ny, nz] = [34, 44, 43];
+  const [nx, ny, nz] = [38, 44, 43];
   const strideY = nx + 1;
   const strideZ = strideY * (ny + 1);
   const samples = new Float32Array(strideZ * (nz + 1));
