@@ -3,10 +3,20 @@ import type { Archive, Section } from "../data/model";
 
 export type Direction = "up" | "down" | "left" | "right";
 export interface RoomObstacle {
+  id: string;
   x: number;
   z: number;
   width: number;
   depth: number;
+  base: number;
+  top: number;
+  enabled?: boolean;
+}
+export interface RoomBreakable {
+  id: string;
+  label: string;
+  object: THREE.Object3D;
+  broken: boolean;
 }
 export interface RoomPortal {
   section: Section;
@@ -19,20 +29,23 @@ export interface RoomScene {
   avatar: THREE.Group;
   portals: RoomPortal[];
   obstacles: RoomObstacle[];
+  breakables: RoomBreakable[];
+  breakObject: (id: string, impulse: THREE.Vector3) => boolean;
+  resetObjects: () => void;
   animate: (time: number, moving: boolean, reducedMotion: boolean) => void;
   dispose: () => void;
-}
-export interface RoomProjection {
-  section: Section;
-  x: number;
-  y: number;
-  visible: boolean;
 }
 export interface RoomSnapshot {
   x: number;
   z: number;
   height: number;
   moving: boolean;
+  grounded: boolean;
+  supportId: string | null;
+  yaw: number;
+  pitch: number;
+  punching: boolean;
+  brokenCount: number;
 }
 export interface RoomEngineOptions {
   host: HTMLElement;
@@ -43,13 +56,16 @@ export interface RoomEngineOptions {
   onOpening: (section: Section) => void;
   onOpen: (section: Section) => void;
   onHover: (section: Section | null) => void;
-  onProject: (portals: RoomProjection[]) => void;
+  onBreak: (label: string) => void;
   onSnapshot: (snapshot: RoomSnapshot) => void;
 }
 export interface RoomEngine {
   direction: (direction: Direction, pressed: boolean) => void;
   jump: () => void;
+  punch: () => void;
+  resetObjects: () => void;
   open: (section: Section) => void;
+  setPaused: (value: boolean) => void;
   setReducedMotion: (value: boolean) => void;
   dispose: () => void;
 }

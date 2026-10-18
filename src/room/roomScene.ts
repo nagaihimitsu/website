@@ -1,18 +1,37 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Archive, Section } from "../data/model";
-import type { RoomScene, RoomObstacle, RoomPortal } from "./types";
+import type {
+  RoomScene,
+  RoomObstacle,
+  RoomPortal,
+  RoomBreakable,
+} from "./types";
+import { createBreakables } from "./art/breakables";
 import {
   createWorldMapTexture,
   createJapanMapTexture,
   createPhoneTexture,
 } from "./art/textures";
 
-/** All furniture and the visitor are original geometry. Maps use the site's local atlas. */
+/** All furniture and decorative objects are original geometry. Maps use the local atlas. */
 export function createRoomScene(archive: Archive): RoomScene {
   const scene = new THREE.Scene();
   const portals: RoomPortal[] = [];
   const obstacles: RoomObstacle[] = [];
+  const fractureSystem = createBreakables(scene);
+  const breakables: RoomBreakable[] = [];
+  const registerBreakable = (
+    id: string,
+    label: string,
+    object: THREE.Object3D,
+    colors: string[],
+    supportY = 0,
+  ) => {
+    fractureSystem.register(id, object, colors, supportY);
+    breakables.push({ id, label, object, broken: false });
+  };
+  let lastAnimationTime = 0;
   const materials: THREE.Material[] = [];
   const textures: THREE.Texture[] = [];
   const mat = (color: string, roughness = 0.75, metalness = 0) => {
@@ -140,8 +159,26 @@ export function createRoomScene(archive: Archive): RoomScene {
     object.userData.section = section;
     portals.push({ section, object, anchor, lookAt });
   };
-  const obstruction = (x: number, z: number, width: number, depth: number) =>
-    obstacles.push({ x, z, width, depth });
+  const obstruction = (
+    id: string,
+    x: number,
+    z: number,
+    width: number,
+    depth: number,
+    height: number,
+    base = 0,
+  ) => {
+    obstacles.push({
+      id,
+      x,
+      z,
+      width,
+      depth,
+      top: base + height,
+      base,
+      enabled: true,
+    });
+  };
 
   // Lighting belongs to the room; the renderer enables real shadow maps.
   scene.add(new THREE.HemisphereLight("#fff9e8", "#b0a28e", 2.05));
@@ -202,6 +239,57 @@ export function createRoomScene(archive: Archive): RoomScene {
   box(10.05, 0.13, 0.06, white, scene, 0, 0.08, -3.91);
   box(0.06, 0.13, 8, white, scene, -4.91, 0.08, 0);
   box(10.2, 0.08, 0.21, white, scene, 0, 4.62, -4.05);
+
+  // Complete the architecture for an eye-level view in every direction.
+  box(0.18, 4.65, 8.2, wall, scene, 5.05, 2.28, 0);
+  box(10.2, 4.65, 0.18, wall, scene, 0, 2.28, 4.05);
+  box(0.06, 0.13, 8, white, scene, 4.91, 0.08, 0);
+  box(10.05, 0.13, 0.06, white, scene, 0, 0.08, 3.91);
+  const ceilingMaterial = mat("#f4f0e4");
+  ceilingMaterial.emissive.set("#ded8c6");
+  ceilingMaterial.emissiveIntensity = 0.24;
+  const ceiling = box(10.2, 0.14, 8.2, ceilingMaterial, scene, 0, 4.67, 0);
+  ceiling.castShadow = false;
+  for (const x of [-4.9, 4.9]) box(0.09, 0.1, 8.0, white, scene, x, 4.54, 0);
+  for (const z of [-3.9, 3.9]) box(9.8, 0.1, 0.09, white, scene, 0, 4.54, z);
+
+  // A flush ash door, brass hardware and a discreet switch finish the entry wall.
+  const door = group(2.75, 0, 3.91);
+  rounded(1.45, 2.8, 0.09, woodLight, 0.025, door, 0, 1.4, 0);
+  for (const x of [-0.79, 0.79])
+    rounded(0.09, 2.9, 0.11, white, 0.014, door, x, 1.45, -0.045);
+  rounded(1.67, 0.09, 0.11, white, 0.014, door, 0, 2.91, -0.045);
+  for (const y of [0.68, 1.9])
+    rounded(1.13, 0.94, 0.025, wood, 0.025, door, 0, y, -0.065);
+  rounded(0.07, 0.22, 0.035, brass, 0.02, door, -0.54, 1.25, -0.087);
+  rounded(0.22, 0.035, 0.07, brass, 0.015, door, -0.46, 1.27, -0.12);
+  rounded(0.15, 0.19, 0.035, white, 0.014, scene, 1.65, 1.3, 3.91);
+  rounded(0.065, 0.09, 0.018, cream, 0.01, scene, 1.65, 1.3, 3.886);
+
+  // Original geometric wall art and a shallow ledge, with no fabricated records.
+  const wallArt = group(4.9, 2.8, 1.65);
+  wallArt.rotation.y = -Math.PI / 2;
+  rounded(1.45, 1.65, 0.06, woodDark, 0.02, wallArt);
+  box(1.34, 1.54, 0.025, linen, wallArt, 0, 0, 0.045);
+  const artDisc = cylinder(
+    0.38,
+    0.38,
+    0.012,
+    terracotta,
+    wallArt,
+    0.13,
+    0.25,
+    0.068,
+    48,
+  );
+  artDisc.rotation.x = Math.PI / 2;
+  rounded(0.7, 0.5, 0.015, blueLight, 0.08, wallArt, -0.22, -0.31, 0.071);
+  rounded(0.64, 0.08, 0.02, dark, 0.02, wallArt, 0.26, -0.42, 0.085);
+  rounded(0.24, 0.1, 2.6, woodLight, 0.025, scene, 4.78, 1.77, 1.7);
+  // A compact ceiling shade leaves the room airy and the jump space clear.
+  cylinder(0.022, 0.022, 0.27, brass, scene, 0.4, 4.42, 0.1, 12);
+  cylinder(0.28, 0.58, 0.25, linen, scene, 0.4, 4.17, 0.1, 48);
+  cylinder(0.45, 0.45, 0.025, white, scene, 0.4, 4.045, 0.1, 48);
 
   // Window and a subtle exterior gradient, intentionally no invented scenery.
   const skyCanvas = document.createElement("canvas");
@@ -298,7 +386,8 @@ export function createRoomScene(archive: Archive): RoomScene {
   throwBlanket.rotation.y = 0.025;
   for (let i = 0; i < 12; i++)
     box(0.011, 0.006, 0.74, blueLight, bed, -0.99 + i * 0.18, 1.004, 0.94);
-  obstruction(-3.35, -1.85, 2.35, 3.65);
+  obstruction("bed", -3.35, -1.85, 2.25, 3.6, 1.03);
+  obstruction("bed-headboard", -3.35, -3.65, 2.18, 0.12, 1.51);
 
   // Atlas prints, real geography and achieved state, sit inside thin oak frames.
   const print = (
@@ -415,13 +504,21 @@ export function createRoomScene(archive: Archive): RoomScene {
   const pen = cylinder(0.014, 0.014, 0.5, brass, desk, 0.97, 1.39, 0.1, 10);
   pen.rotation.x = Math.PI / 2;
   pen.rotation.z = 0.35;
-  cylinder(0.12, 0.095, 0.23, cream, desk, 1.03, 1.47, -0.36);
-  cylinder(0.1, 0.1, 0.008, woodDark, desk, 1.03, 1.59, -0.36);
+  const deskCup = group(1.03, 1.355, -0.36, desk);
+  cylinder(0.12, 0.095, 0.23, cream, deskCup, 0, 0.115, 0);
+  cylinder(0.1, 0.1, 0.008, woodDark, deskCup, 0, 0.235, 0);
+  registerBreakable(
+    "desk-cup",
+    "机のカップ",
+    deskCup,
+    ["#eee9dc", "#bf9469"],
+    1.36,
+  );
   cylinder(0.21, 0.21, 0.035, dark, desk, -1.06, 1.39, -0.31);
   cylinder(0.025, 0.025, 0.78, dark, desk, -1.06, 1.8, -0.31, 12);
   const lampShade = cylinder(0.12, 0.23, 0.21, cream, desk, -1.06, 2.22, -0.31);
   lampShade.rotation.z = -0.16;
-  obstruction(3.18, -2.67, 3.05, 1.48);
+  obstruction("desk", 3.18, -2.67, 2.92, 1.42, 1.36);
 
   const chair = group(2.9, 0, -1.27);
   for (const x of [-0.32, 0.32])
@@ -429,7 +526,8 @@ export function createRoomScene(archive: Archive): RoomScene {
       cylinder(0.03, 0.025, 0.72, woodDark, chair, x, 0.36, z, 12);
   rounded(0.82, 0.13, 0.75, blueLight, 0.06, chair, 0, 0.78, 0);
   rounded(0.85, 0.59, 0.1, woodLight, 0.06, chair, 0, 1.14, 0.32);
-  obstruction(2.9, -1.27, 0.85, 0.8);
+  obstruction("chair-seat", 2.9, -1.27, 0.82, 0.75, 0.845);
+  obstruction("chair-back", 2.9, -0.95, 0.85, 0.1, 0.59, 0.845);
 
   // A mountain model and field books in a low, open console.
   const console = group(4.15, 0, 0.05);
@@ -478,7 +576,7 @@ export function createRoomScene(archive: Archive): RoomScene {
     new THREE.Vector3(4.15, 2.72, 0.05),
     new THREE.Vector3(4.15, 1.85, 0.05),
   );
-  obstruction(4.15, 0.05, 1.28, 1.38);
+  obstruction("mountain-console", 4.15, 0.05, 1.22, 1.3, 1.67);
 
   // Woven rug, with a restrained stitched border, and a softly upholstered sofa.
   rounded(4.6, 0.035, 3.6, linen, 0.08, scene, -0.05, 0.035, 1.55);
@@ -516,7 +614,10 @@ export function createRoomScene(archive: Archive): RoomScene {
     0.03,
   );
   accent2.rotation.z = 0.22;
-  obstruction(-2.9, 2.16, 1.45, 2.95);
+  obstruction("sofa-seat", -2.9, 2.16, 1.32, 2.85, 0.8);
+  obstruction("sofa-back", -3.43, 2.16, 0.28, 2.8, 0.615, 0.8);
+  obstruction("sofa-arm-left", -2.9, 3.46, 1.3, 0.26, 0.245, 0.8);
+  obstruction("sofa-arm-right", -2.9, 0.86, 1.3, 0.26, 0.245, 0.8);
 
   const coffee = group(-0.15, 0, 1.88);
   for (const x of [-0.62, 0.62])
@@ -537,9 +638,17 @@ export function createRoomScene(archive: Archive): RoomScene {
   magazine.rotation.y = -0.15;
   rounded(0.38, 0.008, 0.35, blueLight, 0.003, magazine, 0, 0.023, -0.05);
   cylinder(0.12, 0.12, 0.025, woodDark, coffee, 0.38, 0.66, 0.17);
-  cylinder(0.09, 0.07, 0.14, white, coffee, 0.38, 0.74, 0.17);
-  cylinder(0.07, 0.07, 0.004, woodDark, coffee, 0.38, 0.812, 0.17);
-  obstruction(-0.15, 1.88, 1.72, 1.17);
+  const coffeeCup = group(0.38, 0.67, 0.17, coffee);
+  cylinder(0.09, 0.07, 0.14, white, coffeeCup, 0, 0.07, 0);
+  cylinder(0.07, 0.07, 0.004, woodDark, coffeeCup, 0, 0.142, 0);
+  registerBreakable(
+    "coffee-cup",
+    "テーブルのカップ",
+    coffeeCup,
+    ["#f4f0df", "#846747"],
+    0.635,
+  );
+  obstruction("coffee-table", -0.15, 1.88, 1.7, 1.14, 0.635);
 
   // Leaf geometry, handcrafted with elongated ellipsoids, casts soft botanical shadows.
   const plant = (
@@ -582,68 +691,100 @@ export function createRoomScene(archive: Archive): RoomScene {
     }
     return g;
   };
-  plant(-4.56, 0.82, 1.03, 0.85);
-  plant(4.15, 0, 2.44, 1.7);
-  obstruction(4.15, 2.44, 0.65, 0.65);
+  const windowPlant = plant(-4.56, 0.82, 1.03, 0.85);
+  registerBreakable(
+    "window-planter",
+    "窓辺の鉢",
+    windowPlant,
+    ["#d7c1a3", "#57755b"],
+    0.82,
+  );
+  const floorPlant = plant(4.15, 0, 2.44, 1.7);
+  registerBreakable("floor-planter", "床の鉢", floorPlant, [
+    "#d7c1a3",
+    "#57755b",
+  ]);
+  obstruction("floor-planter", 4.15, 2.44, 0.65, 0.65, 0.68);
   const bedside = group(-1.65, 0, -2.9);
   rounded(0.7, 0.7, 0.65, woodLight, 0.035, bedside, 0, 0.48, 0);
   rounded(0.6, 0.05, 0.64, wood, 0.018, bedside, 0, 0.87, 0);
-  plant(0, 0.9, 0, 0.58, bedside);
-  obstruction(-1.65, -2.9, 0.74, 0.7);
-
-  // An original little visitor, with a knitted cap, simple clothing and a backpack.
-  const avatar = new THREE.Group();
-  scene.add(avatar);
-  const skin = mat("#c9a180");
-  const shirt = mat("#6b8582");
-  const pants = mat("#626c66");
-  const shoes = mat("#e9e2cc");
-  const leftLeg = group(-0.105, 0.34, 0, avatar);
-  const rightLeg = group(0.105, 0.34, 0, avatar);
-  rounded(0.14, 0.28, 0.16, pants, 0.045, leftLeg, 0, -0.12, 0);
-  rounded(0.14, 0.28, 0.16, pants, 0.045, rightLeg, 0, -0.12, 0);
-  rounded(0.17, 0.12, 0.24, shoes, 0.05, leftLeg, 0, -0.28, 0.045);
-  rounded(0.17, 0.12, 0.24, shoes, 0.05, rightLeg, 0, -0.28, 0.045);
-  rounded(0.37, 0.39, 0.25, shirt, 0.1, avatar, 0, 0.53, 0);
-  const leftArm = group(-0.23, 0.68, 0, avatar);
-  const rightArm = group(0.23, 0.68, 0, avatar);
-  for (const arm of [leftArm, rightArm]) {
-    rounded(0.13, 0.28, 0.14, shirt, 0.05, arm, 0, -0.1, 0);
-    sphere(0.07, skin, arm, 0, -0.25, 0);
-  }
-  cylinder(0.062, 0.065, 0.08, skin, avatar, 0, 0.775, 0, 12);
-  const head = sphere(0.19, skin, avatar, 0, 0.94, 0.008);
-  head.scale.set(0.91, 1.03, 0.93);
-  const cap = sphere(0.194, dark, avatar, 0, 1.035, -0.007);
-  cap.scale.set(1, 0.64, 1.01);
-  cylinder(0.19, 0.19, 0.055, dark, avatar, 0, 1.015, -0.007, 24);
-  sphere(0.044, dark, avatar, 0, 1.17, -0.007);
-  for (const x of [-0.055, 0.055])
-    sphere(0.014, charcoal, avatar, x, 0.95, 0.172);
-  rounded(0.23, 0.28, 0.11, terracotta, 0.055, avatar, 0, 0.55, -0.17);
-  for (const x of [-0.115, 0.115])
-    rounded(0.035, 0.34, 0.035, terracotta, 0.01, avatar, x, 0.55, 0.13);
-  // Contact shadow remains directly below the avatar at any jumping height.
-  const contact = new THREE.Mesh(
-    new THREE.CircleGeometry(0.28, 32),
-    new THREE.MeshBasicMaterial({
-      color: "#514c3b",
-      transparent: true,
-      opacity: 0.12,
-      depthWrite: false,
-    }),
+  const bedsidePlant = plant(0, 0.9, 0, 0.58, bedside);
+  registerBreakable(
+    "bedside-planter",
+    "ベッドサイドの鉢",
+    bedsidePlant,
+    ["#d7c1a3", "#57755b"],
+    0.895,
   );
-  materials.push(contact.material);
-  contact.rotation.x = -Math.PI / 2;
-  contact.position.y = 0.015;
-  scene.add(contact);
+  obstruction("bedside", -1.65, -2.9, 0.7, 0.65, 0.895);
+
+  // A freestanding ceramic sculpture is deliberately reachable from the entry.
+  const entrySculpture = group(1.4, 0.121, 1.3);
+  entrySculpture.scale.setScalar(0.55);
+  cylinder(0.27, 0.28, 0.22, woodLight, entrySculpture, 0, -0.11, 0, 32);
+  cylinder(0.26, 0.28, 0.16, terracotta, entrySculpture, 0, 0.08, 0, 32);
+  cylinder(0.25, 0.28, 0.54, terracotta, entrySculpture, 0, 0.43, 0, 32);
+  const sculptedBody = sphere(0.27, clay, entrySculpture, 0, 0.88, 0);
+  sculptedBody.scale.set(1, 1.35, 1);
+  cylinder(0.13, 0.16, 0.18, clay, entrySculpture, 0, 1.19, 0, 24);
+  cylinder(0.106, 0.106, 0.009, woodDark, entrySculpture, 0, 1.284, 0, 24);
+  registerBreakable("entry-vase", "陶器のオブジェ", entrySculpture, [
+    "#b67b60",
+    "#d7c1a3",
+    "#bf9469",
+  ]);
+  obstruction("entry-vase", 1.4, 1.3, 0.308, 0.308, 0.82775);
+
+  const woodBlocks = group(-0.85, 0, -1.0);
+  for (let i = 0; i < 3; i++) {
+    const block = rounded(
+      0.3,
+      0.2,
+      0.3,
+      i === 1 ? blue : woodLight,
+      0.025,
+      woodBlocks,
+      (i % 2) * 0.12,
+      0.1 + i * 0.2,
+      0,
+    );
+    block.rotation.y = i * 0.3;
+  }
+  registerBreakable("wood-blocks", "積み木", woodBlocks, [
+    "#d0ad83",
+    "#718f99",
+  ]);
+  obstruction("wood-blocks", -0.8, -1, 0.5, 0.45, 0.6);
+
+  // The runtime moves this invisible body and attaches the original first-person hand to its camera.
+  const avatar = new THREE.Group();
+  avatar.visible = false;
+  scene.add(avatar);
 
   return {
     scene,
     avatar,
     portals,
     obstacles,
-    animate(time, moving, reducedMotion) {
+    breakables,
+    breakObject(id, impulse) {
+      const target = breakables.find((item) => item.id === id);
+      if (!target || target.broken || !fractureSystem.breakObject(id, impulse))
+        return false;
+      target.broken = true;
+      for (const collider of obstacles)
+        if (collider.id === id) collider.enabled = false;
+      return true;
+    },
+    resetObjects() {
+      fractureSystem.resetObjects();
+      for (const target of breakables) target.broken = false;
+      for (const collider of obstacles) collider.enabled = true;
+    },
+    animate(time, _moving, reducedMotion) {
+      const delta = Math.max(0, time - lastAnimationTime);
+      lastAnimationTime = time;
+      fractureSystem.animate(delta, reducedMotion);
       for (const entry of portals) {
         const target = entry.object.userData.active ? 1.025 : 1;
         const scale = reducedMotion
@@ -660,19 +801,10 @@ export function createRoomScene(archive: Archive): RoomScene {
             0.12,
           );
       phoneScreenMaterial.color.setRGB(brightness, brightness, brightness);
-      const swing = moving ? Math.sin(time * 10) * 0.48 : 0;
-      leftLeg.rotation.x = swing;
-      rightLeg.rotation.x = -swing;
-      leftArm.rotation.x = -swing * 0.8;
-      rightArm.rotation.x = swing * 0.8;
       if (!reducedMotion) curtain.rotation.z = Math.sin(time * 0.55) * 0.007;
-      contact.position.x = avatar.position.x;
-      contact.position.z = avatar.position.z;
-      contact.scale.setScalar(1 + Math.max(0, avatar.position.y) * 0.3);
-      (contact.material as THREE.MeshBasicMaterial).opacity =
-        0.12 / (1 + Math.max(0, avatar.position.y));
     },
     dispose() {
+      fractureSystem.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) geometries.add(object.geometry);

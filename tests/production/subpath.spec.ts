@@ -27,7 +27,11 @@ test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT�
     { timeout: 20000 },
   );
   await expect(page.locator(".room-canvas canvas")).toBeVisible();
-  await expect(page.locator(".room-portal")).toHaveCount(4);
+  await expect(page.locator(".room-menu")).not.toBeVisible();
+  await page
+    .getByRole("button", { name: "記録と設定を開く", exact: true })
+    .click();
+  await expect(page.locator(".room-menu")).toBeVisible();
   for (const [section, label] of [
     ["world", "世界地図を開く"],
     ["japan", "日本地図を開く"],
@@ -35,11 +39,9 @@ test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT�
     ["pokemon", "スマートフォンでポケモン図鑑を開く"],
   ])
     await expect(
-      page.locator(`.room-portal[data-section="${section}"]`),
+      page.locator(`.room-menu a[href="#/${section}"]`),
     ).toHaveAccessibleName(label);
-  await page
-    .getByRole("button", { name: "世界地図を開く", exact: true })
-    .click();
+  await page.getByRole("link", { name: "世界地図を開く", exact: true }).click();
   await expect(page).toHaveURL("http://127.0.0.1:4174/website/#/world");
   await expect(page.locator(".page-count strong")).toHaveText("1");
   await page.reload();
