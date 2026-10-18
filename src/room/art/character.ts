@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { RoomAvatarAnimation } from "../types";
+import { createCharacterMaterials } from "./characterMaterials";
 
 /**
  * Original, fully volumetric little traveller, modelled from the supplied
@@ -15,43 +16,83 @@ export function createCharacter() {
   const body = new THREE.Group();
   group.add(body);
   const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
+  const surfaces = createCharacterMaterials();
+  const {
+    fur,
+    muzzle,
+    earInner,
+    earRim,
+    hoodie,
+    ribbing,
+    hoodInterior,
+    pocketFabric,
+    pants,
+    pantCuffs,
+    shoeUpper,
+    shoeSole,
+    ivory,
+    backpack,
+    backpackTrim,
+    backpackLight,
+    feature,
+    eye,
+    eyeLight,
+    fibers,
+  } = surfaces;
+  // Tiny fibres collect diffuse light from surrounding fur; a small warm fill
+  // avoids isolated dark subpixel tips against the softly scattering coat.
+  fibers.emissive.copy(fur.color);
+  fibers.emissiveIntensity = 0.08;
   const remember = <T extends THREE.BufferGeometry>(geometry: T): T => {
     geometries.add(geometry);
     return geometry;
   };
-  const material = (color: string, roughness = 0.75) => {
-    const result = new THREE.MeshStandardMaterial({ color, roughness });
-    materials.add(result);
-    return result;
-  };
-  const fur = material("#b98559", 0.53);
-  const muzzle = material("#bd8b62", 0.57);
-  const earInner = material("#865c4b", 0.69);
-  const earRim = material("#ba885d", 0.55);
-  const hoodie = material("#7f838c", 0.91);
-  const ribbing = material("#737781", 0.94);
-  const hoodInterior = material("#676c76", 0.94);
-  const pocketFabric = material("#858992", 0.91);
-  const pants = material("#33373e", 0.91);
-  const pantCuffs = material("#454952", 0.91);
-  const shoeUpper = material("#41454c", 0.84);
-  const shoeSole = material("#d8d6ce", 0.73);
-  const ivory = material("#eeeae1", 0.74);
-  const backpack = material("#d9d1c0", 0.82);
-  const backpackTrim = material("#bdb3a0", 0.85);
-  const backpackLight = material("#e3dbcd", 0.8);
-  const feature = material("#27201e", 0.33);
-  const eye = new THREE.MeshPhysicalMaterial({
-    color: "#181517",
-    roughness: 0.12,
-    clearcoat: 1,
-    clearcoatRoughness: 0.12,
-  });
-  materials.add(eye);
-  const eyeLight = new THREE.MeshBasicMaterial({ color: "#fffdf5" });
-  materials.add(eyeLight);
+  function smoothNormals(geometry: THREE.BufferGeometry) {
+    geometry.computeVertexNormals();
+    const positions = geometry.getAttribute("position");
+    const normals = geometry.getAttribute("normal");
+    const coincident = new Map<
+      string,
+      { sum: THREE.Vector3; indices: number[] }
+    >();
+    for (let index = 0; index < positions.count; index++) {
+      const key = `${Math.round(positions.getX(index) * 1e6)},${Math.round(positions.getY(index) * 1e6)},${Math.round(positions.getZ(index) * 1e6)}`;
+      const entry = coincident.get(key) ?? {
+        sum: new THREE.Vector3(),
+        indices: [],
+      };
+      entry.sum.x += normals.getX(index);
+      entry.sum.y += normals.getY(index);
+      entry.sum.z += normals.getZ(index);
+      entry.indices.push(index);
+      coincident.set(key, entry);
+    }
+    for (const { sum, indices } of coincident.values()) {
+      sum.normalize();
+      for (const index of indices) normals.setXYZ(index, sum.x, sum.y, sum.z);
+    }
+    normals.needsUpdate = true;
+  }
   const sphereGeometry = remember(new THREE.SphereGeometry(1, 24, 16));
+  const largeSphereGeometry = remember(new THREE.SphereGeometry(1, 36, 24));
+  type FurPatch = {
+    mesh: THREE.Mesh;
+    count: number;
+    length: number;
+    allow?: (position: THREE.Vector3) => boolean;
+  };
+  const furPatches = new Map<THREE.Group, FurPatch[]>();
+  function pile(
+    root: THREE.Group,
+    surface: THREE.Mesh,
+    count: number,
+    length = 0.0028,
+    allow?: FurPatch["allow"],
+  ) {
+    const patches = furPatches.get(root) ?? [];
+    patches.push({ mesh: surface, count, length, allow });
+    furPatches.set(root, patches);
+  }
 
   function mesh(
     geometry: THREE.BufferGeometry,
@@ -79,7 +120,14 @@ export function createCharacter() {
     y: number,
     z: number,
   ) {
-    const result = mesh(sphereGeometry, surface, parent, x, y, z);
+    const result = mesh(
+      Math.max(rx, ry, rz) > 0.08 ? largeSphereGeometry : sphereGeometry,
+      surface,
+      parent,
+      x,
+      y,
+      z,
+    );
     result.scale.set(rx, ry, rz);
     return result;
   }
@@ -95,7 +143,7 @@ export function createCharacter() {
     z: number,
   ) {
     return mesh(
-      remember(new RoundedBoxGeometry(w, h, d, 3, radius)),
+      remember(new RoundedBoxGeometry(w, h, d, 5, radius)),
       surface,
       parent,
       x,
@@ -127,18 +175,78 @@ export function createCharacter() {
     const profile = new THREE.SplineCurve(
       points.map(([radius, y]) => new THREE.Vector2(radius, y)),
     );
-    return mesh(
-      remember(new THREE.LatheGeometry(profile.getPoints(32), 32)),
-      surface,
-      parent,
+    const isCuff = surface === ribbing || surface === pantCuffs;
+    const geometry = remember(
+      new THREE.LatheGeometry(
+        profile.getPoints(isCuff ? 24 : 40),
+        isCuff ? 32 : 40,
+      ),
     );
+    if (surface === hoodie || surface === pants) {
+      const positions = geometry.getAttribute("position");
+      const ys = points.map((point) => point[1]);
+      const minY = Math.min(...ys);
+      const height = Math.max(...ys) - minY;
+      for (let index = 0; index < positions.count; index++) {
+        const x = positions.getX(index);
+        const y = positions.getY(index);
+        const z = positions.getZ(index);
+        const radius = Math.hypot(x, z);
+        if (radius < 0.015) continue;
+        const v = (y - minY) / height;
+        const angle = Math.atan2(z, x);
+        // Small sewn gathers, concentrated at the hem and sleeve shoulders.
+        const gathers =
+          Math.exp(-(((v - 0.13) / 0.16) ** 2)) * 0.0022 +
+          Math.exp(-(((v - 0.84) / 0.14) ** 2)) * 0.0014;
+        const fold =
+          Math.sin(angle * 9 + v * 3) * gathers +
+          Math.sin(angle * 5 - v * 4) * 0.0008;
+        positions.setXYZ(
+          index,
+          x * (1 + fold / radius),
+          y,
+          z * (1 + fold / radius),
+        );
+      }
+      smoothNormals(geometry);
+    }
+    return mesh(geometry, surface, parent);
+  }
+  function padded(
+    w: number,
+    h: number,
+    d: number,
+    radius: number,
+    surface: THREE.Material,
+    parent: THREE.Object3D,
+    x: number,
+    y: number,
+    z: number,
+  ) {
+    const geometry = remember(new RoundedBoxGeometry(w, h, d, 6, radius));
+    const positions = geometry.getAttribute("position");
+    for (let index = 0; index < positions.count; index++) {
+      const px = positions.getX(index);
+      const py = positions.getY(index);
+      const pz = positions.getZ(index);
+      const centre =
+        Math.max(0, 1 - (px / (w * 0.54)) ** 2) *
+        Math.max(0, 1 - (py / (h * 0.54)) ** 2);
+      positions.setZ(
+        index,
+        pz + Math.sign(pz) * centre * Math.min(0.009, d * 0.12),
+      );
+    }
+    smoothNormals(geometry);
+    return mesh(geometry, surface, parent, x, y, z);
   }
 
   // Continuous pear-shaped head; the slightly fuller cheeks avoid a stack of balls.
   const head = new THREE.Group();
   head.position.set(0, 0.916, -0.006);
   body.add(head);
-  const headGeometry = remember(new THREE.SphereGeometry(1, 48, 32));
+  const headGeometry = remember(new THREE.SphereGeometry(1, 64, 48));
   const headPositions = headGeometry.attributes.position;
   for (let index = 0; index < headPositions.count; index++) {
     const y = headPositions.getY(index);
@@ -149,8 +257,19 @@ export function createCharacter() {
       headPositions.getZ(index) * (1 - y * 0.075) * 0.205,
     );
   }
-  headGeometry.computeVertexNormals();
-  mesh(headGeometry, fur, head);
+  smoothNormals(headGeometry);
+  const headMesh = mesh(headGeometry, fur, head);
+  pile(head, headMesh, 3000, 0.0044, (point) => {
+    // Velvet ends at the embroidered face and glass eye seams.
+    if (point.z > -0.14) return true;
+    const eyeDistance =
+      ((Math.abs(point.x) - 0.104) / 0.052) ** 2 +
+      ((point.y + 0.002) / 0.062) ** 2;
+    return (
+      eyeDistance > 1.1 &&
+      !(Math.abs(point.x) < 0.088 && point.y < -0.055 && point.y > -0.13)
+    );
+  });
 
   // Concave ear cups have a recessed centre and a soft rolled rim.
   for (const side of [-1, 1]) {
@@ -159,7 +278,7 @@ export function createCharacter() {
     ear.rotation.z = side * -0.2;
     head.add(ear);
     // An actual open shell, rather than a dark disc sitting over a solid sphere.
-    const shellProfile = [
+    const shellControlPoints = [
       [0, 0.055],
       [0.35, 0.051],
       [0.65, 0.042],
@@ -169,10 +288,14 @@ export function createCharacter() {
       [0.95, -0.045],
       [0.8, -0.051],
     ];
+    const shellProfile = new THREE.SplineCurve(
+      shellControlPoints.map(([radius, z]) => new THREE.Vector2(radius, z)),
+    ).getPoints(48);
     const shellPositions: number[] = [];
+    const shellUvs: number[] = [];
     const shellIndices: number[] = [];
     for (let ring = 0; ring < shellProfile.length; ring++) {
-      const [radius, z] = shellProfile[ring];
+      const { x: radius, y: z } = shellProfile[ring];
       for (let segment = 0; segment <= 40; segment++) {
         const angle = (segment / 40) * Math.PI * 2;
         shellPositions.push(
@@ -180,6 +303,7 @@ export function createCharacter() {
           Math.sin(angle) * radius * 0.122,
           z,
         );
+        shellUvs.push(segment / 40, ring / (shellProfile.length - 1));
         if (ring < shellProfile.length - 1 && segment < 40) {
           const a = ring * 41 + segment;
           const b = a + 41;
@@ -192,13 +316,16 @@ export function createCharacter() {
       "position",
       new THREE.Float32BufferAttribute(shellPositions, 3),
     );
+    shell.setAttribute("uv", new THREE.Float32BufferAttribute(shellUvs, 2));
     shell.setIndex(shellIndices);
-    shell.computeVertexNormals();
-    mesh(shell, fur, ear);
+    smoothNormals(shell);
+    const shellMesh = mesh(shell, fur, ear);
+    pile(head, shellMesh, 440, 0.0035);
     const cupPositions: number[] = [];
+    const cupUvs: number[] = [];
     const cupIndices: number[] = [];
-    const rings = 12;
-    const slices = 40;
+    const rings = 28;
+    const slices = 48;
     for (let ring = 0; ring <= rings; ring++) {
       const radius = ring / rings;
       for (let segment = 0; segment <= slices; segment++) {
@@ -207,6 +334,10 @@ export function createCharacter() {
           Math.cos(angle) * radius * 0.078,
           Math.sin(angle) * radius * 0.099,
           0.01 - radius * radius * 0.066,
+        );
+        cupUvs.push(
+          0.5 + Math.cos(angle) * radius * 0.5,
+          0.5 + Math.sin(angle) * radius * 0.5,
         );
         if (ring < rings && segment < slices) {
           const a = ring * (slices + 1) + segment;
@@ -220,11 +351,12 @@ export function createCharacter() {
       "position",
       new THREE.Float32BufferAttribute(cupPositions, 3),
     );
+    cup.setAttribute("uv", new THREE.Float32BufferAttribute(cupUvs, 2));
     cup.setIndex(cupIndices);
-    cup.computeVertexNormals();
+    smoothNormals(cup);
     mesh(cup, earInner, ear);
     const rim = mesh(
-      remember(new THREE.TorusGeometry(0.088, 0.015, 10, 40)),
+      remember(new THREE.TorusGeometry(0.088, 0.014, 20, 64)),
       earRim,
       ear,
       0,
@@ -232,6 +364,7 @@ export function createCharacter() {
       -0.05,
     );
     rim.scale.set(1.02, 1.255, 0.85);
+    pile(head, rim, 140, 0.0026);
     for (let tuft = 0; tuft < 3; tuft++) {
       const petal = ellipsoid(
         0.014,
@@ -247,7 +380,14 @@ export function createCharacter() {
     }
   }
 
-  ellipsoid(0.089, 0.048, 0.036, muzzle, head, 0, -0.08, -0.182);
+  const cheek = ellipsoid(0.089, 0.048, 0.036, muzzle, head, 0, -0.08, -0.182);
+  pile(
+    head,
+    cheek,
+    120,
+    0.0016,
+    (point) => point.y > -0.08 || Math.abs(point.x) > 0.062,
+  );
   ellipsoid(0.028, 0.02, 0.02, feature, head, 0, -0.067, -0.225);
   thread(
     [
@@ -336,22 +476,63 @@ export function createCharacter() {
     body,
   );
   hem.scale.z = 0.8;
-  ellipsoid(0.217, 0.091, 0.125, hoodie, body, 0, 0.722, 0.055);
-  ellipsoid(0.169, 0.055, 0.095, hoodInterior, body, 0, 0.745, -0.009);
+  // The dropped hood is broad folded fabric, with soft asymmetric creases.
+  ellipsoid(0.206, 0.081, 0.119, hoodie, body, 0, 0.733, 0.061);
+  ellipsoid(0.157, 0.043, 0.081, hoodInterior, body, 0, 0.751, -0.008);
+  const hoodPositions: number[] = [];
+  const hoodUvs: number[] = [];
+  const hoodIndices: number[] = [];
+  const hoodSegments = 80;
+  const foldSegments = 24;
+  for (let ring = 0; ring <= hoodSegments; ring++) {
+    const theta = (ring / hoodSegments) * Math.PI * 2;
+    const front = Math.max(0, -Math.sin(theta));
+    const back = Math.max(0, Math.sin(theta));
+    const centreY = 0.731 - front * 0.033 + back * 0.018;
+    const centreX = Math.cos(theta) * 0.178;
+    const centreZ = Math.sin(theta) * 0.099 + 0.013;
+    for (let section = 0; section <= foldSegments; section++) {
+      const phi = (section / foldSegments) * Math.PI * 2;
+      const gather =
+        1 +
+        Math.sin(theta * 3 + phi * 2) * 0.07 +
+        Math.sin(theta * 7 - phi) * 0.025;
+      const width = (0.037 + back * 0.007) * Math.cos(phi) * gather;
+      hoodPositions.push(
+        centreX + Math.cos(theta) * width,
+        centreY + Math.sin(phi) * (0.037 + front * 0.011) * gather,
+        centreZ + Math.sin(theta) * width,
+      );
+      hoodUvs.push(ring / hoodSegments, section / foldSegments);
+      if (ring < hoodSegments && section < foldSegments) {
+        const a = ring * (foldSegments + 1) + section;
+        const b = a + foldSegments + 1;
+        hoodIndices.push(a, a + 1, b, b, a + 1, b + 1);
+      }
+    }
+  }
+  const hoodGeometry = remember(new THREE.BufferGeometry());
+  hoodGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(hoodPositions, 3),
+  );
+  hoodGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(hoodUvs, 2));
+  hoodGeometry.setIndex(hoodIndices);
+  smoothNormals(hoodGeometry);
+  mesh(hoodGeometry, hoodie, body);
+  // Low relief fold below the opening; it joins into the padded sides.
   thread(
     [
-      [-0.183, 0.752, -0.045],
-      [-0.16, 0.705, -0.104],
-      [-0.1, 0.686, -0.141],
-      [0, 0.673, -0.145],
-      [0.1, 0.686, -0.141],
-      [0.16, 0.705, -0.104],
-      [0.183, 0.752, -0.045],
+      [-0.166, 0.72, -0.083],
+      [-0.122, 0.694, -0.12],
+      [-0.032, 0.68, -0.133],
+      [0.054, 0.686, -0.13],
+      [0.14, 0.713, -0.103],
     ],
-    0.027,
-    hoodie,
+    0.008,
+    pocketFabric,
     body,
-    40,
+    36,
   );
   for (const side of [-1, 1]) {
     thread(
@@ -433,8 +614,9 @@ export function createCharacter() {
         [0.053, -0.225],
         [0.06, -0.13],
         [0.064, -0.052],
-        [0.041, -0.008],
-        [0, 0.009],
+        [0.058, -0.012],
+        [0.039, 0.012],
+        [0, 0.025],
       ],
       hoodie,
       arm,
@@ -465,6 +647,7 @@ export function createCharacter() {
       -0.001,
     );
     paw.rotation.z = side * 0.12;
+    pile(arm, paw, 90, 0.0018);
     // Thumb silhouette stays visible when the arm extends into a punch.
     ellipsoid(0.014, 0.022, 0.02, fur, arm, side * 0.004, -0.281, -0.017);
   }
@@ -514,8 +697,8 @@ export function createCharacter() {
   const pack = new THREE.Group();
   pack.position.set(0, 0.551, 0.191);
   body.add(pack);
-  rounded(0.261, 0.321, 0.144, 0.052, backpack, pack, 0, 0, 0);
-  rounded(0.229, 0.112, 0.066, 0.025, backpackLight, pack, 0, -0.084, 0.081);
+  padded(0.261, 0.321, 0.144, 0.062, backpack, pack, 0, 0, 0);
+  padded(0.229, 0.112, 0.066, 0.03, backpackLight, pack, 0, -0.084, 0.081);
   rounded(0.235, 0.024, 0.068, 0.011, backpack, pack, 0, -0.035, 0.089);
   thread(
     [
@@ -622,71 +805,274 @@ export function createCharacter() {
       );
     }
   }
-  tailGeometry.computeVertexNormals();
-  mesh(tailGeometry, fur, tailRoot);
+  smoothNormals(tailGeometry);
+  const tailMesh = mesh(tailGeometry, fur, tailRoot);
+  pile(tailRoot, tailMesh, 320, 0.0034);
   ellipsoid(0.003, 0.003, 0.003, fur, tailRoot, 0.07, -0.172, 0.357);
+
+  // A short velvet pile softens the silhouette without transparent shell layers.
+  // One shared tapered strand and one instanced draw per moving body part keep
+  // the entire coat at four draw calls; strands never cast noisy tiny shadows.
+  const strandPositions: number[] = [];
+  const strandIndices: number[] = [];
+  for (let ring = 0; ring <= 2; ring++) {
+    const t = ring / 2;
+    const radius = (1 - t) * 0.055 + 0.002;
+    for (let side = 0; side <= 3; side++) {
+      const angle = (side / 3) * Math.PI * 2;
+      strandPositions.push(
+        Math.cos(angle) * radius + t * t * 0.18,
+        t,
+        Math.sin(angle) * radius,
+      );
+      if (ring < 2 && side < 3) {
+        const a = ring * 4 + side;
+        strandIndices.push(a, a + 4, a + 1, a + 1, a + 4, a + 5);
+      }
+    }
+  }
+  const strandGeometry = remember(new THREE.BufferGeometry());
+  strandGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(strandPositions, 3),
+  );
+  strandGeometry.setIndex(strandIndices);
+  strandGeometry.computeVertexNormals();
+  let seed = 0x29bc7a31;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const furInstances: THREE.InstancedMesh[] = [];
+  group.updateMatrixWorld(true);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const edge = new THREE.Vector3();
+  const point = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  const nap = new THREE.Vector3();
+  const across = new THREE.Vector3();
+  const na = new THREE.Vector3();
+  const nb = new THREE.Vector3();
+  const nc = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  const dummy = new THREE.Object3D();
+  const tint = new THREE.Color();
+  for (const [root, patches] of furPatches) {
+    const capacity = patches.reduce((sum, patch) => sum + patch.count, 0);
+    const strands = new THREE.InstancedMesh(strandGeometry, fibers, capacity);
+    strands.name = "short-velvet-pile";
+    strands.castShadow = false;
+    strands.receiveShadow = false;
+    const rootInverse = root.matrixWorld.clone().invert();
+    let instance = 0;
+    for (const patch of patches) {
+      const geometry = patch.mesh.geometry;
+      const positions = geometry.getAttribute("position");
+      const normals = geometry.getAttribute("normal");
+      const indices = geometry.index;
+      const count = indices ? indices.count : positions.count;
+      const transform = new THREE.Matrix4().multiplyMatrices(
+        rootInverse,
+        patch.mesh.matrixWorld,
+      );
+      const normalTransform = new THREE.Matrix3().getNormalMatrix(transform);
+      const vertexIndex = (index: number) =>
+        indices ? indices.getX(index) : index;
+      const cumulative: number[] = [];
+      let area = 0;
+      for (let index = 0; index < count; index += 3) {
+        a.fromBufferAttribute(positions, vertexIndex(index)).applyMatrix4(
+          transform,
+        );
+        b.fromBufferAttribute(positions, vertexIndex(index + 1)).applyMatrix4(
+          transform,
+        );
+        c.fromBufferAttribute(positions, vertexIndex(index + 2)).applyMatrix4(
+          transform,
+        );
+        area += edge.subVectors(b, a).cross(c.sub(a)).length() * 0.5;
+        cumulative.push(area);
+      }
+      let added = 0;
+      for (
+        let attempt = 0;
+        attempt < patch.count * 4 && added < patch.count;
+        attempt++
+      ) {
+        const target = random() * area;
+        let low = 0;
+        let high = cumulative.length - 1;
+        while (low < high) {
+          const middle = (low + high) >>> 1;
+          if (cumulative[middle] < target) low = middle + 1;
+          else high = middle;
+        }
+        const i0 = vertexIndex(low * 3);
+        const i1 = vertexIndex(low * 3 + 1);
+        const i2 = vertexIndex(low * 3 + 2);
+        const u = Math.sqrt(random());
+        const v = random();
+        const wa = 1 - u;
+        const wb = u * (1 - v);
+        const wc = u * v;
+        a.fromBufferAttribute(positions, i0);
+        b.fromBufferAttribute(positions, i1);
+        c.fromBufferAttribute(positions, i2);
+        point
+          .copy(a)
+          .multiplyScalar(wa)
+          .addScaledVector(b, wb)
+          .addScaledVector(c, wc)
+          .applyMatrix4(transform);
+        if (patch.allow && !patch.allow(point)) continue;
+        na.fromBufferAttribute(normals, i0);
+        nb.fromBufferAttribute(normals, i1);
+        nc.fromBufferAttribute(normals, i2);
+        normal
+          .copy(na)
+          .multiplyScalar(wa)
+          .addScaledVector(nb, wb)
+          .addScaledVector(nc, wc)
+          .applyMatrix3(normalTransform)
+          .normalize();
+        // Short pile lies along the surface instead of pointing straight at
+        // the viewer. The visible curved sides read as fibres, not dark dots.
+        nap.set(0, -1, 0).addScaledVector(normal, normal.y);
+        if (nap.lengthSq() < 0.02)
+          nap.set(0, 0, 1).addScaledVector(normal, -normal.z);
+        nap.normalize();
+        across.crossVectors(normal, nap).normalize();
+        nap.addScaledVector(across, (random() - 0.5) * 0.5).normalize();
+        dummy.position.copy(point).addScaledVector(normal, -0.00012);
+        normal.multiplyScalar(0.48).addScaledVector(nap, 0.88).normalize();
+        const length = patch.length * (0.72 + random() * 0.38);
+        dummy.quaternion.setFromUnitVectors(up, normal);
+        dummy.rotateY(random() * Math.PI * 2);
+        dummy.scale.setScalar(length);
+        dummy.updateMatrix();
+        strands.setMatrixAt(instance, dummy.matrix);
+        tint.setScalar(0.98 + random() * 0.035);
+        strands.setColorAt(instance, tint);
+        instance++;
+        added++;
+      }
+    }
+    strands.count = instance;
+    strands.instanceMatrix.needsUpdate = true;
+    if (strands.instanceColor) strands.instanceColor.needsUpdate = true;
+    strands.computeBoundingSphere();
+    root.add(strands);
+    furInstances.push(strands);
+  }
 
   group.traverse((object) => {
     object.userData.roomRaycastIgnore = true;
+    // Picking and the camera test room objects only. Filtering avatar hits after
+    // raycasting would still inspect thousands of fur instances each frame.
+    if (object instanceof THREE.Mesh) object.raycast = () => undefined;
   });
   let disposed = false;
+  let previousTime: number | null = null;
+  let stridePhase = 0;
+  let easedSpeed = 0;
+  let airBlend = 0;
+  let airRise = 0;
+  const ease = (current: number, target: number, rate: number, dt: number) =>
+    THREE.MathUtils.lerp(current, target, 1 - Math.exp(-rate * dt));
   return {
     group,
     animate(state: RoomAvatarAnimation) {
       if (disposed) return;
+      const dt =
+        previousTime === null
+          ? 0
+          : THREE.MathUtils.clamp(state.time - previousTime, 0, 0.05);
+      previousTime = state.time;
       const speed = THREE.MathUtils.clamp(state.speed, 0, 1);
-      const stride = state.time * (speed > 0.65 ? 11 : 8.5);
-      const walking = state.grounded ? speed : 0;
+      easedSpeed = ease(easedSpeed, speed, 11, dt);
+      airBlend = ease(airBlend, state.grounded ? 0 : 1, 18, dt);
+      airRise = ease(
+        airRise,
+        THREE.MathUtils.clamp((state.velocityY + 0.6) / 3.2, 0, 1),
+        12,
+        dt,
+      );
+      // Integrating cadence keeps the pose continuous when walking becomes running.
+      // The former absolute-time frequency switch jumped to an unrelated stride.
+      stridePhase =
+        (stridePhase +
+          dt * (6.5 + easedSpeed * 5) * Math.min(1, easedSpeed * 5)) %
+        (Math.PI * 4);
+      const walking = easedSpeed * (1 - airBlend);
       const amplitude = state.reducedMotion ? 0.25 : 0.5;
-      const swing = Math.sin(stride) * walking * amplitude;
+      const swing = Math.sin(stridePhase) * walking * amplitude;
       const breath = state.reducedMotion
         ? 0
-        : Math.sin(state.time * 2.1) * 0.002;
+        : Math.sin(state.time * 2.1) * 0.0015 * (1 - walking);
+      const bounce = (1 - Math.cos(stridePhase * 2)) * 0.5;
       body.position.y = state.reducedMotion
         ? 0
-        : breath + Math.abs(Math.sin(stride)) * walking * 0.012;
-      body.rotation.x = speed * -0.045;
+        : breath + bounce * walking * 0.009;
+      body.rotation.x = easedSpeed * -0.045;
       body.rotation.z = state.reducedMotion
         ? 0
-        : Math.cos(stride) * walking * 0.018;
+        : Math.cos(stridePhase) * walking * 0.013;
       head.rotation.y = state.reducedMotion
         ? 0
-        : Math.sin(state.time * 0.7) * (1 - speed) * 0.035;
+        : Math.sin(state.time * 0.7) * (1 - easedSpeed) * 0.028;
       head.rotation.z = state.reducedMotion
         ? 0
-        : Math.sin(state.time * 1.1) * (1 - speed) * 0.014;
-      arms[0].rotation.set(swing, 0, -0.07);
-      arms[1].rotation.set(-swing, 0, 0.07);
-      legs[0].rotation.x = -swing;
-      legs[1].rotation.x = swing;
-      pack.rotation.x = state.reducedMotion
-        ? 0
-        : Math.abs(Math.sin(stride)) * walking * 0.018;
+        : Math.sin(state.time * 1.1) * (1 - easedSpeed) * 0.011;
+      const airborneArm = THREE.MathUtils.lerp(-0.22, -0.48, airRise);
+      arms[0].rotation.set(
+        THREE.MathUtils.lerp(swing, airborneArm, airBlend),
+        0,
+        -0.07 - airBlend * 0.16,
+      );
+      arms[1].rotation.set(
+        THREE.MathUtils.lerp(-swing, airborneArm, airBlend),
+        0,
+        0.07 + airBlend * 0.16,
+      );
+      legs[0].rotation.x = THREE.MathUtils.lerp(
+        -swing,
+        THREE.MathUtils.lerp(-0.1, 0.32, airRise),
+        airBlend,
+      );
+      legs[1].rotation.x = THREE.MathUtils.lerp(
+        swing,
+        THREE.MathUtils.lerp(0.1, -0.2, airRise),
+        airBlend,
+      );
+      pack.rotation.x = state.reducedMotion ? 0 : bounce * walking * 0.015;
       tailRoot.rotation.x = state.reducedMotion
         ? 0
-        : Math.sin(state.time * 2.5) * 0.045;
+        : Math.sin(state.time * 2.5) * 0.035;
       tailRoot.rotation.y = state.reducedMotion
         ? 0
-        : Math.sin(stride * 0.5) * (0.06 + walking * 0.11);
-      if (!state.grounded) {
-        const rising = state.velocityY > 0;
-        arms[0].rotation.x = rising ? -0.48 : -0.22;
-        arms[1].rotation.x = rising ? -0.48 : -0.22;
-        arms[0].rotation.z = -0.23;
-        arms[1].rotation.z = 0.23;
-        legs[0].rotation.x = rising ? 0.32 : -0.1;
-        legs[1].rotation.x = rising ? -0.2 : 0.1;
-      }
+        : Math.sin(stridePhase * 0.5) * (0.045 + walking * 0.08);
       if (state.punchProgress !== null) {
         const t = THREE.MathUtils.clamp(state.punchProgress, 0, 1);
-        // The quick extension peaks at impact, then settles over the recovery.
+        // Peak remains at the 125 ms gameplay impact; smoothstep gives zero
+        // velocity at wind-up, extension and release, without an idle pose snap.
+        const impact = 0.125 / 0.42;
         const extension =
-          t < 0.32
-            ? Math.sin(((t / 0.32) * Math.PI) / 2)
-            : Math.pow(1 - (t - 0.32) / 0.68, 1.5);
-        arms[0].rotation.x = extension * 1.55;
-        arms[0].rotation.z = -0.07 + extension * 0.18;
-        arms[1].rotation.x = extension * 0.35;
+          t < impact
+            ? THREE.MathUtils.smoothstep(t / impact, 0, 1)
+            : 1 - THREE.MathUtils.smoothstep((t - impact) / (1 - impact), 0, 1);
+        arms[0].rotation.x = THREE.MathUtils.lerp(
+          arms[0].rotation.x,
+          1.55,
+          extension,
+        );
+        arms[0].rotation.z += extension * 0.18;
+        arms[1].rotation.x = THREE.MathUtils.lerp(
+          arms[1].rotation.x,
+          0.35,
+          extension,
+        );
         body.rotation.y = -extension * 0.12;
         body.rotation.x -= extension * 0.045;
       } else {
@@ -699,9 +1085,10 @@ export function createCharacter() {
       group.removeFromParent();
       group.clear();
       for (const geometry of geometries) geometry.dispose();
-      for (const surface of materials) surface.dispose();
+      for (const instances of furInstances) instances.dispose();
+      surfaces.dispose();
       geometries.clear();
-      materials.clear();
+      furPatches.clear();
     },
   };
 }

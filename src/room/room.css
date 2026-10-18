@@ -189,6 +189,43 @@
   border-radius: 50%;
   pointer-events: none;
 }
+.room-stick-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #5265469c;
+}
+.room-stick-marks > span {
+  position: absolute;
+  display: block;
+  width: 11px;
+  height: 11px;
+}
+.room-stick-marks svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.room-stick-marks .mark-up,
+.room-stick-marks .mark-down {
+  left: calc(50% - 5.5px);
+}
+.room-stick-marks .mark-up {
+  top: 8px;
+}
+.room-stick-marks .mark-down {
+  bottom: 8px;
+}
+.room-stick-marks .mark-left,
+.room-stick-marks .mark-right {
+  top: calc(50% - 5.5px);
+}
+.room-stick-marks .mark-left {
+  left: 8px;
+}
+.room-stick-marks .mark-right {
+  right: 8px;
+}
 .room-stick-thumb {
   width: 55px;
   height: 55px;

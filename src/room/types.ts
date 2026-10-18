@@ -55,6 +55,9 @@ export interface RoomSnapshot {
   pitch: number;
   facing: number;
   cameraDistance: number;
+  cameraX: number;
+  cameraY: number;
+  cameraZ: number;
   punching: boolean;
   brokenCount: number;
 }

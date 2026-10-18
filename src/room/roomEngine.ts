@@ -14,6 +14,7 @@ import type {
   RoomPortal,
 } from "./types";
 import type { Section } from "../data/model";
+import { cameraRelativeInput, smoothLocomotion } from "./locomotion";
 import {
   CAMERA_RADIUS,
   DEFAULT_CAMERA_PITCH,
@@ -132,6 +133,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   const keyboard = new Set<string>();
   const pad = new Set<Direction>();
   const analog = { x: 0, z: 0 };
+  let moveVelocity = { x: 0, z: 0 };
   let player = createPlayer(
     INITIAL_PLAYER_POSITION.x,
     INITIAL_PLAYER_POSITION.z,
@@ -258,6 +260,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     pad.clear();
     analog.x = 0;
     analog.z = 0;
+    moveVelocity = { x: 0, z: 0 };
     jumpRequested = false;
     releaseViewPointer();
   }
@@ -283,6 +286,9 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       pitch,
       facing,
       cameraDistance,
+      cameraX: camera.position.x,
+      cameraY: camera.position.y,
+      cameraZ: camera.position.z,
       punching: punchStarted !== null,
       brokenCount: room.breakables.filter((item) => item.broken).length,
     });
@@ -315,6 +321,18 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     renderer.shadowMap.needsUpdate = true;
   }
 
+  function raycastRoots() {
+    // Exclude the complete avatar hierarchy before traversal: its instanced
+    // fibers never block interactions and must not each be raycast every frame.
+    // Keep every room/prop root so walls and furniture still occlude targets.
+    return room.scene.children.filter(
+      (object) =>
+        object !== room.avatar &&
+        object !== camera &&
+        !object.userData.roomRaycastIgnore,
+    );
+  }
+
   function visibleHit(
     ndc: THREE.Vector2,
     reach = 60,
@@ -323,7 +341,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     raycaster.setFromCamera(ndc, camera);
     raycaster.far = reach;
     return firstVisibleHit(
-      raycaster.intersectObjects(room.scene.children, true),
+      raycaster.intersectObjects(raycastRoots(), true),
       includeHitAreas,
     );
   }
@@ -476,7 +494,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       raycaster.set(origin, direction.clone().normalize());
       raycaster.far = direction.length() + 0.03;
       const hit = firstVisibleHit(
-        raycaster.intersectObjects(room.scene.children, true),
+        raycaster.intersectObjects(raycastRoots(), true),
       );
       let hitId: unknown;
       for (
@@ -687,7 +705,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     cameraRay.set(cameraTarget, boomDirection);
     cameraRay.far = safeDistance + CAMERA_RADIUS;
     const hit = firstVisibleHit(
-      cameraRay.intersectObjects(room.scene.children, true),
+      cameraRay.intersectObjects(raycastRoots(), true),
     );
     if (hit)
       safeDistance = Math.max(
@@ -743,12 +761,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     const oldFacing = facing;
     const digitalInput = movementVector(directions, yaw);
     const input =
-      directions.size > 0
-        ? digitalInput
-        : {
-            x: analog.x * Math.cos(yaw) + analog.z * Math.sin(yaw),
-            z: -analog.x * Math.sin(yaw) + analog.z * Math.cos(yaw),
-          };
+      directions.size > 0 ? digitalInput : cameraRelativeInput(analog, yaw);
     if (!opening && !opened) {
       if (Math.hypot(input.x, input.z) > 0.01) {
         const targetFacing = Math.atan2(-input.x, -input.z);
@@ -756,9 +769,11 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
           shortestAngle(facing, targetFacing) * (1 - Math.exp(-18 * elapsed));
         facing %= Math.PI * 2;
       }
+      const locomotion = smoothLocomotion(moveVelocity, input, elapsed);
+      moveVelocity = locomotion.velocity;
       player = stepPlayer(
         player,
-        input,
+        locomotion.average,
         elapsed,
         room.obstacles,
         jumpRequested,

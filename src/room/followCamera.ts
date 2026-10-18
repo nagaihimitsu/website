@@ -7,7 +7,9 @@ export const MIN_CAMERA_PITCH = -0.48;
 export const MAX_CAMERA_PITCH = 1.05;
 export const FOLLOW_DISTANCE = 2.75;
 export const CAMERA_RADIUS = 0.16;
-export const INITIAL_PLAYER_POSITION = { x: 0.95, z: 0.65 };
+// Leave enough floor behind a new visitor to turn and walk toward the viewer
+// before the following camera has to shorten against the entry wall.
+export const INITIAL_PLAYER_POSITION = { x: 0.95, z: -0.45 };
 
 export interface Point3 {
   x: number;

@@ -7,6 +7,8 @@ import {
 import type { Archive, Section } from "../data/model";
 import { sections } from "../data/catalogs";
 import { createRoomEngine } from "./roomEngine";
+import { stickInput } from "./locomotion";
+import { INITIAL_PLAYER_POSITION } from "./followCamera";
 import type { Direction, RoomEngine, RoomSnapshot } from "./types";
 import "./room.css";
 
@@ -98,8 +100,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [snapshot, setSnapshot] = useState<RoomSnapshot>({
-    x: 0.95,
-    z: 3.05,
+    x: INITIAL_PLAYER_POSITION.x,
+    z: INITIAL_PLAYER_POSITION.z,
     height: 0,
     moving: false,
     grounded: true,
@@ -108,6 +110,9 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     pitch: 0,
     facing: 0,
     cameraDistance: 2.75,
+    cameraX: 0,
+    cameraY: 0,
+    cameraZ: 0,
     punching: false,
     brokenCount: 0,
   });
@@ -223,13 +228,11 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   }
   function updateStick(event: ReactPointerEvent<HTMLDivElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
-    const radius = bounds.width * 0.3;
-    const x = (event.clientX - bounds.left - bounds.width / 2) / radius;
-    const z = (event.clientY - bounds.top - bounds.height / 2) / radius;
-    const length = Math.hypot(x, z);
-    const magnitude = Math.max(0, Math.min(1, (length - 0.12) / 0.88));
-    const scale = length > 0 ? magnitude / length : 0;
-    const next = { x: x * scale, z: z * scale };
+    const next = stickInput(
+      event.clientX - bounds.left - bounds.width / 2,
+      event.clientY - bounds.top - bounds.height / 2,
+      bounds.width * 0.3,
+    );
     setStick(next);
     engine.current?.move(next.x, next.z);
   }
@@ -272,6 +275,9 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       data-pitch={snapshot.pitch.toFixed(3)}
       data-facing={snapshot.facing.toFixed(3)}
       data-camera-distance={snapshot.cameraDistance.toFixed(3)}
+      data-camera-x={snapshot.cameraX.toFixed(3)}
+      data-camera-y={snapshot.cameraY.toFixed(3)}
+      data-camera-z={snapshot.cameraZ.toFixed(3)}
       data-punching={snapshot.punching}
       data-broken-count={snapshot.brokenCount}
     >
@@ -407,9 +413,17 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           }}
         >
           <span id="room-stick-help" className="room-sr-only">
-            倒した方向に移動します。小さく倒すと歩き、大きく倒すと走ります。
+            画面の上下左右に移動します。下に倒すと手前を向いて歩きます。
+            小さく倒すと歩き、大きく倒すと走ります。カメラの向きは保たれます。
           </span>
           <span className="room-stick-track" aria-hidden="true" />
+          <span className="room-stick-marks" aria-hidden="true">
+            {arrows.map(({ direction, rotation }) => (
+              <span key={direction} className={`mark-${direction}`}>
+                <Arrow rotation={rotation} />
+              </span>
+            ))}
+          </span>
           <span
             className="room-stick-thumb"
             aria-hidden="true"
@@ -530,6 +544,14 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             <div>
               <dt>移動</dt>
               <dd>WASD / 矢印 / 左下スティック</dd>
+            </div>
+            <div>
+              <dt>手前に歩く</dt>
+              <dd>↓ / S / スティックを下へ</dd>
+            </div>
+            <div>
+              <dt>カメラ</dt>
+              <dd>位置に追従。移動では向きを変えません</dd>
             </div>
             <div>
               <dt>視点を戻す</dt>

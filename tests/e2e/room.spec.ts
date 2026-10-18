@@ -45,6 +45,9 @@ async function enterRoom(page: Page) {
     "pitch",
     "facing",
     "camera-distance",
+    "camera-x",
+    "camera-y",
+    "camera-z",
   ])
     await expect(room).toHaveAttribute(
       `data-${coordinate}`,
@@ -61,6 +64,9 @@ async function position(page: Page) {
     pitch: Number(element.getAttribute("data-pitch")),
     facing: Number(element.getAttribute("data-facing")),
     cameraDistance: Number(element.getAttribute("data-camera-distance")),
+    cameraX: Number(element.getAttribute("data-camera-x")),
+    cameraY: Number(element.getAttribute("data-camera-y")),
+    cameraZ: Number(element.getAttribute("data-camera-z")),
   }));
 }
 async function renderReleasedInput(page: Page) {
@@ -107,7 +113,8 @@ async function walk(page: Page, key = "KeyD") {
   } finally {
     await page.keyboard.up(key);
   }
-  await page.waitForTimeout(150);
+  await renderReleasedInput(page);
+  await page.waitForTimeout(200);
   return position(page);
 }
 async function openMenu(page: Page) {
@@ -205,6 +212,9 @@ test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆
 test("カメラの向きに歩いて旅人が振り向き、Spaceで床へ着地する", async ({
   page,
 }) => {
+  // Keep this floor-landing case clear of furniture, independently of the
+  // visitor's default starting point. Desk and bed landings are tested below.
+  await savedPosition(page, { x: 0.1, z: 0, yaw: 0 });
   const room = await enterRoom(page);
   const beforeLook = await position(page);
   const box = await page.locator(".room-canvas canvas").boundingBox();
@@ -213,7 +223,7 @@ test("カメラの向きに歩いて旅人が振り向き、Spaceで床へ着地
   await page.mouse.move(
     box!.x + box!.width * 0.65,
     box!.y + box!.height * 0.5,
-    { steps: 10 },
+    { steps: 3 },
   );
   await page.mouse.up();
   await renderReleasedInput(page);
@@ -292,6 +302,47 @@ test("360度見回しても旅人の向きは変わらず、ボタンとRで背�
     .poll(async () =>
       angleDifference((await position(page)).yaw, initial.facing),
     )
+    .toBeLessThan(0.03);
+});
+
+test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメラの向きを保つ", async ({
+  page,
+}) => {
+  await savedPosition(page, { x: 0.95, z: -0.9, yaw: 0.4 });
+  await enterRoom(page);
+  const start = await position(page);
+  await page.keyboard.down("ArrowDown");
+  try {
+    await expect
+      .poll(async () =>
+        angleDifference((await position(page)).facing, start.yaw + Math.PI),
+      )
+      .toBeLessThan(0.18);
+  } finally {
+    await page.keyboard.up("ArrowDown");
+  }
+  await renderReleasedInput(page);
+  const end = await position(page);
+  const towardViewer =
+    (end.x - start.x) * Math.sin(start.yaw) +
+    (end.z - start.z) * Math.cos(start.yaw);
+  const sideways =
+    (end.x - start.x) * Math.cos(start.yaw) -
+    (end.z - start.z) * Math.sin(start.yaw);
+  expect(towardViewer).toBeGreaterThan(0.15);
+  expect(Math.abs(sideways)).toBeLessThan(0.03);
+  const cameraFollow =
+    (end.cameraX - start.cameraX) * Math.sin(start.yaw) +
+    (end.cameraZ - start.cameraZ) * Math.cos(start.yaw);
+  expect(cameraFollow).toBeGreaterThan(0.1);
+  expect(angleDifference(end.yaw, start.yaw)).toBeLessThan(0.01);
+  await page.waitForTimeout(250);
+  expect(angleDifference((await position(page)).yaw, start.yaw)).toBeLessThan(
+    0.01,
+  );
+  await page.keyboard.press("KeyR");
+  await expect
+    .poll(async () => angleDifference((await position(page)).yaw, end.facing))
     .toBeLessThan(0.03);
 });
 
@@ -579,6 +630,98 @@ test.describe("タッチ操作", () => {
     isMobile: true,
   });
 
+  test("狭い縦画面でも下へ引くと手前へ歩き、見回した後も画面の下方向へ進む", async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await savedPosition(page, { x: 0.95, z: -0.9, yaw: 0 });
+    await enterRoom(page);
+    const stick = page.getByRole("group", {
+      name: "移動スティック",
+      exact: true,
+    });
+    const box = await stick.boundingBox();
+    const center = {
+      x: box!.x + box!.width / 2,
+      y: box!.y + box!.height / 2,
+      id: 1,
+    };
+    const cdp = await context.newCDPSession(page);
+    try {
+      for (const rotated of [false, true]) {
+        if (rotated) {
+          const look = { x: 185, y: 270, id: 2 };
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchStart",
+            touchPoints: [look],
+          });
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ ...look, x: 280 }],
+          });
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchEnd",
+            touchPoints: [],
+          });
+          await renderReleasedInput(page);
+          expect(Math.abs((await position(page)).yaw)).toBeGreaterThan(0.3);
+        }
+        const start = await position(page);
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [center],
+        });
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          // A partial pull proves walking backwards, without needing a long
+          // full-speed hold in the small room or touching the screen edge.
+          touchPoints: [{ ...center, y: center.y + box!.width * 0.18 }],
+        });
+        try {
+          await expect(stick).toHaveAttribute("data-stick-z", /^0\.[1-9]\d*$/);
+          await expect
+            .poll(async () =>
+              angleDifference(
+                (await position(page)).facing,
+                start.yaw + Math.PI,
+              ),
+            )
+            .toBeLessThan(0.18);
+          await expect
+            .poll(async () => {
+              const current = await position(page);
+              return (
+                (current.x - start.x) * Math.sin(start.yaw) +
+                (current.z - start.z) * Math.cos(start.yaw)
+              );
+            })
+            .toBeGreaterThan(0.15);
+        } finally {
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchEnd",
+            touchPoints: [],
+          });
+        }
+        await renderReleasedInput(page);
+        const end = await position(page);
+        const towardViewer =
+          (end.x - start.x) * Math.sin(start.yaw) +
+          (end.z - start.z) * Math.cos(start.yaw);
+        expect(towardViewer).toBeGreaterThan(0.1);
+        expect(angleDifference(end.yaw, start.yaw)).toBeLessThan(0.01);
+        await expect(stick).toHaveAttribute("data-stick-z", /^0\.0+$/);
+      }
+    } finally {
+      await cdp.detach();
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+
   test("アナログスティックで移動中も別の指で見回し、ジャンプとパンチを操作できる", async ({
     page,
     context,
@@ -664,7 +807,8 @@ test.describe("タッチ操作", () => {
     }
     await expect.poll(intensity).toBe(0);
     await expect(page).toHaveURL(/#\/$/);
-    await page.waitForTimeout(150);
+    await renderReleasedInput(page);
+    await page.waitForTimeout(200);
     const stopped = await position(page);
     await page.waitForTimeout(250);
     const later = await position(page);
