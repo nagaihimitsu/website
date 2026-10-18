@@ -10,6 +10,8 @@ import type {
 import { createBreakables } from "./art/breakables";
 import { createCharacter } from "./art/character";
 import { createBird } from "./art/bird";
+import { createPhotoFrame } from "./art/photoFrame";
+import deskPhotoUrl from "../assets/room/rome-travel.jpg";
 import {
   createWorldMapTexture,
   createJapanMapTexture,
@@ -489,33 +491,31 @@ export function createRoomScene(archive: Archive): RoomScene {
   const phoneHitTarget = box(1.1, 1.64, 0.18, hitMaterial, phone, 0, 0, 0.02);
   phoneHitTarget.userData.roomHitTarget = true;
   phoneHitTarget.castShadow = false;
-  // Closed notebook, pen, small ceramic cup, desk lamp.
-  const notebook = rounded(
-    0.57,
-    0.055,
-    0.77,
-    dark,
-    0.025,
-    desk,
-    0.52,
-    1.398,
-    0.18,
+  // The owner's complete illustration sits in a freestanding wooden frame.
+  const deskPhoto = new THREE.TextureLoader().load(deskPhotoUrl);
+  deskPhoto.colorSpace = THREE.SRGBColorSpace;
+  deskPhoto.anisotropy = 4;
+  textures.push(deskPhoto);
+  const photoFrame = createPhotoFrame(deskPhoto);
+  photoFrame.group.name = "desk-photo-frame";
+  photoFrame.group.position.set(0.65, 1.36, 0.24);
+  photoFrame.group.rotation.y = -0.18;
+  desk.add(photoFrame.group);
+  desk.updateMatrixWorld(true);
+  const frameBounds = new THREE.Box3().setFromObject(photoFrame.group);
+  const frameCentre = frameBounds.getCenter(new THREE.Vector3());
+  const frameSize = frameBounds.getSize(new THREE.Vector3());
+  obstruction(
+    "desk-photo-frame",
+    frameCentre.x,
+    frameCentre.z,
+    frameSize.x,
+    frameSize.z,
+    frameSize.y,
+    frameBounds.min.y,
   );
-  notebook.rotation.y = -0.12;
-  box(0.008, 0.007, 0.68, brass, notebook, 0.16, 0.032, 0);
-  const pen = cylinder(0.014, 0.014, 0.5, brass, desk, 0.97, 1.39, 0.1, 10);
-  pen.rotation.x = Math.PI / 2;
-  pen.rotation.z = 0.35;
-  const deskCup = group(1.03, 1.355, -0.36, desk);
-  cylinder(0.12, 0.095, 0.23, cream, deskCup, 0, 0.115, 0);
-  cylinder(0.1, 0.1, 0.008, woodDark, deskCup, 0, 0.235, 0);
-  registerBreakable(
-    "desk-cup",
-    "机のカップ",
-    deskCup,
-    ["#eee9dc", "#bf9469"],
-    1.36,
-  );
+
+  // Existing desk lamp, next to the phone and the photograph.
   cylinder(0.21, 0.21, 0.035, dark, desk, -1.06, 1.39, -0.31);
   cylinder(0.025, 0.025, 0.78, dark, desk, -1.06, 1.8, -0.31, 12);
   const lampShade = cylinder(0.12, 0.23, 0.21, cream, desk, -1.06, 2.22, -0.31);
@@ -815,6 +815,7 @@ export function createRoomScene(archive: Archive): RoomScene {
       fractureSystem.dispose();
       character.dispose();
       bird.dispose();
+      photoFrame.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) geometries.add(object.geometry);
