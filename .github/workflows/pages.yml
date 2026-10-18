@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       validation:
-        description: "Validation scope (visual only after reviewing appearance-only changes)"
+        description: "Validation scope (visual: appearance only; records: TXT/photo content only)"
         type: choice
         required: true
         default: full
-        options: [full, visual]
+        options: [full, visual, records]
 permissions:
   contents: read
   pages: write
@@ -28,17 +28,23 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Unit tests
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation != 'visual' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation == 'full' }}
         run: npm run test
+      - name: Record parser tests
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'records' }}
+        run: npx vitest run tests/parser.test.ts
       - run: npx playwright install --with-deps chromium
       - name: Room rendering smoke test
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'visual' }}
         run: npm run test:e2e -- tests/e2e/room.spec.ts --grep '小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆わない$' --reporter=list,github
       - name: Full browser tests
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation != 'visual' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation == 'full' }}
         run: npm run test:e2e -- --reporter=list,github
+      - name: Published record smoke test
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'records' }}
+        run: npm run test:e2e -- tests/e2e/site.spec.ts --grep '公開TXTの件数が4コレクションのカードと詳細に一致$' --reporter=list,github
       - name: Subpath deployment test
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation != 'visual' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation == 'full' }}
         run: npm run test:subpath -- --reporter=list,github
       - run: npm run build
       - uses: actions/configure-pages@v5

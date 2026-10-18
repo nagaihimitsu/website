@@ -1,5 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import sharp from "sharp";
+import { tsImport } from "tsx/esm/api";
+import { files } from "../../src/data/model";
 async function fixture(page: Page) {
   const texts: Record<string, string> = {
     "訪問した国.txt": "日本,アメリカ,イギリス",
@@ -31,23 +34,58 @@ async function fixture(page: Page) {
     route.fulfill({ contentType: "image/webp", body: image }),
   );
 }
-test("本番は架空の実績なし、4コレクションへ移動", async ({ page }) => {
+test("公開TXTの件数が4コレクションのカードと詳細に一致", async ({ page }) => {
+  // Match the Vite/tsx JSON loader used by the app and data validation scripts.
+  const { catalogs, sections } = await tsImport("../../src/data/catalogs.ts", import.meta.url);
+  const { parseArchive } = await tsImport("../../src/data/parser.ts", import.meta.url);
+  const archive = parseArchive(
+    Object.fromEntries(
+      Object.values(files).map((file) => [
+        file,
+        readFileSync(new URL(`../../public/data/${file}`, import.meta.url), "utf8"),
+      ]),
+    ),
+  );
   await page.goto("/#/index");
-  await expect(page.locator(".card-count strong")).toHaveText([
-    "0",
-    "0",
-    "0",
-    "0",
-  ]);
+  await expect(page.locator(".card-count strong")).toHaveText(
+    sections.map((section) => String(archive.achieved[section].size)),
+  );
   await expect(page.locator(".collection-card")).toHaveCount(4);
   await page.screenshot({
     path: "docs/screenshots/index-desktop.png",
     fullPage: true,
     animations: "disabled",
   });
-  for (const s of ["world", "japan", "mountains", "pokemon"]) {
+  for (const s of sections) {
     await page.goto("/#/" + s);
-    await expect(page.locator(".page-count strong")).toHaveText("0");
+    await expect(page.locator(".page-count strong")).toHaveText(
+      String(archive.achieved[s].size),
+    );
+    if (s !== "pokemon") {
+      const expected = catalogs[s]
+        .filter(
+          (entry) =>
+            (s !== "world" || entry.hasGeometry) &&
+            archive.achieved[s].has(entry.id),
+        )
+        .map((entry) => entry.id)
+        .sort();
+      await expect
+        .poll(() =>
+          page
+            .locator(s === "mountains" ? ".mountain-marker.visited" : ".land.visited")
+            .evaluateAll((elements) =>
+              elements.map((element) => element.getAttribute("data-id")).sort(),
+            ),
+        )
+        .toEqual(expected);
+    } else {
+      await expect(page.locator(".dex-stats strong")).toHaveText([
+        String(archive.normal.size),
+        String(archive.shiny.size),
+        String([...archive.normal].filter((id) => archive.shiny.has(id)).length),
+      ]);
+    }
     await expect(page.locator("h1")).toBeVisible();
   }
 });

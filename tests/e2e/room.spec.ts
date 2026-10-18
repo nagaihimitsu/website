@@ -2,6 +2,16 @@ import { test, expect, type Page } from "@playwright/test";
 import sharp from "sharp";
 import { PerspectiveCamera, Vector3 } from "three";
 
+// Room controls use a stable empty archive, independent of personal records.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/data/*.txt", (route) =>
+    route.fulfill({
+      contentType: "text/plain;charset=utf-8",
+      body: "# 操作テスト用の空の記録\n",
+    }),
+  );
+});
+
 const destinations = {
   world: "世界地図を開く",
   japan: "日本地図を開く",
