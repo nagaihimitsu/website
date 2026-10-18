@@ -11,6 +11,7 @@ import { createBreakables } from "./art/breakables";
 import { createCharacter } from "./art/character";
 import { createBird } from "./art/bird";
 import { createPhotoFrame } from "./art/photoFrame";
+import { createTableCamera } from "./art/tableCamera";
 import deskPhotoUrl from "../assets/room/rome-travel.jpg";
 import {
   createWorldMapTexture,
@@ -627,19 +628,26 @@ export function createRoomScene(archive: Archive): RoomScene {
     for (const z of [-0.4, 0.4])
       cylinder(0.045, 0.035, 0.5, woodDark, coffee, x, 0.28, z, 12);
   rounded(1.7, 0.11, 1.14, woodLight, 0.2, coffee, 0, 0.58, 0);
-  const magazine = rounded(
-    0.5,
-    0.035,
-    0.63,
-    cream,
-    0.01,
-    coffee,
-    -0.36,
-    0.655,
-    -0.08,
+  // A silver-and-leather camera replaces the magazine on the low table.
+  const tableCamera = createTableCamera();
+  tableCamera.group.name = "coffee-table-camera";
+  tableCamera.group.scale.setScalar(0.82);
+  tableCamera.group.position.set(-0.34, 0.635, -0.12);
+  tableCamera.group.rotation.y = 0.3;
+  coffee.add(tableCamera.group);
+  coffee.updateMatrixWorld(true);
+  const cameraBounds = new THREE.Box3().setFromObject(tableCamera.group);
+  const cameraCentre = cameraBounds.getCenter(new THREE.Vector3());
+  const cameraSize = cameraBounds.getSize(new THREE.Vector3());
+  obstruction(
+    "coffee-table-camera",
+    cameraCentre.x,
+    cameraCentre.z,
+    cameraSize.x,
+    cameraSize.z,
+    cameraSize.y,
+    cameraBounds.min.y,
   );
-  magazine.rotation.y = -0.15;
-  rounded(0.38, 0.008, 0.35, blueLight, 0.003, magazine, 0, 0.023, -0.05);
   cylinder(0.12, 0.12, 0.025, woodDark, coffee, 0.38, 0.66, 0.17);
   const coffeeCup = group(0.38, 0.67, 0.17, coffee);
   cylinder(0.09, 0.07, 0.14, white, coffeeCup, 0, 0.07, 0);
@@ -816,6 +824,7 @@ export function createRoomScene(archive: Archive): RoomScene {
       character.dispose();
       bird.dispose();
       photoFrame.dispose();
+      tableCamera.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) geometries.add(object.geometry);
