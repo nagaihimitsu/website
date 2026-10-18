@@ -80,7 +80,7 @@ async function dragView(page: Page, dx: number, dy = 0) {
   const y = box!.y + box!.height * 0.4;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x + dx, y + dy, { steps: 10 });
+  await page.mouse.move(x + dx, y + dy, { steps: 3 });
   await page.mouse.up();
   await renderReleasedInput(page);
 }
