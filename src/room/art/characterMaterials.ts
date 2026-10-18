@@ -161,7 +161,7 @@ function cottonTile(): Textile {
 
 function canvasTile(): Textile {
   const size = 512;
-  const result = tile(size, size, 2, 2, (x, y) => {
+  const result = tile(size, size, 3, 3, (x, y) => {
     const u = x / size;
     const v = y / size;
     const warp = Math.pow(0.5 + 0.5 * Math.cos((TAU * x) / 8), 1.8);
@@ -171,7 +171,7 @@ function canvasTile(): Textile {
     const yarn = noise(u, v, 64, 227) - 0.5;
     const fine = hash(x, y, 229) - 0.5;
     return [
-      0.962 + (weave - 0.4) * 0.021 + yarn * 0.021 + fine * 0.012,
+      0.962 + (weave - 0.4) * 0.01 + yarn * 0.014 + fine * 0.008,
       0.35 + weave * 0.3 + yarn * 0.06 + fine * 0.024,
       0.955 + fine * 0.018 - weave * 0.025,
     ];
@@ -232,14 +232,14 @@ export function createCharacterMaterials() {
       }),
     );
   }
-  const fur = textile("#c1946a", plush, 0.0036, 0.85, "#d6b28c");
-  const muzzle = textile("#c99f79", plush, 0.0027, 0.78, "#e0bf9d");
-  const earInner = textile("#946b59", plush, 0.0024, 0.7, "#bc9685");
-  const earRim = textile("#c49870", plush, 0.0036, 0.85, "#d9b591");
-  const hoodie = textile("#858891", cotton, 0.0012, 0.5, "#b8bac3");
-  const ribbing = textile("#787c86", ribs, 0.0017, 0.45, "#b1b4bf");
-  const hoodInterior = textile("#6b707b", cotton, 0.0013, 0.5, "#a2a8b5");
-  const pocketFabric = textile("#888c95", cotton, 0.0012, 0.5, "#bdc0c9");
+  // The reference reads as soft, short velvet with broad shading. Strong bump
+  // and bright isolated fibres made the former head look granular from the side.
+  const fur = textile("#a87c5e", plush, 0.0007, 0.52, "#c09a7f");
+  const earInner = textile("#875f4c", plush, 0.0006, 0.42, "#b18a73");
+  const hoodie = textile("#73747b", cotton, 0.00055, 0.35, "#a5a6af");
+  const ribbing = textile("#6d6f76", ribs, 0.0009, 0.3, "#a3a5af");
+  const hoodInterior = textile("#62656e", cotton, 0.0006, 0.3, "#959aa5");
+  const pocketFabric = textile("#77787f", cotton, 0.00055, 0.35, "#aaabb4");
   const pants = textile("#353940", cotton, 0.0008, 0.25, "#70747d");
   const pantCuffs = textile("#464b55", ribs, 0.0011, 0.3, "#7c8390");
   const shoeUpper = textile("#454951", canvas, 0.0007, 0.2, "#838791");
@@ -250,9 +250,9 @@ export function createCharacterMaterials() {
     }),
   );
   const ivory = textile("#eeeae1", cotton, 0.00065, 0.3, "#f6f2e8");
-  const backpack = textile("#ded6c6", canvas, 0.0014, 0.35, "#eee5d4");
-  const backpackTrim = textile("#c3b9a7", canvas, 0.0011, 0.3, "#e3d7c4");
-  const backpackLight = textile("#e7dfd1", canvas, 0.0014, 0.35, "#f2eada");
+  const backpack = textile("#d1c8b9", canvas, 0.00065, 0.28, "#e5dac8");
+  const backpackTrim = textile("#b9ad9c", canvas, 0.00065, 0.25, "#d8cbb9");
+  const backpackLight = textile("#ddd3c3", canvas, 0.00065, 0.28, "#eae0d0");
   const feature = own(
     new THREE.MeshStandardMaterial({
       color: "#29201d",
@@ -272,7 +272,7 @@ export function createCharacterMaterials() {
   // Instanced geometry can vary this base colour slightly for a natural nap.
   const fibers = own(
     new THREE.MeshStandardMaterial({
-      color: "#c29871",
+      color: "#ac8163",
       roughness: 1,
       metalness: 0,
     }),
@@ -280,9 +280,7 @@ export function createCharacterMaterials() {
   let disposed = false;
   return {
     fur,
-    muzzle,
     earInner,
-    earRim,
     hoodie,
     ribbing,
     hoodInterior,
