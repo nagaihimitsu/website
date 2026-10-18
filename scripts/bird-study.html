@@ -10,6 +10,8 @@
     <script type="module">
       // Development-only, using exactly the NPC model rendered in the room.
       import * as THREE from "three";
+      import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
       import { createBird } from "../src/room/art/bird.ts";
       const params = new URLSearchParams(location.search);
       const scene = new THREE.Scene();
@@ -20,21 +22,35 @@
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.VSMShadowMap;
       document.body.append(renderer.domElement);
-      scene.add(new THREE.HemisphereLight("#fffaf6", "#a39c96", 2));
-      const light = new THREE.DirectionalLight("#fff8f0", 2.5);
-      light.position.set(-1, 2, -2);
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const room = new RoomEnvironment();
+      const environment = pmrem.fromScene(room, 0.04);
+      scene.environment = environment.texture;
+      scene.environmentIntensity = 0.35;
+      room.dispose();
+      pmrem.dispose();
+      scene.add(new THREE.HemisphereLight("#fffaf6", "#a39c96", 0.55));
+      const light = new THREE.DirectionalLight("#fff8f0", 0.45);
+      light.position.set(-0.4, 3, -0.4);
       light.castShadow = true;
       light.shadow.mapSize.set(2048, 2048);
       Object.assign(light.shadow.camera, {left:-0.6,right:0.6,top:0.8,bottom:-0.2,near:0.1,far:8});
+      light.shadow.radius = 32;
+      light.shadow.blurSamples = 16;
       light.shadow.bias = -0.0001;
       light.shadow.normalBias = 0.0005;
       scene.add(light);
-      const fill = new THREE.DirectionalLight("#e6ebff", 0.6);
+      RectAreaLightUniformsLib.init();
+      const softbox = new THREE.RectAreaLight("#fff8f2", 5, 1.8, 1.8);
+      softbox.position.set(-0.6, 1.0, -1.0);
+      softbox.lookAt(0, 0.22, 0);
+      scene.add(softbox);
+      const fill = new THREE.DirectionalLight("#e6ebff", 0.3);
       fill.position.set(2, 1, 1);
       scene.add(fill);
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.ShadowMaterial({opacity:0.16}));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.ShadowMaterial({opacity:0.13}));
       floor.rotation.x = -Math.PI / 2;
       floor.receiveShadow = true;
       scene.add(floor);
@@ -51,7 +67,7 @@
       renderer.render(scene,camera);
       document.body.dataset.ready = "true";
       window.birdStudy = {renderer,camera,scene,bird};
-      addEventListener("pagehide",()=>{bird.dispose();renderer.dispose()});
+      addEventListener("pagehide",()=>{bird.dispose();environment.dispose();renderer.dispose()});
     </script>
   </body>
 </html>

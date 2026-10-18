@@ -49,14 +49,32 @@ export function createBird() {
       sheenRoughness: 0.8,
       sheenColor: new THREE.Color(color),
     });
+    if (roughness > 0.5) {
+      // A broad-light diffuse response keeps the little satin sculpture soft
+      // under the room's directional sun. Leave glossy eyes and bill unchanged.
+      result.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <lights_physical_pars_fragment>",
+          THREE.ShaderChunk.lights_physical_pars_fragment.replace(
+            "reflectedLight.directDiffuse += irradiance * BRDF_Lambert",
+            `float broadDot = dot( geometryNormal, directLight.direction );
+             float broadWidth = 0.45;
+             float broadLambert = broadDot > broadWidth ? broadDot :
+               pow( max( broadDot + broadWidth, 0.0 ), 2.0 ) / ( 4.0 * broadWidth );
+             reflectedLight.directDiffuse += ( irradiance + ( broadLambert - dotNL ) * directLight.color ) * BRDF_Lambert`,
+          ),
+        );
+      };
+      result.customProgramCacheKey = () => "bird-satin-broad-light-v1";
+    }
     materials.add(result);
     return result;
   };
   const white = satin("#f4f1ee", 0.66);
   const wingMaterial = satin("#ffffff", 0.62);
   wingMaterial.vertexColors = true;
-  const tailMaterial = satin("#575c68", 0.64);
-  const feetMaterial = satin("#654332", 0.66);
+  const tailMaterial = satin("#484e5a", 0.64);
+  const feetMaterial = satin("#543b30", 0.66);
   const beakMaterial = satin("#ffffff", 0.38);
   beakMaterial.vertexColors = true;
   const eyeMaterial = satin("#211a16", 0.14);
@@ -95,62 +113,51 @@ export function createBird() {
     return result;
   }
 
-  // A single continuous pear, with a full lower breast and a narrow soft crown.
-  // The head is not an intersecting sphere: there is no neck seam in any view.
-  const profile = new THREE.CatmullRomCurve3(
-    [
-      [0, 0.069, 0],
-      [0.028, 0.069, 0.025],
-      [0.064, 0.081, 0.058],
-      [0.111, 0.119, 0.093],
-      [0.135, 0.181, 0.117],
-      [0.133, 0.236, 0.119],
-      [0.113, 0.294, 0.104],
-      [0.106, 0.353, 0.098],
-      [0.093, 0.399, 0.086],
-      [0.059, 0.436, 0.056],
-      [0.027, 0.45, 0.025],
-      [0, 0.45, 0],
-    ].map(([x, y, z]) => new THREE.Vector3(x, y, z)),
-    false,
-    "catmullrom",
-    0.45,
-  );
-  const bodyGeometry = new THREE.SphereGeometry(1, 48, 64);
+  // Three tangent-continuous Bezier arcs: round belly, quiet upright cheeks,
+  // and a domed crown. Sampling the outline avoids pinches between control rings.
+  const outline = new THREE.CurvePath<THREE.Vector2>();
+  const arc = (points: number[][]) => outline.add(new THREE.CubicBezierCurve(
+    ...points.map(([x, y]) => new THREE.Vector2(x, y)) as [THREE.Vector2, THREE.Vector2, THREE.Vector2, THREE.Vector2],
+  ));
+  arc([[0, 0.069], [0.080, 0.069], [0.141, 0.117], [0.141, 0.183]]);
+  arc([[0.141, 0.183], [0.141, 0.242], [0.111, 0.277], [0.111, 0.337]]);
+  arc([[0.111, 0.337], [0.111, 0.408], [0.081, 0.451], [0, 0.451]]);
+  const bodyProfile = outline.getPoints(32);
+  const bodyGeometry = new THREE.LatheGeometry(bodyProfile, 64);
   const bodyPositions = bodyGeometry.getAttribute("position");
+  // Slightly fuller breast than crown, continuous depth in front and behind.
   for (let i = 0; i < bodyPositions.count; i++) {
-    const unitY = THREE.MathUtils.clamp(bodyPositions.getY(i), -1, 1);
-    const t = 1 - Math.acos(unitY) / Math.PI;
-    const point = profile.getPoint(t);
-    const azimuth = Math.atan2(bodyPositions.getZ(i), bodyPositions.getX(i));
-    const centreZ = 0.008 - Math.sin(t * Math.PI) * 0.008;
-    bodyPositions.setXYZ(
-      i,
-      Math.cos(azimuth) * point.x,
-      point.y,
-      centreZ + Math.sin(azimuth) * point.z,
-    );
+    bodyPositions.setZ(i, bodyPositions.getZ(i) * 0.94);
   }
   mesh("bird-continuous-white-pear", smoothSculpt(bodyGeometry), white);
+  const bodyRadiusAt = (height: number) => {
+    const index = bodyProfile.findIndex((point) => point.y >= height);
+    if (index <= 0) return bodyProfile[Math.max(0, index)].x;
+    const previous = bodyProfile[index - 1], next = bodyProfile[index];
+    return THREE.MathUtils.lerp(previous.x, next.x, (height - previous.y) / (next.y - previous.y));
+  };
 
-  // Folded teardrop wings: the shoulder sits forward, the dark tip folds back.
-  // Colour is on the sculpt itself, so there are no floating feather overlays.
-  const wingGeometry = new THREE.SphereGeometry(1, 48, 40);
+  // A folded wing wraps around the pear, rather than sitting beside it as an
+  // ellipsoid. The wide forward shoulder sweeps toward the central rear tail.
+  const wingGeometry = new THREE.SphereGeometry(1, 64, 48);
   const wingPositions = wingGeometry.getAttribute("position");
   const wingColors: number[] = [];
-  const shoulderColor = new THREE.Color("#92949e");
-  const featherColor = new THREE.Color("#505460");
+  const shoulderColor = new THREE.Color("#787b87");
+  const featherColor = new THREE.Color("#444956");
   const color = new THREE.Color();
   for (let i = 0; i < wingPositions.count; i++) {
-    const x = wingPositions.getX(i);
-    const y = wingPositions.getY(i);
-    const z = wingPositions.getZ(i);
+    const x = wingPositions.getX(i), y = wingPositions.getY(i), z = wingPositions.getZ(i);
     const t = (1 - y) / 2;
-    const taper = 1 - t * 0.4;
-    const depth = z * 0.1 * taper;
-    wingPositions.setXYZ(i, x * 0.035, y * 0.074, depth + t * 0.085);
-    // Oblique folded-feather boundary, softly transitioning over a narrow lip.
-    const dark = THREE.MathUtils.smoothstep(t + z * 0.18, 0.62, 0.75);
+    const height = 0.298 - t * 0.158;
+    const spread = z < 0 ? 1.14 : 0.65;
+    const angle = 0.30 + t * 0.63 + z * spread * (1 - t * 0.24);
+    const radius = bodyRadiusAt(height);
+    wingPositions.setXYZ(i,
+      Math.cos(angle) * (radius + 0.007) + x * 0.018 - 0.11,
+      height - 0.285,
+      Math.sin(angle) * (radius * 0.94 + 0.012),
+    );
+    const dark = THREE.MathUtils.smoothstep(t + z * 0.35, 0.76, 0.82);
     color.copy(shoulderColor).lerp(featherColor, dark);
     wingColors.push(color.r, color.g, color.b);
   }
@@ -159,53 +166,54 @@ export function createBird() {
   const wings = [-1, 1].map((side) => {
     const root = new THREE.Group();
     root.name = side < 0 ? "bird-left-wing-pivot" : "bird-right-wing-pivot";
-    root.position.set(side * 0.13, 0.205, 0.018);
+    root.position.set(side * 0.11, 0.285, 0);
     sculpture.add(root);
     const wing = mesh("bird-folded-wing", smoothWingGeometry, wingMaterial, root);
-    wing.rotation.z = side * -0.12;
-    wing.rotation.y = side * -0.58;
+    wing.scale.x = side;
     return root;
   });
 
   const tail = new THREE.Group();
   tail.name = "bird-tail-pivot";
-  tail.position.set(0, 0.158, 0.103);
+  tail.position.set(0, 0.156, 0.103);
   sculpture.add(tail);
-  const tailShape = oval("bird-short-tail", [0.035, 0.014, 0.05], [0, 0, 0.032], tailMaterial, tail);
+  const tailShape = oval("bird-short-tail", [0.034, 0.019, 0.041], [0, 0, 0.028], tailMaterial, tail);
   tailShape.rotation.x = 0.15;
 
   const eyes = [-1, 1].map((side) => {
     const root = new THREE.Group();
     root.name = side < 0 ? "bird-left-eye" : "bird-right-eye";
-    root.position.set(side * 0.06, 0.355, -0.076);
+    root.position.set(side * 0.061, 0.356, -0.084);
     root.rotation.y = side * -0.49;
     root.rotation.x = -0.02;
     sculpture.add(root);
-    oval("bird-glossy-eye", [0.0096, 0.0131, 0.0061], [0, 0, -0.001], eyeMaterial, root);
+    oval("bird-glossy-eye", [0.0105, 0.0135, 0.0064], [0, 0, -0.001], eyeMaterial, root);
     const glint = oval("bird-eye-small-softbox", [0.0016, 0.0023, 0.0006], [-0.0025, 0.0049, -0.0062], glintMaterial, root);
     glint.castShadow = false;
     glint.receiveShadow = false;
     return root;
   });
 
-  const beakGeometry = remember(new THREE.SphereGeometry(1, 32, 20));
+  // A short broad-rooted bill, with its root sunk into the face and a rounded
+  // tip. Its lower half is warmer and darker, like the reference's soft bill.
+  const beakGeometry = new THREE.SphereGeometry(1, 48, 32);
   const beakPositions = beakGeometry.getAttribute("position");
   const beakColors: number[] = [];
-  const upperBeak = new THREE.Color("#e9ba2c");
-  const lowerBeak = new THREE.Color("#a37a27");
+  const upperBeak = new THREE.Color("#e7b219");
+  const lowerBeak = new THREE.Color("#ac832b");
   for (let i = 0; i < beakPositions.count; i++) {
-    const x = beakPositions.getX(i);
-    const y = beakPositions.getY(i);
-    const z = beakPositions.getZ(i);
+    const x = beakPositions.getX(i), y = beakPositions.getY(i), z = beakPositions.getZ(i);
     const front = (1 - z) / 2;
-    // The broad root narrows into a rounded, gently lowered bill, not a cone.
-    beakPositions.setXYZ(i, x * 0.029 * (1 - front * 0.24), y * 0.016 - front * 0.003, z * 0.031);
-    color.copy(lowerBeak).lerp(upperBeak, THREE.MathUtils.smoothstep(y, -0.36, 0.25));
+    beakPositions.setXYZ(i,
+      x * 0.036 * (1 - front * 0.38),
+      y * 0.022 * (1 - front * 0.35) - front * 0.003,
+      z * 0.030,
+    );
+    color.copy(lowerBeak).lerp(upperBeak, THREE.MathUtils.smoothstep(y, -0.32, 0.19));
     beakColors.push(color.r, color.g, color.b);
   }
   beakGeometry.setAttribute("color", new THREE.Float32BufferAttribute(beakColors, 3));
-  beakGeometry.computeVertexNormals();
-  mesh("bird-rounded-yellow-bill", beakGeometry, beakMaterial).position.set(0, 0.341, -0.121);
+  mesh("bird-rounded-yellow-bill", smoothSculpt(beakGeometry), beakMaterial).position.set(0, 0.340, -0.120);
 
   const feet = [-1, 1].map((side) => {
     const root = new THREE.Group();
@@ -215,7 +223,7 @@ export function createBird() {
     const pieces: THREE.BufferGeometry[] = [];
     const tube = (points: number[][], radius: number) => {
       const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-      pieces.push(new THREE.TubeGeometry(curve, 9, radius, 8, false));
+      pieces.push(new THREE.TubeGeometry(curve, 12, radius, 12, false));
     };
     tube([[0, 0.089, 0.002], [0, 0.054, 0.001], [0, 0.018, 0], [0, 0.01, -0.01]], 0.0087);
     for (const splay of [-1, 0, 1]) {
