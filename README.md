@@ -79,6 +79,8 @@ GitHub Pagesの場合：
 
 ワークフローは `main` へのpushまたは手動実行で起動し、検証・テスト後に `dist/` を配信します。GitHub PagesのSourceは事前に **GitHub Actions** へ設定してください。公開完了はActionsの成功と、deployジョブが出力するURLで確認します。他の静的ホスティングでも `dist/` をアップロードすれば利用できます。
 
+通常のpushと手動実行の既定値 `validation: full` は全テストを実行します。キャラクターの外観だけの変更は、差分と比較画像を確認したうえで手動実行の `validation: visual` を選ぶと、部屋の描画テスト1件と本番ビルド（データ・ライセンス・TypeScriptの検査を含む）に絞れます。コミットメッセージに `[skip ci]` を付けてpushし、その後に手動実行すると重複実行を避けられます。操作・データ・依存関係を変更した場合は `full` を使います。
+
 ## 検証と残る範囲
 
 検証結果は [VALIDATION.md](docs/VALIDATION.md)。PC/360px幅の画面画像は [screenshots](docs/screenshots/)。テスト用実績・画像は通信モックおよび無視対象の `.test-build/` 内だけで使用します。

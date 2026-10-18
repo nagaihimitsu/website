@@ -86,7 +86,15 @@ export function buildCharacterBackpack(
   const rxs = sections.map((section) => section.rx);
   // The stuffed pack meets the back through its entire middle, rather than
   // leaving an air gap crossed by exposed shoulder-strap attachment tails.
-  const rzs = sections.map((section) => section.rz * 1.2);
+  const rzs = sections.map((section) => {
+    // The top dome tucks forward under the collapsed hood. Full canvas depth
+    // begins below the shoulders, avoiding a deep block pushing the hood out.
+    const upperTaper = THREE.MathUtils.smoothstep(section.y, 0.03, 0.14);
+    return section.rz * 1.2 * (1 - upperTaper * 0.54);
+  });
+  function topDomeOffset(y: number) {
+    return -0.035 * THREE.MathUtils.smoothstep(y, 0.04, 0.15);
+  }
   function profile(y: number) {
     let low = 0;
     let high = 1;
@@ -101,17 +109,22 @@ export function buildCharacterBackpack(
   function rearDepth(x: number, y: number) {
     const { rx, rz } = profile(y);
     const a = Math.min(0.9999, Math.abs(x / Math.max(0.0001, rx)));
-    return rz * Math.max(0, 1 - a ** (2 / exponent)) ** (exponent / 2);
+    return topDomeOffset(y) +
+      rz * Math.max(0, 1 - a ** (2 / exponent)) ** (exponent / 2);
   }
   function sideWidth(y: number, z: number) {
     const { rx, rz } = profile(y);
-    const a = Math.min(0.9999, Math.abs(z / Math.max(0.0001, rz)));
+    const a = Math.min(0.9999, Math.abs((z - topDomeOffset(y)) / Math.max(0.0001, rz)));
     return rx * Math.max(0, 1 - a ** (2 / exponent)) ** (exponent / 2);
   }
 
   const pack = new THREE.Group();
   pack.name = "padded-canvas-backpack";
   pack.position.set(0, 0.529, 0.205);
+  // The reference fills most of the back between the sleeves. Scale the sewn
+  // shell, rear pocket and bindings together, preserving their shared surface.
+  // Shoulder loops stay on the body and their buried ends still meet the pack.
+  pack.scale.x = 1.22;
   body.add(pack);
   surface(
     64,
@@ -123,7 +136,8 @@ export function buildCharacterBackpack(
       return new THREE.Vector3(
         Math.sign(c) * Math.abs(c) ** exponent * interpolate(rxs, v),
         interpolate(ys, v),
-        Math.sign(s) * Math.abs(s) ** exponent * interpolate(rzs, v),
+        topDomeOffset(interpolate(ys, v)) +
+          Math.sign(s) * Math.abs(s) ** exponent * interpolate(rzs, v),
       );
     },
     backpack,
@@ -222,8 +236,9 @@ export function buildCharacterBackpack(
     // A sewn side pocket rises only a few millimetres from the shell. The lip
     // conforms to its convex side instead of forming a horizontal shelf.
     function sidePocketPoint(u: number, v: number) {
-      const z = -0.004 + (u * 2 - 1) * (0.048 - 0.004 * (1 - v));
       const y = -0.062 + v * 0.108;
+      const z = topDomeOffset(y) - 0.004 +
+        (u * 2 - 1) * (0.048 - 0.004 * (1 - v));
       const bulge = 0.007 * Math.sin(Math.PI * u) ** 0.7 * Math.sin(Math.PI * v) ** 0.65;
       return new THREE.Vector3(side * (sideWidth(y, z) + 0.0008 + bulge), y, z);
     }
@@ -239,7 +254,7 @@ export function buildCharacterBackpack(
 
     const sideZip = Array.from({ length: 25 }, (_, index) => {
       const y = THREE.MathUtils.lerp(0.142, -0.035, index / 24);
-      const z = -0.004;
+      const z = topDomeOffset(y) - 0.004;
       const v = THREE.MathUtils.clamp((y + 0.062) / 0.108, 0, 1);
       // Follow the pocket's actual padding as well as the underlying shell;
       // a straight chord would sink through its centre and leave a stray tip.
@@ -254,7 +269,7 @@ export function buildCharacterBackpack(
     // disappear into the bag, rather than hanging down like suspenders.
     strap(
       [
-        [side * 0.07, 0.659, 0.205],
+        [side * 0.07, 0.659, 0.19],
         [side * 0.09, 0.688, 0.15],
         [side * 0.135, 0.69, 0.05],
         [side * 0.154, 0.663, -0.04],
@@ -278,7 +293,8 @@ export function buildCharacterBackpack(
 
   strap(
     [[-0.032, 0.145, -0.012], [-0.03, 0.175, -0.01], [0, 0.184, -0.01],
-      [0.03, 0.175, -0.01], [0.032, 0.145, -0.012]],
+      [0.03, 0.175, -0.01], [0.032, 0.145, -0.012]]
+      .map(([x, y, z]) => [x, y, z + topDomeOffset(y)]),
     0.016,
     0.006,
     backpackTrim,

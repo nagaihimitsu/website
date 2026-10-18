@@ -22,7 +22,7 @@
 
 キャラクターの毛並み、綿の編み目、リブ、キャンバス地の織り目は `src/room/art/characterMaterials.ts` が生成する独自のテクスチャです。色・凹凸・表面の粗さを生成し、外部の素材画像を読み込みません。輪郭の短毛、フードの折れ目、リュックのふくらみと縫い目も自作の形状です。
 
-頭部の連続曲面と耳・顔は `characterHead.ts`、服・しっぽ・関節は `characterBody.ts`、手と靴は `characterExtremities.ts`、リュックは `characterBackpack.ts` に分け、`character.ts` が組み立て・動作・リソース解放を担当します。毛・布・綿の紐の素材画像も `characterMaterials.ts` で生成し、外部の3Dモデルや素材画像は使用していません。比較用ページ `scripts/character-study.html` も実際の部屋と同じモデルを読み込みます。
+頭部の連続曲面と耳・顔は `characterHead.ts`、局所座標で形を保つ楕円の目と星は `characterEyes.ts`、根元をつないだ耳前の毛束は `characterTufts.ts`、服・しっぽ・関節は `characterBody.ts`、手と靴は `characterExtremities.ts`、リュックは `characterBackpack.ts` に分け、`character.ts` が組み立て・動作・リソース解放を担当します。毛・布・綿の紐の素材画像も `characterMaterials.ts` で生成し、外部の3Dモデルや素材画像は使用していません。目の艶に使う小さな反射マップもコードで生成し、読み込み画像や外部サービスは使いません。比較用ページ `scripts/character-study.html` も実際の部屋と同じモデルを読み込み、`focus=face` で顔を拡大確認できます。このページは本番ビルドの入口に含めません。
 
 操作について公式ページへアクセスを試みた結果と、本サイトで採用したカメラの仕様を [CONTROLS.md](CONTROLS.md) に記録しています。各ゲーム固有の挙動を公式資料で確認済みとする記述は行っていません。
 

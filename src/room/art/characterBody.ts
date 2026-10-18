@@ -166,10 +166,11 @@ export function buildCharacterBody(
     { rows: 24, folds: 0.0006 },
   ).name = "soft-ribbed-hem";
 
-  // A broad, folded sheet: high at the nape and low at the front. The varying
-  // cross-section makes a collapsed hood, with two folds, rather than a neck ring.
+  // The collapsed hood has two front lapels and one broad rear drape. Its
+  // padded lower centre falls over the upper backpack instead of circling the
+  // neck as two level rolls. The rear section has a single soft convex fold.
   const hoodRadial = [
-    0.82, 0.88, 1.01, 1.055, 0.995, 1.055, 1.005, 0.87, 0.76, 0.82,
+    0.79, 0.88, 1.0, 1.04, 1.05, 1.055, 1.015, 0.92, 0.77, 0.79,
   ];
   const hoodFrontRadial = [
     0.82, 0.88, 1.015, 1.025, 1.015, 1.01, 0.96, 0.87, 0.76, 0.82,
@@ -191,35 +192,73 @@ export function buildCharacterBody(
       const lapelRise = Math.abs(Math.cos(theta));
       // Each front half falls diagonally from the cheek to the low centre.
       // A linear rise makes folded lapels instead of a horizontal neck ring.
-      const lower = isFront ? 0.632 + lapelRise * 0.033 : 0.67 - back * 0.01;
-      const thickness = isFront
-        ? 0.058 + lapelRise * 0.112
-        : 0.1675 + back * 0.005;
-      // Lower only the high cheek rim; the low V and lower folds keep their
-      // reference-aligned positions. The two half surfaces agree at the sides.
-      const upperRimDrop = 0.035 * (isFront ? lapelRise : 1 - Math.sin(theta));
-      const width = 0.252 - Math.max(0, Math.sin(theta)) * 0.044;
+      const lower = 0.632 + lapelRise * 0.033;
+      const thickness = 0.058 + lapelRise * 0.112;
+      const upperRimDrop = 0.035 * lapelRise;
       const folds =
         Math.sin(theta * 3 + v * 4) * 0.0027 * Math.sin(Math.PI * v);
-      return new THREE.Vector3(
-        Math.cos(theta) * width * radial,
+      const frontPoint = new THREE.Vector3(
+        Math.cos(theta) * 0.252 * radial,
         lower + height * thickness - upperRimDrop * height ** 2 + folds,
         0.012 + Math.sin(theta) * (0.135 + back * 0.045) * radial,
+      );
+      if (isFront) return frontPoint;
+
+      // A compact oval section forms the rolled edge at the nape. The broad
+      // hanging pouch below stays visible beneath this small upper fold.
+      const sine = Math.max(0, Math.sin(theta));
+      // The rear is only a compact nape roll; the separate padded pouch
+      // below supplies the drooping outline and the low central fold.
+      const rearWeight = sine * (1.35 - 0.35 * sine);
+      const phi = (v - 0.2) * tau;
+      const radialRear = 0.92 + 0.1 * Math.sin(phi);
+      const rearY = 0.77 + 0.035 * Math.cos(phi);
+      const rearZ = 0.164 - 0.01 * Math.cos(phi) + 0.026 * Math.sin(phi);
+      // The upper roll hugs the nape through the shoulders.
+      const depthAcross = sine * (1.1 - 0.1 * sine);
+      return new THREE.Vector3(
+        Math.cos(theta) * (0.252 - sine * 0.014) *
+          THREE.MathUtils.lerp(radial, radialRear, rearWeight),
+        THREE.MathUtils.lerp(frontPoint.y, rearY, rearWeight),
+        0.012 + depthAcross * (rearZ - 0.012),
       );
     },
     hoodie,
     body,
   );
   hood.name = "folded-fabric-hood";
+  // A collapsed hood is a hanging pouch, not a toroidal collar. This closed
+  // padded piece tucks beneath the nape roll and tapers into a soft lower V.
+  // Its boundary is buried at the shoulders; its centre sits over the upper
+  // canvas dome. Front/back hemispheres keep an actual cloth volume at the tip.
+  surface(
+    64,
+    40,
+    (u, v) => {
+      const angle = u * tau;
+      const radius = Math.sin(v * Math.PI);
+      const sx = Math.cos(angle) * radius;
+      const sy = Math.sin(angle) * radius;
+      const x = 0.23 * sx * (1 + sy * 0.18);
+      const y = 0.715 + 0.08 * sy - 0.005 * sy ** 2 + 0.025 * sx ** 2;
+      // One smooth support plane through the shared poles: interpolating
+      // depth independently along each spoke leaves a crease across the pouch.
+      const z = 0.2 - (y - 0.715) * 0.55 - 0.08 * (x / 0.23) ** 2;
+      return new THREE.Vector3(x, y, z + Math.cos(v * Math.PI) * 0.045);
+    },
+    hoodie,
+    body,
+    true,
+  ).name = "padded-hanging-hood-pouch";
   // Two broad, padded folds cross at the low point of the V. Their ends disappear
   // into the parent cloth, so the visible edges read as folded fabric surfaces.
   for (const side of [-1, 1]) {
     const lapel = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.235, 0.775, -0.045),
-      new THREE.Vector3(side * 0.178, 0.746, -0.09),
-      new THREE.Vector3(side * 0.1, 0.709, -0.119),
-      new THREE.Vector3(side * 0.03, 0.677, -0.132 - (side < 0 ? 0.002 : 0)),
-      new THREE.Vector3(-side * 0.012, 0.667, -0.123),
+      new THREE.Vector3(side * 0.228, 0.771, -0.045),
+      new THREE.Vector3(side * 0.178, 0.742, -0.09),
+      new THREE.Vector3(side * 0.1, 0.707, -0.121),
+      new THREE.Vector3(side * 0.03, 0.678, -0.135 - (side < 0 ? 0.002 : 0)),
+      new THREE.Vector3(-side * 0.012, 0.669, -0.127),
     ]);
     surface(
       40,
@@ -228,12 +267,12 @@ export function buildCharacterBody(
         const center = lapel.getPoint(u);
         const tangent = lapel.getTangent(u).normalize();
         const across = new THREE.Vector3(-tangent.y, tangent.x, 0).normalize();
-        const taper = Math.sin(Math.PI * u) ** 0.3;
+        const taper = Math.sin(Math.PI * u) ** 0.22;
         const phi = v * tau;
-        const halfWidth = (0.042 - u * 0.022) * taper;
+        const halfWidth = (0.047 - u * 0.023) * taper;
         return center
           .addScaledVector(across, Math.cos(phi) * halfWidth)
-          .add(new THREE.Vector3(0, 0, -Math.sin(phi) * 0.012 * taper));
+          .add(new THREE.Vector3(0, 0, -Math.sin(phi) * 0.021 * taper));
       },
       hoodie,
       body,

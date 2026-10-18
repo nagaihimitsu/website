@@ -219,15 +219,47 @@ function cordTile(): Textile {
   return result;
 }
 
+/** A tiny neutral studio reflection gives the toy's eyes a curved, glassy read. */
+function eyeReflection(): THREE.DataTexture {
+  const width = 256;
+  const height = 128;
+  const data = new Float32Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const latitude = Math.PI * (y + 0.5) / height;
+    for (let x = 0; x < width; x++) {
+      const longitude = Math.PI * 2 * ((x + 0.5) / width - 0.5);
+      const dy = -Math.cos(latitude);
+      // Soft upper windows surround the whole room. A single forward-facing
+      // panel loses every reflection when the traveller turns toward +Z.
+      const panels = 0.32 + 0.16 * Math.cos(longitude * 2) ** 4;
+      const softbox = Math.exp(-(((dy - 0.55) / 0.17) ** 4)) * panels;
+      const bounce = Math.exp(-(((dy + 0.55) / 0.28) ** 2)) * 0.65;
+      const offset = (y * width + x) * 4;
+      data[offset] = 0.06 + softbox * 3.8 + bounce * 0.6;
+      data[offset + 1] = 0.055 + softbox * 3.72 + bounce * 0.4;
+      data[offset + 2] = 0.05 + softbox * 3.65 + bounce * 0.28;
+      data[offset + 3] = 1;
+    }
+  }
+  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  texture.minFilter = texture.magFilter = THREE.LinearFilter;
+  texture.name = "traveller-eye-softbox-reflection";
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createCharacterMaterials() {
   const plush = plushTile();
   const cotton = cottonTile();
   const canvas = canvasTile();
   const ribs = ribTile();
   const braid = cordTile();
+  const eyeEnvironment = eyeReflection();
   const textures = [plush, cotton, canvas, ribs, braid].flatMap(
     ({ colour, detail }) => [colour, detail],
   );
+  textures.push(eyeEnvironment);
   const owned: THREE.Material[] = [];
   function own<T extends THREE.Material>(material: T): T {
     owned.push(material);
@@ -286,14 +318,16 @@ export function createCharacterMaterials() {
   const eye = own(
     new THREE.MeshPhysicalMaterial({
       color: "#291d1a",
-      roughness: 0.26,
-      specularIntensity: 0.4,
-      clearcoat: 0.18,
-      clearcoatRoughness: 0.3,
+      roughness: 0.23,
+      specularIntensity: 0.55,
+      clearcoat: 0.25,
+      clearcoatRoughness: 0.24,
+      envMap: eyeEnvironment,
+      envMapIntensity: 3.5,
     }),
   );
   const eyeRim = own(
-    new THREE.MeshStandardMaterial({ color: "#60483c", roughness: 0.72 }),
+    new THREE.MeshStandardMaterial({ color: "#3c2c25", roughness: 0.6 }),
   );
   const eyeLight = own(new THREE.MeshBasicMaterial({ color: "#fffdf5" }));
   // Opaque short strands avoid transparent shell sorting and depth artefacts.

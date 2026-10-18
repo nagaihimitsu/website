@@ -3,6 +3,13 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      validation:
+        description: "Validation scope (visual only after reviewing appearance-only changes)"
+        type: choice
+        required: true
+        default: full
+        options: [full, visual]
 permissions:
   contents: read
   pages: write
@@ -20,10 +27,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run test
+      - name: Unit tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation != 'visual' }}
+        run: npm run test
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --reporter=list,github
-      - run: npm run test:subpath -- --reporter=list,github
+      - name: Room rendering smoke test
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.validation == 'visual' }}
+        run: npm run test:e2e -- tests/e2e/room.spec.ts --grep '小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆わない$' --reporter=list,github
+      - name: Full browser tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation != 'visual' }}
+        run: npm run test:e2e -- --reporter=list,github
+      - name: Subpath deployment test
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.validation != 'visual' }}
+        run: npm run test:subpath -- --reporter=list,github
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

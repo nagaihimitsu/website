@@ -34,7 +34,7 @@
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.1;
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
       document.body.append(renderer.domElement);
       scene.add(new THREE.HemisphereLight("#fffaf4", "#8c857a", 2.1));
       const light = new THREE.DirectionalLight("#fff5e9", 1.8);
@@ -88,7 +88,8 @@
       };
       const angle =
         ((views[params.get("view") || "quarter"] ?? -45) * Math.PI) / 180;
-      const height = 1.38;
+      const faceStudy = params.get("focus") === "face";
+      const height = faceStudy ? 0.66 : 1.38;
       const width = (height * innerWidth) / innerHeight;
       const camera = new THREE.OrthographicCamera(
         -width / 2,
@@ -98,8 +99,9 @@
         0.01,
         30,
       );
-      camera.position.set(Math.sin(angle) * 4, 0.93, -Math.cos(angle) * 4);
-      camera.lookAt(0, 0.62, 0);
+      const targetY = faceStudy ? 0.95 : 0.62;
+      camera.position.set(Math.sin(angle) * 4, targetY + (faceStudy ? 0.15 : 0.31), -Math.cos(angle) * 4);
+      camera.lookAt(0, targetY, 0);
       renderer.render(scene, camera);
       document.body.dataset.ready = "true";
       window.characterStudy = { renderer, camera, scene, character };
