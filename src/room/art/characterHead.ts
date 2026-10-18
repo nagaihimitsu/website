@@ -67,14 +67,17 @@ function faceDepth(x: number, y: number) {
   return eyeSocketDepth(x, y, rawFaceDepth(x, y), eyeLayouts);
 }
 
-function facePoint(x: number, y: number, lift = 0) {
+function faceNormal(x: number, y: number) {
   const epsilon = 0.0001;
-  const normal = new THREE.Vector3(
+  return new THREE.Vector3(
     (faceDepth(x + epsilon, y) - faceDepth(x - epsilon, y)) / (2 * epsilon),
     (faceDepth(x, y + epsilon) - faceDepth(x, y - epsilon)) / (2 * epsilon),
     -1,
   ).normalize();
-  return new THREE.Vector3(x, y, faceDepth(x, y)).addScaledVector(normal, lift);
+}
+
+function facePoint(x: number, y: number, lift = 0) {
+  return new THREE.Vector3(x, y, faceDepth(x, y)).addScaledVector(faceNormal(x, y), lift);
 }
 
 export function buildCharacterHead(
@@ -83,7 +86,7 @@ export function buildCharacterHead(
 ): THREE.Group {
   const { remember, smoothNormals, mesh, ellipsoid, thread, pile, surfaces } =
     builder;
-  const { fur, earInner, feature } = surfaces;
+  const { fur, earOuter, earInner, feature } = surfaces;
   const head = new THREE.Group();
   head.name = "traveller-sculpted-head";
   head.position.set(0, 0.914, -0.006);
@@ -120,20 +123,21 @@ export function buildCharacterHead(
   // the rim, so no thin disc or disconnected torus is visible in profile.
   const earProfile = new THREE.SplineCurve(
     [
-      [0, 0.054],
-      [0.35, 0.053],
-      [0.68, 0.042],
-      [0.9, 0.023],
-      [1, -0.005],
-      [1.015, -0.023],
-      [0.98, -0.04],
-      [0.91, -0.052],
-      [0.79, -0.053],
-      [0.71, -0.041],
-      [0.66, -0.021],
-      [0.6, -0.002],
-      [0.37, 0.012],
-      [0, 0.017],
+      [0, 0.039],
+      [0.35, 0.038],
+      [0.68, 0.029],
+      [0.9, 0.013],
+      [1, -0.007],
+      [1.015, -0.021],
+      [0.98, -0.035],
+      [0.9, -0.044],
+      [0.79, -0.044],
+      [0.72, -0.033],
+      [0.66, -0.016],
+      [0.56, -0.003],
+      [0.34, 0.004],
+      [0.15, 0.006],
+      [0, 0.006],
     ].map(([radius, depth]) => new THREE.Vector2(radius, depth)),
   );
   const earRings = 52;
@@ -141,9 +145,17 @@ export function buildCharacterHead(
   const earPositions: number[] = [];
   const earUvs: number[] = [];
   const earIndices: number[] = [];
-  const liningStart = 34;
+  const liningStart = 32;
   for (let ring = 0; ring <= earRings; ring++) {
-    const { x: radius, y: depth } = earProfile.getPoint(ring / earRings);
+    const { x: radius, y: profileDepth } = earProfile.getPoint(ring / earRings);
+    // A flat tangent at the centre gives the lining a rounded dish, with no
+    // cone point where all radial rings meet.
+    const bowlBlend = ring > 35 ? 1 - THREE.MathUtils.smoothstep(radius, 0.42, 0.66) : 0;
+    const depth = THREE.MathUtils.lerp(
+      profileDepth,
+      0.006 - 0.022 * (Math.max(0, radius) / 0.66) ** 2.2,
+      bowlBlend,
+    );
     for (let slice = 0; slice <= earSlices; slice++) {
       const theta = (slice / earSlices) * Math.PI * 2;
       earPositions.push(
@@ -151,7 +163,9 @@ export function buildCharacterHead(
         Math.sin(theta) * radius * 0.117,
         depth,
       );
-      earUvs.push(slice / earSlices, ring / earRings);
+      // Planar fabric UVs avoid pinching the nap into radial spokes at the
+      // bowl centre. Every coincident pole vertex now samples the same texel.
+      earUvs.push((Math.cos(theta) * radius + 1) / 2, (Math.sin(theta) * radius + 1) / 2);
       if (ring < earRings && slice < earSlices) {
         const a = ring * (earSlices + 1) + slice;
         const b = a + earSlices + 1;
@@ -176,27 +190,32 @@ export function buildCharacterHead(
   for (const side of [-1, 1]) {
     const ear = new THREE.Group();
     ear.name = side < 0 ? "left-stuffed-ear" : "right-stuffed-ear";
-    ear.position.set(side * 0.158, 0.207, 0.022);
-    ear.rotation.set(0.025, -side * 0.3, -side * 0.28);
+    ear.position.set(side * 0.158, 0.207, 0.005);
+    // The opening turns outward, so the lining remains visible from the
+    // side. The old almost-forward ear became a deep narrow tube in profile.
+    ear.rotation.set(0.1, -side * 0.56, -side * 0.24);
     head.add(ear);
-    const shell = mesh(earGeometry, fur, ear);
-    shell.material = [fur, earInner];
+    const shell = mesh(earGeometry, earOuter, ear);
+    shell.material = [earOuter, earInner];
   }
   buildCharacterTufts(builder, head, faceDepth);
 
   buildCharacterEyes(builder, head, eyeLayouts);
 
-  const nosePoint = facePoint(0, -0.04, 0.006);
+  const nosePoint = facePoint(0, -0.046, -0.001);
   const noseGeometry = remember(new THREE.SphereGeometry(1, 40, 28));
   const nosePositions = noseGeometry.getAttribute("position");
   for (let index = 0; index < nosePositions.count; index++) {
     const y = nosePositions.getY(index);
-    // A wide, domed top and a softly tapered lower point, like a plush nose.
+    // The top is a soft broad dome, with a smaller rounded lower tip.
+    // Its back is buried in the muzzle: from the side this reads as a short
+    // padded animal nose, rather than a thin vertical bead on the face.
+    const z = nosePositions.getZ(index);
     nosePositions.setXYZ(
       index,
-      nosePositions.getX(index) * 0.033 * (1 + y * 0.32),
-      y * 0.023,
-      nosePositions.getZ(index) * 0.018,
+      nosePositions.getX(index) * 0.033 * (1 + y * 0.26),
+      y * 0.0235,
+      z * (z < 0 ? 0.022 : 0.018) * (1 + y * 0.13),
     );
   }
   smoothNormals(noseGeometry);
@@ -208,6 +227,9 @@ export function buildCharacterHead(
     nosePoint.y,
     nosePoint.z,
   );
+  // Follow the snout's inclined attachment plane. An upright sphere leaves
+  // its top floating above the brow slope and looks like a separate bead.
+  nose.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), faceNormal(0, -0.046));
   nose.name = "rounded-triangular-nose";
   const smile = [
     [-0.064, -0.075],

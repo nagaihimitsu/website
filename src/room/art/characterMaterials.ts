@@ -291,7 +291,10 @@ export function createCharacterMaterials() {
   // and bright isolated fibres made the former head look granular from the side.
   const fur = textile("#a87c5e", plush, 0.0007, 0.52, "#c09a7f");
   const pawFur = textile("#79513c", plush, 0.00065, 0.42, "#ad8265");
-  const earInner = textile("#875f4c", plush, 0.0006, 0.42, "#b18a73");
+  // Muted warm lining is a distinct inset fabric, visibly darker and less
+  // golden than the outer plush even when the open ear catches the key light.
+  const earOuter = textile("#a87c5e", plush, 0.00012, 0.45, "#c09a7f");
+  const earInner = textile("#785447", plush, 0.00008, 0.28, "#a77f70");
   const hoodie = textile("#73747b", cotton, 0.00055, 0.35, "#a5a6af");
   const ribbing = textile("#6d6f76", ribs, 0.0009, 0.3, "#a3a5af");
   const hoodInterior = textile("#62656e", cotton, 0.0006, 0.3, "#959aa5");
@@ -343,6 +346,7 @@ export function createCharacterMaterials() {
   return {
     fur,
     pawFur,
+    earOuter,
     earInner,
     hoodie,
     ribbing,

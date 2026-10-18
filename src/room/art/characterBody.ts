@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { CharacterBuilder } from "./characterBuilder";
 import { buildCharacterBackpack } from "./characterBackpack";
+import { buildCharacterHood } from "./characterHood";
 import { buildCharacterPaw, buildCharacterShoe } from "./characterExtremities";
 
 type Section = {
@@ -21,12 +22,10 @@ export function buildCharacterBody(
     fur,
     hoodie,
     ribbing,
-    hoodInterior,
     pocketFabric,
     pants,
     pantCuffs,
     shoeSole,
-    cord,
   } = builder.surfaces;
   const tau = Math.PI * 2;
 
@@ -166,186 +165,7 @@ export function buildCharacterBody(
     { rows: 24, folds: 0.0006 },
   ).name = "soft-ribbed-hem";
 
-  // The collapsed hood has two front lapels and one broad rear drape. Its
-  // padded lower centre falls over the upper backpack instead of circling the
-  // neck as two level rolls. The rear section has a single soft convex fold.
-  const hoodRadial = [
-    0.79, 0.88, 1.0, 1.04, 1.05, 1.055, 1.015, 0.92, 0.77, 0.79,
-  ];
-  const hoodFrontRadial = [
-    0.82, 0.88, 1.015, 1.025, 1.015, 1.01, 0.96, 0.87, 0.76, 0.82,
-  ];
-  const hoodHeight = [0.76, 0.95, 1, 0.83, 0.58, 0.36, 0.16, 0.04, 0.26, 0.76];
-  const hood = surface(
-    80,
-    32,
-    (u, v) => {
-      const theta = u * tau;
-      const back = (Math.sin(theta) + 1) * 0.5;
-      const radial = THREE.MathUtils.lerp(
-        interpolate(hoodFrontRadial, v),
-        interpolate(hoodRadial, v),
-        back,
-      );
-      const height = interpolate(hoodHeight, v);
-      const isFront = Math.sin(theta) < 0;
-      const lapelRise = Math.abs(Math.cos(theta));
-      // Each front half falls diagonally from the cheek to the low centre.
-      // A linear rise makes folded lapels instead of a horizontal neck ring.
-      const lower = 0.632 + lapelRise * 0.033;
-      const thickness = 0.058 + lapelRise * 0.112;
-      const upperRimDrop = 0.035 * lapelRise;
-      const folds =
-        Math.sin(theta * 3 + v * 4) * 0.0027 * Math.sin(Math.PI * v);
-      const frontPoint = new THREE.Vector3(
-        Math.cos(theta) * 0.252 * radial,
-        lower + height * thickness - upperRimDrop * height ** 2 + folds,
-        0.012 + Math.sin(theta) * (0.135 + back * 0.045) * radial,
-      );
-      if (isFront) return frontPoint;
-
-      // A compact oval section forms the rolled edge at the nape. The broad
-      // hanging pouch below stays visible beneath this small upper fold.
-      const sine = Math.max(0, Math.sin(theta));
-      // The rear is only a compact nape roll; the separate padded pouch
-      // below supplies the drooping outline and the low central fold.
-      const rearWeight = sine * (1.35 - 0.35 * sine);
-      const phi = (v - 0.2) * tau;
-      const radialRear = 0.92 + 0.1 * Math.sin(phi);
-      const rearY = 0.77 + 0.035 * Math.cos(phi);
-      const rearZ = 0.164 - 0.01 * Math.cos(phi) + 0.026 * Math.sin(phi);
-      // The upper roll hugs the nape through the shoulders.
-      const depthAcross = sine * (1.1 - 0.1 * sine);
-      return new THREE.Vector3(
-        Math.cos(theta) * (0.252 - sine * 0.014) *
-          THREE.MathUtils.lerp(radial, radialRear, rearWeight),
-        THREE.MathUtils.lerp(frontPoint.y, rearY, rearWeight),
-        0.012 + depthAcross * (rearZ - 0.012),
-      );
-    },
-    hoodie,
-    body,
-  );
-  hood.name = "folded-fabric-hood";
-  // A collapsed hood is a hanging pouch, not a toroidal collar. This closed
-  // padded piece tucks beneath the nape roll and tapers into a soft lower V.
-  // Its boundary is buried at the shoulders; its centre sits over the upper
-  // canvas dome. Front/back hemispheres keep an actual cloth volume at the tip.
-  surface(
-    64,
-    40,
-    (u, v) => {
-      const angle = u * tau;
-      const radius = Math.sin(v * Math.PI);
-      const sx = Math.cos(angle) * radius;
-      const sy = Math.sin(angle) * radius;
-      const x = 0.23 * sx * (1 + sy * 0.18);
-      const y = 0.715 + 0.08 * sy - 0.005 * sy ** 2 + 0.025 * sx ** 2;
-      // One smooth support plane through the shared poles: interpolating
-      // depth independently along each spoke leaves a crease across the pouch.
-      const z = 0.2 - (y - 0.715) * 0.55 - 0.08 * (x / 0.23) ** 2;
-      return new THREE.Vector3(x, y, z + Math.cos(v * Math.PI) * 0.045);
-    },
-    hoodie,
-    body,
-    true,
-  ).name = "padded-hanging-hood-pouch";
-  // Two broad, padded folds cross at the low point of the V. Their ends disappear
-  // into the parent cloth, so the visible edges read as folded fabric surfaces.
-  for (const side of [-1, 1]) {
-    const lapel = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * 0.228, 0.771, -0.045),
-      new THREE.Vector3(side * 0.178, 0.742, -0.09),
-      new THREE.Vector3(side * 0.1, 0.707, -0.121),
-      new THREE.Vector3(side * 0.03, 0.678, -0.135 - (side < 0 ? 0.002 : 0)),
-      new THREE.Vector3(-side * 0.012, 0.669, -0.127),
-    ]);
-    surface(
-      40,
-      16,
-      (u, v) => {
-        const center = lapel.getPoint(u);
-        const tangent = lapel.getTangent(u).normalize();
-        const across = new THREE.Vector3(-tangent.y, tangent.x, 0).normalize();
-        const taper = Math.sin(Math.PI * u) ** 0.22;
-        const phi = v * tau;
-        const halfWidth = (0.047 - u * 0.023) * taper;
-        return center
-          .addScaledVector(across, Math.cos(phi) * halfWidth)
-          .add(new THREE.Vector3(0, 0, -Math.sin(phi) * 0.021 * taper));
-      },
-      hoodie,
-      body,
-    ).name = "overlapping-hood-lapel";
-  }
-  // The inner cloth comes up under the jaw. No exposed neck/bib sits between
-  // the plush head and its dropped hood in the supplied reference.
-  ellipsoid(0.13, 0.05, 0.065, hoodInterior, body, 0, 0.72, 0.07).name =
-    "hood-inner-fold";
-  // The shadowed inside follows the opening instead of a separate collar bead.
-  surface(
-    64,
-    8,
-    (u, v) => {
-      const theta = u * tau;
-      const back = (Math.sin(theta) + 1) * 0.5;
-      const openingY =
-        Math.sin(theta) < 0
-          ? 0.674 + Math.abs(Math.cos(theta)) * 0.09
-          : 0.764 + Math.sin(theta) * 0.053;
-      return new THREE.Vector3(
-        Math.cos(theta) * (0.19 + v * 0.018),
-        openingY + v * 0.016,
-        0.013 + Math.sin(theta) * (0.109 + back * 0.032 + v * 0.008),
-      );
-    },
-    hoodInterior,
-    body,
-  );
-
-  for (const side of [-1, 1]) {
-    const path = new THREE.CatmullRomCurve3(
-      [
-        [side * 0.045, 0.711, -0.148],
-        [side * 0.047, 0.69, -0.163],
-        [side * 0.046, 0.654, -0.176],
-        [side * 0.047, 0.623, -0.18],
-        [side * 0.045, 0.607, -0.18],
-      ].map(([x, y, z]) => new THREE.Vector3(x, y, z)),
-    );
-    const cordGeometry = remember(new THREE.TubeGeometry(path, 48, 0.0055, 12, false));
-    const cordUvs = cordGeometry.getAttribute("uv");
-    for (let index = 0; index < cordUvs.count; index++)
-      cordUvs.setX(index, cordUvs.getX(index) * path.getLength() / 0.012);
-    mesh(cordGeometry, cord, body).name = "soft-braided-hood-cord";
-
-    // A compressed, softly irregular overhand knot followed by a short bound
-    // cotton end. The ends bow away from the chest under their own weight.
-    const knotGeometry = remember(new THREE.SphereGeometry(1, 24, 16));
-    const knotPositions = knotGeometry.getAttribute("position");
-    for (let index = 0; index < knotPositions.count; index++) {
-      const x = knotPositions.getX(index);
-      const y = knotPositions.getY(index);
-      const z = knotPositions.getZ(index);
-      const twist = 1 + Math.sin(Math.atan2(z, x) * 3 + y * 2) * 0.065;
-      knotPositions.setXYZ(index, x * 0.0085 * twist, y * 0.007, z * 0.0075 * twist);
-    }
-    smoothNormals(knotGeometry);
-    mesh(knotGeometry, cord, body, side * 0.045, 0.609, -0.18).name = "soft-cord-knot";
-    const aglet = ellipsoid(
-      0.0043,
-      0.0105,
-      0.0043,
-      cord,
-      body,
-      side * 0.0435,
-      0.595,
-      -0.178,
-    );
-    aglet.rotation.x = -0.18;
-    aglet.rotation.z = -side * 0.12;
-    aglet.name = "bound-cotton-cord-end";
-  }
+  buildCharacterHood(builder, body);
 
   // A cloth pocket follows the actual curvature of the belly; its centre has
   // enough volume to read in profile, while the sewn boundary sits on the body.
@@ -479,15 +299,17 @@ export function buildCharacterBody(
 
   const tailRoot = new THREE.Group();
   tailRoot.name = "soft-tapered-tail";
-  tailRoot.position.set(0, 0.309, 0.101);
+  // Bury the root below the sweatshirt hem; its thicker base should emerge
+  // from the trousers rather than cut an angular notch into the ribbed band.
+  tailRoot.position.set(0, 0.295, 0.075);
   body.add(tailRoot);
   const tailCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0.004, -0.055, 0.073),
-    new THREE.Vector3(0.011, -0.127, 0.162),
-    new THREE.Vector3(0.025, -0.19, 0.27),
-    new THREE.Vector3(0.043, -0.22, 0.361),
-    new THREE.Vector3(0.055, -0.227, 0.405),
+    new THREE.Vector3(0.004, -0.036, 0.085),
+    new THREE.Vector3(0.007, -0.085, 0.163),
+    new THREE.Vector3(0.014, -0.139, 0.248),
+    new THREE.Vector3(0.022, -0.167, 0.312),
+    new THREE.Vector3(0.026, -0.17, 0.351),
   ]);
   const tailGeometry = remember(
     new THREE.TubeGeometry(tailCurve, 56, 1, 28, false),
@@ -496,7 +318,10 @@ export function buildCharacterBody(
   for (let ring = 0; ring <= 56; ring++) {
     const t = ring / 56;
     const center = tailCurve.getPointAt(t);
-    const radius = 0.052 * Math.pow(1 - t, 0.72) + 0.005;
+    const rootBlend = THREE.MathUtils.smoothstep(t, 0, 0.2);
+    const rootTaper = 1 - 0.1 * (1 - THREE.MathUtils.smoothstep(t, 0.12, 0.38));
+    const radius = (0.058 * Math.pow(1 - t, 0.78) + 0.008) *
+      (0.8 + 0.2 * rootBlend) * rootTaper;
     for (let segment = 0; segment <= 28; segment++) {
       const index = ring * 29 + segment;
       tailPositions.setXYZ(
@@ -510,7 +335,7 @@ export function buildCharacterBody(
   smoothNormals(tailGeometry);
   const tail = mesh(tailGeometry, fur, tailRoot);
   pile(tailRoot, tail, 220, 0.0014);
-  ellipsoid(0.005, 0.005, 0.005, fur, tailRoot, 0.055, -0.227, 0.405);
+  ellipsoid(0.008, 0.008, 0.008, fur, tailRoot, 0.026, -0.17, 0.351);
 
   return { arms, legs, pack, tailRoot };
 }

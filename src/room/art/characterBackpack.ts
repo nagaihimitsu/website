@@ -11,7 +11,7 @@ export function buildCharacterBackpack(
   const { remember, smoothNormals, mesh, thread } = builder;
   const { backpack, backpackLight, backpackTrim } = builder.surfaces;
   const tau = Math.PI * 2;
-  const exponent = 0.73;
+  const exponent = 0.62;
 
   function interpolate(values: number[], t: number) {
     const cursor = THREE.MathUtils.clamp(t, 0, 1) * (values.length - 1);
@@ -68,32 +68,30 @@ export function buildCharacterBackpack(
     return mesh(geometry, material, parent);
   }
 
-  // A changing oval/rounded-rectangle profile keeps the top domed and the
-  // lower corners tucked in, with a full, gently convex central canvas panel.
+  // The reference is a softly stuffed rectangular pack: its upper and lower
+  // side walls have the same depth. Only the rounded corners turn inward;
+  // the body must not lean backward or taper into a narrow shoulder wedge.
   const sections: PackSection[] = [
     { y: -0.178, rx: 0, rz: 0 },
-    { y: -0.17, rx: 0.075, rz: 0.044 },
-    { y: -0.151, rx: 0.122, rz: 0.071 },
-    { y: -0.112, rx: 0.141, rz: 0.081 },
-    { y: -0.031, rx: 0.145, rz: 0.084 },
-    { y: 0.05, rx: 0.143, rz: 0.082 },
-    { y: 0.105, rx: 0.133, rz: 0.075 },
-    { y: 0.14, rx: 0.113, rz: 0.06 },
-    { y: 0.165, rx: 0.07, rz: 0.038 },
-    { y: 0.172, rx: 0, rz: 0 },
+    { y: -0.175, rx: 0.09, rz: 0.043 },
+    { y: -0.165, rx: 0.126, rz: 0.066 },
+    { y: -0.145, rx: 0.141, rz: 0.078 },
+    { y: -0.105, rx: 0.145, rz: 0.08 },
+    { y: -0.025, rx: 0.145, rz: 0.081 },
+    { y: 0.055, rx: 0.145, rz: 0.08 },
+    { y: 0.112, rx: 0.14, rz: 0.078 },
+    { y: 0.14, rx: 0.126, rz: 0.068 },
+    { y: 0.16, rx: 0.099, rz: 0.053 },
+    { y: 0.174, rx: 0.06, rz: 0.03 },
+    { y: 0.179, rx: 0, rz: 0 },
   ];
   const ys = sections.map((section) => section.y);
   const rxs = sections.map((section) => section.rx);
-  // The stuffed pack meets the back through its entire middle, rather than
-  // leaving an air gap crossed by exposed shoulder-strap attachment tails.
-  const rzs = sections.map((section) => {
-    // The top dome tucks forward under the collapsed hood. Full canvas depth
-    // begins below the shoulders, avoiding a deep block pushing the hood out.
-    const upperTaper = THREE.MathUtils.smoothstep(section.y, 0.03, 0.14);
-    return section.rz * 1.2 * (1 - upperTaper * 0.54);
-  });
+  const rzs = sections.map((section) => section.rz);
+  // A small inward roll at the top fits beneath the hanging hood, while the
+  // broad canvas panel beneath remains upright and softly convex.
   function topDomeOffset(y: number) {
-    return -0.035 * THREE.MathUtils.smoothstep(y, 0.04, 0.15);
+    return -0.01 * THREE.MathUtils.smoothstep(y, 0.11, 0.175);
   }
   function profile(y: number) {
     let low = 0;
@@ -120,7 +118,7 @@ export function buildCharacterBackpack(
 
   const pack = new THREE.Group();
   pack.name = "padded-canvas-backpack";
-  pack.position.set(0, 0.529, 0.205);
+  pack.position.set(0, 0.529, 0.211);
   // The reference fills most of the back between the sleeves. Scale the sewn
   // shell, rear pocket and bindings together, preserving their shared surface.
   // Shoulder loops stay on the body and their buried ends still meet the pack.
@@ -147,17 +145,21 @@ export function buildCharacterBackpack(
 
   // The zipper follows the actual rear surface. Its fine raised edge gives a
   // sewn recess rather than the projecting frame of a rigid case.
+  const zipperLine = new THREE.CatmullRomCurve3([
+    [-0.119, -0.146], [-0.135, -0.094], [-0.135, 0.079],
+    [-0.118, 0.139], [-0.067, 0.165], [0, 0.17],
+    [0.067, 0.165], [0.118, 0.139], [0.135, 0.079],
+    [0.135, -0.094], [0.119, -0.146],
+  ].map(([x, y]) => new THREE.Vector3(x, y, 0)));
   thread(
-    [
-      [-0.111, -0.13], [-0.131, -0.075], [-0.13, 0.071],
-      [-0.106, 0.13], [-0.065, 0.154], [0, 0.161],
-      [0.065, 0.154], [0.106, 0.13], [0.13, 0.071],
-      [0.131, -0.075], [0.111, -0.13],
-    ].map(([x, y]) => [x, y, rearDepth(x, y) + 0.0008]),
+    Array.from({ length: 97 }, (_, index) => {
+      const point = zipperLine.getPoint(index / 96);
+      return [point.x, point.y, rearDepth(point.x, point.y) + 0.0015];
+    }),
     0.0013,
     backpackTrim,
     pack,
-    64,
+    96,
   ).name = "inset-pack-zipper-seam";
 
   /** Soft, flattened webbing swept along a curve with capped rounded ends. */
@@ -169,6 +171,7 @@ export function buildCharacterBackpack(
     parent: THREE.Object3D,
     wideAxis = new THREE.Vector3(1, 0, 0),
     rows = 48,
+    followsTorso = false,
   ) {
     const curve = new THREE.CatmullRomCurve3(
       points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
@@ -180,13 +183,22 @@ export function buildCharacterBackpack(
       (u, v) => {
         const center = curve.getPoint(v);
         const tangent = curve.getTangent(v).normalize();
-        const across = axis.clone().addScaledVector(tangent, -axis.dot(tangent)).normalize();
+        // At the lower return, canvas lies vertically against the side of
+        // the torso. Transporting its frame around the body prevents the
+        // webbing from turning into an edge-on horizontal shelf under the arm.
+        const outward = followsTorso
+          ? new THREE.Vector3(center.x / 0.17 ** 2, 0, center.z / 0.135 ** 2).normalize()
+          : null;
+        const across = outward
+          ? new THREE.Vector3().crossVectors(outward, tangent).normalize()
+          : axis.clone().addScaledVector(tangent, -axis.dot(tangent)).normalize();
         const normal = new THREE.Vector3().crossVectors(tangent, across).normalize();
         const phi = u * tau;
         const cap = Math.min(1, Math.sin(Math.PI * v) ** 0.45 * 2.2);
+        const lowerWebbing = followsTorso ? THREE.MathUtils.smoothstep(v, 0.62, 0.85) : 0;
         return center
-          .addScaledVector(across, Math.cos(phi) * width * 0.5 * cap)
-          .addScaledVector(normal, Math.sin(phi) * thickness * 0.5 * cap);
+          .addScaledVector(across, Math.cos(phi) * width * (1 - lowerWebbing * 0.49) * 0.5 * cap)
+          .addScaledVector(normal, Math.sin(phi) * thickness * (1 - lowerWebbing * 0.55) * 0.5 * cap);
       },
       material,
       parent,
@@ -195,12 +207,20 @@ export function buildCharacterBackpack(
 
   // One continuous convex pocket panel. Its boundary lies on the bag, while
   // the middle holds a little air; rounded corners recede into the sewn edge.
+  function pocketDepth(x: number, y: number) {
+    const radius = (
+      Math.abs(x / 0.12) ** (2 / 0.52) +
+      Math.abs((y + 0.105) / 0.052) ** (2 / 0.52)
+    ) ** (0.52 / 2);
+    return rearDepth(x, y) + 0.001 +
+      0.026 * (1 - THREE.MathUtils.smoothstep(radius, 0.76, 1));
+  }
   function pocketPoint(angle: number, radius: number) {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
     const x = radius * Math.sign(c) * Math.abs(c) ** 0.52 * 0.12;
-    const y = -0.099 + radius * Math.sign(s) * Math.abs(s) ** 0.52 * 0.052;
-    const z = rearDepth(x, y) + 0.001 + 0.026 * Math.max(0, 1 - radius ** 2) ** 0.7;
+    const y = -0.105 + radius * Math.sign(s) * Math.abs(s) ** 0.52 * 0.052;
+    const z = pocketDepth(x, y);
     return new THREE.Vector3(x, y, z);
   }
   surface(
@@ -211,18 +231,28 @@ export function buildCharacterBackpack(
     pack,
     true,
   ).name = "convex-sewn-backpack-pocket";
+  thread(
+    Array.from({ length: 65 }, (_, index) => {
+      const point = pocketPoint(index / 64 * tau, 0.995);
+      return [point.x, point.y, point.z + 0.0007];
+    }),
+    0.0009,
+    backpackTrim,
+    pack,
+    80,
+  ).name = "stitched-pocket-perimeter";
   const pocketLip = [-1, -0.75, -0.35, 0, 0.35, 0.75, 1].map((t) => {
     const x = t * 0.109;
-    const y = -0.058 + (1 - t * t) * 0.004;
-    return [x, y, rearDepth(x, y) + 0.013 - Math.abs(t) * 0.003];
+    const y = -0.065 + (1 - t * t) * 0.003;
+    return [x, y, pocketDepth(x, y) + 0.0018];
   });
   strap(pocketLip, 0.011, 0.004, backpack, pack, new THREE.Vector3(0, 1, 0), 32)
     .name = "sewn-pocket-zipper-lip";
   strap(
     [
-      [-0.094, -0.059, rearDepth(-0.094, -0.059) + 0.013],
-      [-0.096, -0.071, rearDepth(-0.096, -0.071) + 0.022],
-      [-0.096, -0.085, rearDepth(-0.096, -0.085) + 0.025],
+      [-0.094, -0.064, pocketDepth(-0.094, -0.064) + 0.0018],
+      [-0.096, -0.077, pocketDepth(-0.096, -0.077) + 0.002],
+      [-0.096, -0.09, pocketDepth(-0.096, -0.09) + 0.001],
     ],
     0.007,
     0.003,
@@ -264,31 +294,52 @@ export function buildCharacterBackpack(
     strap(sideZip, 0.011, 0.003, backpackTrim, pack, new THREE.Vector3(0, 0, 1), 32)
       .name = "inset-side-zipper-placket";
 
-    // Broad stuffed canvas embraces the shoulder. The inward front arc and
-    // underarm return remain visible at a three-quarter angle; both endpoints
-    // disappear into the bag, rather than hanging down like suspenders.
+    // The shoulder padding is one continuous sewn strap. Its top end is
+    // buried in the upper back panel, and its thinner underarm return wraps
+    // behind the sleeve into the lower lateral anchor. The return remains
+    // visible from the rear quarter instead of stopping at the front armpit.
     strap(
       [
-        [side * 0.07, 0.659, 0.19],
-        [side * 0.09, 0.688, 0.15],
-        [side * 0.135, 0.69, 0.05],
-        [side * 0.154, 0.663, -0.04],
-        [side * 0.132, 0.621, -0.105],
-        [side * 0.122, 0.571, -0.128],
-        [side * 0.135, 0.522, -0.126],
-        [side * 0.166, 0.484, -0.103],
-        [side * 0.17, 0.47, -0.07],
-        [side * 0.165, 0.457, -0.005],
-        [side * 0.07, 0.442, 0.08],
-        [side * 0.07, 0.427, 0.17],
+        [side * 0.082, 0.669, 0.19],
+        [side * 0.105, 0.691, 0.143],
+        [side * 0.139, 0.691, 0.053],
+        [side * 0.162, 0.663, -0.04],
+        [side * 0.15, 0.621, -0.098],
+        [side * 0.158, 0.573, -0.112],
+        [side * 0.167, 0.548, -0.107],
+        [side * 0.18, 0.519, -0.083],
+        [side * 0.194, 0.486, -0.06],
+        [side * 0.195, 0.46, -0.036],
+        [side * 0.187, 0.442, 0.009],
+        [side * 0.181, 0.44, 0.086],
+        [side * 0.172, 0.442, 0.13],
+        [side * 0.159, 0.446, 0.161],
+        [side * 0.15, 0.448, 0.193],
       ],
       0.043,
-      0.016,
+      0.018,
       backpackLight,
       body,
       new THREE.Vector3(1, 0, 0),
-      64,
-    ).name = "curved-padded-shoulder-loop";
+      80,
+      true,
+    ).name = "connected-padded-shoulder-strap";
+
+    // A short reinforced tab sits on the side panel over each lower anchor;
+    // both ends enter the canvas instead of leaving an unattached free tail.
+    strap(
+      [
+        [side * 0.139, -0.09, -0.055],
+        [side * 0.146, -0.081, -0.035],
+        [side * 0.146, -0.076, -0.006],
+      ],
+      0.019,
+      0.004,
+      backpack,
+      pack,
+      new THREE.Vector3(0, 1, 0),
+      20,
+    ).name = "sewn-lower-strap-anchor";
   }
 
   strap(
