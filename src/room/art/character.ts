@@ -21,6 +21,7 @@ function buildCharacter(scope: DisposalScope) {
   group.scale.setScalar(0.98);
   group.userData.roomRaycastIgnore = true;
   const body = new THREE.Group();
+  body.name = "traveller-torso";
   group.add(body);
   scope.defer(() => group.clear());
   const surfaces = scope.own(createCharacterMaterials());
@@ -325,10 +326,21 @@ function buildCharacter(scope: DisposalScope) {
   let easedSpeed = 0;
   let airBlend = 0;
   let airRise = 0;
+  // Pose the existing soft sleeves around the instrument without replacing the
+  // character or altering its normal locomotion. The local palm centre is the
+  // same point used by the sculpted mitt mesh in characterExtremities.
+  const palmDirections = [-1, 1].map((side) =>
+    new THREE.Vector3(side * 0.025, -0.319, -0.02).normalize(),
+  );
+  const handTarget = new THREE.Vector3();
+  const heldArmRotation = new THREE.Quaternion();
   const ease = (current: number, target: number, rate: number, dt: number) =>
     THREE.MathUtils.lerp(current, target, 1 - Math.exp(-rate * dt));
   return {
     group,
+    // The instrument follows breathing, the pickup lean and musical sway with
+    // the hands, rather than floating independently on the character root.
+    bassAnchor: body,
     animate(state: RoomAvatarAnimation) {
       if (disposed) return;
       const dt =
@@ -423,6 +435,39 @@ function buildCharacter(scope: DisposalScope) {
         body.rotation.x -= extension * 0.045;
       } else {
         body.rotation.y = 0;
+      }
+      if (state.bass && state.bass.lift > 0) {
+        const lift = THREE.MathUtils.clamp(state.bass.lift, 0, 1);
+        const pluck = THREE.MathUtils.clamp(state.bass.pluck, 0, 1);
+        const beat = state.time * (96 / 60) * Math.PI * 2;
+        const groove = state.bass.playing && !state.reducedMotion;
+        // A brief forward reach and settling bend makes picking up the bass an
+        // action, while the sustained pose keeps the face readable above it.
+        const reach = Math.sin(Math.PI * lift);
+        body.rotation.x -= reach * 0.085;
+        body.position.y -= reach * 0.012;
+        body.rotation.z += groove ? Math.sin(beat * 0.5) * 0.018 * lift : 0;
+        head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -0.065, lift);
+        head.rotation.x = groove ? Math.sin(beat) * 0.014 * lift : 0;
+        for (let index = 0; index < arms.length; index++) {
+          const arm = arms[index];
+          if (index === 0) {
+            // A compact downstroke across the strings remains visible with
+            // reduced motion: it is direct feedback for the player's input.
+            handTarget.set(-0.06 + pluck * 0.008, 0.55 - pluck * 0.023, -0.28);
+          } else {
+            // The neck rises towards local +X; the fretting hand rests around
+            // it instead of hovering at an unrelated symmetrical arm pose.
+            handTarget.set(0.25, 0.76, -0.28);
+          }
+          handTarget.sub(arm.position).normalize();
+          heldArmRotation.setFromUnitVectors(palmDirections[index], handTarget);
+          arm.quaternion.slerp(heldArmRotation, lift);
+        }
+      } else {
+        // Head pitch belongs only to this interaction; explicitly release it
+        // when returning the instrument so later walking stays unchanged.
+        head.rotation.x = 0;
       }
     },
     dispose: scope.dispose,

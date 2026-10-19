@@ -7,6 +7,8 @@ import { createRoomScene } from "./roomScene";
 import { createBirdMotion } from "./birdMotion";
 import { worldRecovery } from "./roomArchitecture";
 import { findRecoveryPosition } from "./worldRecovery";
+import { createBassGame } from "./bassGame";
+import { createBassAudio } from "./bassAudio";
 import {
   createPlayer,
   movementVector,
@@ -41,6 +43,7 @@ const PORTRAIT_FIELD_OF_VIEW = 76;
 const PUNCH_DURATION = 420;
 const PUNCH_IMPACT = 125;
 const BIRD_FLOOR_OFFSET = 0.012;
+const BASS_VIEW_YAW = Math.PI;
 const KEY_DIRECTIONS: Record<string, Direction> = {
   ArrowUp: "up",
   KeyW: "up",
@@ -178,6 +181,17 @@ function initializeRoomEngine(
   let hovered: RoomDestination | null = null;
   let punchStarted: number | null = null;
   let punchImpacted = false;
+  const bassGame = createBassGame();
+  const bassAudio = scope.own(createBassAudio());
+  let bassState = bassGame.snapshot();
+  let bassPreviousTime = performance.now();
+  let bassReportedTime = -Infinity;
+  let bassVisualLift = 0;
+  let bassPluckPulse = 0;
+  let bassNeedsExit = false;
+  let bassPickupStart = { x: 0, z: 0 };
+  const bassHeld = () => !["idle", "approaching"].includes(bassState.phase);
+  const bassControlsLocked = () => bassHeld() || bassVisualLift > 0;
   let viewPointer: {
     id: number;
     startX: number;
@@ -290,6 +304,70 @@ function initializeRoomEngine(
     releaseViewPointer();
   }
 
+  function reportBass(time = performance.now(), immediate = false) {
+    if (immediate || (bassState.phase !== "idle" && time - bassReportedTime >= 1000 / 30)) {
+      bassReportedTime = time;
+      options.onBassSnapshot?.(bassState);
+    }
+  }
+
+  function advanceBass(time: number) {
+    time = Math.max(time, bassPreviousTime);
+    const delta = Math.max(0, (time - bassPreviousTime) / 1000);
+    bassPreviousTime = time;
+    const near = player.grounded && Math.abs(player.y) < 0.03 &&
+      Math.hypot(player.x - room.bass.anchor.x, player.z - room.bass.anchor.z) <= room.bass.radius;
+    if (!near) bassNeedsExit = false;
+    const phase = bassState.phase;
+    bassState = bassGame.tick(delta, near && !bassNeedsExit && !opening && !opened);
+    if ((phase === "idle" || phase === "approaching") && bassHeld()) {
+      bassPickupStart = { x: player.x, z: player.z };
+      clearInputs();
+      punchStarted = null;
+      targeting.clear();
+      setHovered(null);
+      // Stay in the same world and ease around to a clear view of the performer.
+      returningView = { yaw: BASS_VIEW_YAW };
+    }
+    bassAudio.sync(bassState);
+    reportBass(time, phase !== bassState.phase);
+  }
+
+  function startBass() {
+    if (disposed || failed || paused || document.hidden || !["ready", "result"].includes(bassState.phase)) return;
+    bassAudio.unlock(); // Must run synchronously inside this key/tap gesture.
+    bassPreviousTime = performance.now();
+    if (!bassGame.start()) return;
+    bassState = bassGame.snapshot();
+    bassAudio.sync(bassState);
+    reportBass(bassPreviousTime, true);
+  }
+
+  function pluckBass() {
+    if (disposed || failed || paused || document.hidden || bassState.phase !== "playing") return;
+    advanceBass(performance.now()); // Judge at input time, independently of render FPS.
+    const judgement = bassGame.pluck();
+    if (!judgement) return;
+    bassAudio.unlock();
+    bassAudio.pluck(judgement.frequency);
+    bassPluckPulse = 1;
+    bassState = bassGame.snapshot();
+    reportBass(performance.now(), true);
+  }
+
+  function putDownBass() {
+    if (disposed || failed) return;
+    bassAudio.stop();
+    bassGame.cancel();
+    bassState = bassGame.snapshot();
+    bassPreviousTime = performance.now();
+    bassNeedsExit = true;
+    bassPluckPulse = 0;
+    clearInputs();
+    reportBass(bassPreviousTime, true);
+    savePosition();
+  }
+
   function setHovered(section: RoomDestination | null) {
     if (hovered === section) return;
     hovered = section;
@@ -352,7 +430,7 @@ function initializeRoomEngine(
   }
 
   function open(section: RoomDestination) {
-    if (disposed || failed || opening || opened) return;
+    if (disposed || failed || opening || opened || bassHeld()) return;
     const portal = room.portals.find(
       (candidate) => candidate.destination === section,
     );
@@ -407,7 +485,7 @@ function initializeRoomEngine(
       document.hidden ||
       opening ||
       opened ||
-      !player.grounded
+      !player.grounded || bassControlsLocked()
     )
       return;
     jumpRequested = true;
@@ -421,7 +499,7 @@ function initializeRoomEngine(
       document.hidden ||
       opening ||
       opened ||
-      punchStarted !== null
+      punchStarted !== null || bassControlsLocked()
     )
       return;
     punchStarted = performance.now();
@@ -529,6 +607,23 @@ function initializeRoomEngine(
       opened
     )
       return;
+    if (bassHeld()) {
+      if (event.code === "Escape") {
+        event.preventDefault();
+        if (!event.repeat) putDownBass();
+      } else if (["Space", "Enter", "KeyF", "KeyJ"].includes(event.code)) {
+        if (["Space", "Enter"].includes(event.code) && event.target instanceof HTMLElement && event.target.closest("button, a")) return;
+        event.preventDefault();
+        if (!event.repeat) {
+          if (bassState.phase === "ready" || bassState.phase === "result") startBass();
+          else pluckBass();
+        }
+      } else if (event.code === "KeyR") {
+        event.preventDefault();
+        if (!event.repeat) resetView();
+      } else if (KEY_DIRECTIONS[event.code]) event.preventDefault();
+      return;
+    }
     if (KEY_DIRECTIONS[event.code]) {
       event.preventDefault();
       targeting.clear();
@@ -620,7 +715,7 @@ function initializeRoomEngine(
         event.clientY - viewPointer.startY,
       ) <= 8;
     releaseViewPointer();
-    if (clicked && !paused) {
+    if (clicked && !paused && !bassHeld()) {
       const portal = targeting.atPointer(event);
       if (portal) open(portal.destination);
       else {
@@ -658,6 +753,8 @@ function initializeRoomEngine(
 
   function syncSuspension() {
     clearInputs();
+    bassAudio.stop();
+    bassPreviousTime = performance.now();
     if (paused || document.hidden) {
       if (suspensionStarted === null) suspensionStarted = performance.now();
       cancelAnimationFrame(frame);
@@ -690,10 +787,14 @@ function initializeRoomEngine(
         returningView = null;
       }
     }
-    cameraTarget.set(player.x, player.y + FOLLOW_TARGET_HEIGHT, player.z);
+    // Frame the performer above the compact play bar, with the garden behind.
+    const targetHeight = THREE.MathUtils.lerp(FOLLOW_TARGET_HEIGHT, 0.44, bassVisualLift);
+    cameraTarget.set(player.x, player.y + targetHeight, player.z);
     const direction = orbitDirection(yaw, pitch);
     boomDirection.set(direction.x, direction.y, direction.z);
-    const wantedDistance = FOLLOW_DISTANCE + (camera.aspect < 0.8 ? 0.1 : 0);
+    const wantedDistance = THREE.MathUtils.lerp(
+      FOLLOW_DISTANCE + (camera.aspect < 0.8 ? 0.1 : 0), 2.2, bassVisualLift,
+    );
     let safeDistance = cameraBoomLimit(
       cameraTarget,
       boomDirection,
@@ -775,7 +876,7 @@ function initializeRoomEngine(
       player,
       reducedMotion || Boolean(opening) || opened,
     );
-    if (!opening && !opened) {
+    if (!opening && !opened && !bassControlsLocked()) {
       if (Math.hypot(input.x, input.z) > 0.01) {
         const targetFacing = Math.atan2(-input.x, -input.z);
         facing +=
@@ -802,6 +903,23 @@ function initializeRoomEngine(
       clearInputs();
       savePosition();
     }
+    advanceBass(time);
+    if (bassState.phase === "pickup" || bassState.phase === "ready") {
+      // A small step away from the stand keeps the instrument, flowers and amp
+      // in the same view. It uses normal collisions, never a teleport/scene cut.
+      const progress = THREE.MathUtils.smoothstep(bassState.pickupProgress, 0, 1);
+      const wantedX = THREE.MathUtils.lerp(bassPickupStart.x, 2.6, progress);
+      const wantedZ = THREE.MathUtils.lerp(bassPickupStart.z, 6.25, progress);
+      const stepTime = Math.min(1, elapsed);
+      if (stepTime > 0) player = stepPlayer(player, {
+        x: (wantedX - player.x) / (2.8 * stepTime),
+        z: (wantedZ - player.z) / (2.8 * stepTime),
+      }, stepTime, room.obstacles);
+    }
+    if (bassHeld()) facing += shortestAngle(facing, Math.PI + BASS_VIEW_YAW) * (1 - Math.exp(-8 * elapsed));
+    const liftTarget = bassHeld() ? (bassState.phase === "pickup" ? bassState.pickupProgress : 1) : 0;
+    bassVisualLift = bassHeld() ? liftTarget : Math.max(0, bassVisualLift - elapsed * 2.5);
+    bassPluckPulse *= Math.exp(-12 * elapsed);
     const moving =
       Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) > 0.0001;
     room.avatar.position.set(player.x, player.y, player.z);
@@ -863,9 +981,12 @@ function initializeRoomEngine(
         velocityY: player.velocityY,
         punchProgress,
         reducedMotion,
+        bass: { lift: bassVisualLift, pluck: bassPluckPulse, playing: bassState.phase === "playing" },
       });
+      room.bass.animate(animationTime, bassVisualLift, bassPluckPulse,
+        bassState.notes.length ? bassState.hits / bassState.notes.length : 0, reducedMotion);
       room.scene.updateMatrixWorld();
-      if (time - aimTime >= 100 && !opening && !opened) {
+      if (time - aimTime >= 100 && !opening && !opened && !bassHeld()) {
         aimTime = time;
         setHovered(
           targeting.current()?.destination ?? null,
@@ -876,6 +997,7 @@ function initializeRoomEngine(
         birdChanged ||
         !player.grounded ||
         punchStarted !== null ||
+        bassHeld() || bassVisualLift > 0 ||
         Math.abs(shortestAngle(oldFacing, facing)) > 0.0001
       )
         shadowDynamicUntil = Math.max(shadowDynamicUntil, time + 120);
@@ -932,17 +1054,18 @@ function initializeRoomEngine(
   setCameraFromPlayer(0);
   camera.updateMatrixWorld();
   snapshot();
+  reportBass(performance.now(), true);
   frame = requestAnimationFrame(render);
 
   return {
     direction(direction, pressed) {
-      if (disposed || failed || paused || opening || opened) return;
+      if (disposed || failed || paused || opening || opened || bassControlsLocked()) return;
       if (pressed) targeting.clear();
       if (pressed) pad.add(direction);
       else pad.delete(direction);
     },
     move(x, z) {
-      if (disposed || failed || paused || opening || opened) return;
+      if (disposed || failed || paused || opening || opened || bassControlsLocked()) return;
       const length = Math.hypot(x, z);
       if (!Number.isFinite(length)) return;
       if (length > 0) targeting.clear();
@@ -951,6 +1074,9 @@ function initializeRoomEngine(
     },
     jump,
     punch,
+    startBass,
+    pluckBass,
+    putDownBass,
     open,
     resetView,
     setTargetHovered(value) {

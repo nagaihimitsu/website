@@ -92,6 +92,7 @@ function createHarness() {
       base: -0.1, top: 0, support: "ground", enabled: true }],
     portals: [], breakables: [],
     door: { object: new THREE.Group(), open: vi.fn(() => false), isOpen: () => false },
+    bass: { anchor: { x: 1.65, z: 5.65 }, radius: 0.85, animate: vi.fn() },
     breakObject: vi.fn(() => false),
     resetObjects: vi.fn(),
     animate: vi.fn(),

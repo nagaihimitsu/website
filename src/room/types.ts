@@ -2,6 +2,7 @@ import type * as THREE from "three";
 import type { Archive, Section } from "../data/model";
 import type { BirdAnimationState } from "./art/bird";
 import type { RoomDestinationId } from "./destinations";
+import type { BassGameSnapshot } from "./bassGame";
 
 export type Direction = "up" | "down" | "left" | "right";
 export type RoomDestination = RoomDestinationId;
@@ -38,6 +39,7 @@ export interface RoomAvatarAnimation {
   velocityY: number;
   punchProgress: number | null;
   reducedMotion: boolean;
+  bass?: { lift: number; pluck: number; playing: boolean };
 }
 export interface RoomScene {
   scene: THREE.Scene;
@@ -50,6 +52,11 @@ export interface RoomScene {
     object: THREE.Object3D;
     open: (immediate?: boolean) => boolean;
     isOpen: () => boolean;
+  };
+  bass: {
+    anchor: { x: number; z: number };
+    radius: number;
+    animate: (time: number, lift: number, pluck: number, bloom: number, reducedMotion: boolean) => void;
   };
   breakObject: (id: string, impulse: THREE.Vector3) => boolean;
   resetObjects: () => void;
@@ -91,6 +98,7 @@ export interface RoomEngineOptions {
   onHover: (section: RoomDestination | null) => void;
   onBreak: (label: string) => void;
   onDoorOpen?: () => void;
+  onBassSnapshot?: (snapshot: BassGameSnapshot) => void;
   onSnapshot: (snapshot: RoomSnapshot) => void;
 }
 export interface RoomEngine {
@@ -99,6 +107,9 @@ export interface RoomEngine {
   resetView: () => void;
   jump: () => void;
   punch: () => void;
+  startBass: () => void;
+  pluckBass: () => void;
+  putDownBass: () => void;
   resetObjects: () => void;
   open: (section: RoomDestination) => void;
   setTargetHovered: (value: boolean) => void;

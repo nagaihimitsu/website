@@ -2,6 +2,8 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
+  type RefObject,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { Archive, Section } from "../data/model";
@@ -13,6 +15,8 @@ import {
   type RoomDestinationDefinition,
 } from "./destinations";
 import { createRoomSnapshotReporter } from "./roomSnapshot";
+import { createBassGameStore } from "./bassGameStore";
+import { BassGameHUD } from "./BassGameHUD";
 import type { Direction, RoomDestination, RoomEngine } from "./types";
 import "./room.css";
 
@@ -92,6 +96,17 @@ function ExternalLink() {
   );
 }
 
+function BassOverlay({ store, engine, paused }: {
+  store: ReturnType<typeof createBassGameStore>;
+  engine: RefObject<RoomEngine | null>;
+  paused: boolean;
+}) {
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  return <BassGameHUD snapshot={snapshot} paused={paused}
+    onStart={() => engine.current?.startBass()} onPluck={() => engine.current?.pluckBass()}
+    onPutDown={() => engine.current?.putDownBass()} />;
+}
+
 export default function RoomHome({ archive }: { archive: Archive }) {
   const room = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -111,6 +126,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [punching, setPunching] = useState(false);
+  const [bassStore] = useState(createBassGameStore);
+  const [bassHeld, setBassHeld] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   const [held, setHeld] = useState<Set<Direction>>(new Set());
 
@@ -148,6 +165,19 @@ export default function RoomHome({ archive }: { archive: Archive }) {
         onDoorOpen: () => {
           if (!disposed) setNotice("ドアを開けました");
         },
+        onBassSnapshot: (value) => {
+          if (disposed) return;
+          const held = !["idle", "approaching"].includes(value.phase);
+          setBassHeld((previous) => previous === held ? previous : held);
+          if (room.current) {
+            room.current.dataset.bassPhase = value.phase;
+            room.current.dataset.bassProgress = value.proximityProgress.toFixed(3);
+            room.current.dataset.bassElapsed = value.elapsed.toFixed(3);
+            room.current.dataset.bassHits = String(value.hits);
+            room.current.dataset.bassScore = String(value.score);
+          }
+          bassStore.publish(value);
+        },
         onSnapshot: (value) => {
           if (!disposed) reportSnapshot(value);
         },
@@ -176,7 +206,9 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       closeButton.current?.focus();
     } else if (!menuOpen && menu.current?.open) {
       menu.current.close();
-      menuButton.current?.focus();
+      if (!["idle", "approaching"].includes(bassStore.getSnapshot().phase))
+        host.current?.querySelector("canvas")?.focus({ preventScroll: true });
+      else menuButton.current?.focus();
     }
   }, [menuOpen]);
   useEffect(() => {
@@ -238,7 +270,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const unavailable = status !== "ready" || Boolean(opening) || menuOpen;
   const target = hover ? roomDestinations[hover] : null;
   const targetVisible =
-    status === "ready" && target !== null && !opening && !menuOpen;
+    status === "ready" && target !== null && !opening && !menuOpen && !bassHeld;
   const updateTargetInteraction = (
     kind: "hovered" | "focused",
     value: boolean,
@@ -415,7 +447,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           {links("room-fallback-links")}
         </div>
       )}
-      <div className="room-controls">
+      <BassOverlay store={bassStore} engine={engine} paused={menuOpen || status !== "ready" || Boolean(opening)} />
+      <div className="room-controls" style={bassHeld ? { display: "none" } : undefined}>
         <div
           ref={joystick}
           className={`room-joystick${stickPointer.current !== null ? " is-held" : ""}`}

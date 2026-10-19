@@ -13,6 +13,7 @@ import { createBird } from "./art/bird";
 import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
+import { createBassGarden, BASS_GARDEN_LAYOUT } from "./art/bassGarden";
 import type { RoomDestinationId } from "./destinations";
 import { withDisposalScope, type DisposalScope } from "./disposal";
 import { overlapsObstacle } from "./collision";
@@ -374,7 +375,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     box(0.009, 0.002, 3.82, pavingJoint, scene, x, 0.001, 6.04);
   for (const z of [5.04, 6.08, 7.12])
     box(5.04, 0.002, 0.009, pavingJoint, scene, 2.6, 0.001, z);
-  for (const x of [0.6, 4.6]) {
+  for (const x of [4.6]) {
     const pot = group(x, 0, 7.45);
     cylinder(0.32, 0.25, 0.56, terracotta, pot, 0, 0.28, 0, 32);
     cylinder(0.29, 0.29, 0.025, woodDark, pot, 0, 0.555, 0, 32);
@@ -387,6 +388,13 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     }
     obstruction(`terrace-planter-${x < 2.6 ? "left" : "right"}`, x, 7.45, 0.64, 0.64, 0.56);
   }
+  const bassGarden = scope.own(createBassGarden());
+  scene.add(bassGarden.group);
+  for (const [id, part] of [["garden-amplifier", BASS_GARDEN_LAYOUT.amplifier], ["garden-flowerbed", BASS_GARDEN_LAYOUT.flowerbed]] as const)
+    obstruction(id, part.x, part.z, part.width, part.depth, part.height);
+  const bassObstacle: RoomObstacle = { id: "garden-bass", x: 1.65, z: 6.45,
+    width: 0.38, depth: 0.3, base: 0, top: 1.04, enabled: true };
+  obstacles.push(bassObstacle);
 
   // Original geometric wall art and a shallow ledge, with no fabricated records.
   const wallArt = group(4.9, 2.8, 1.65);
@@ -1050,6 +1058,10 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const character = scope.own(createCharacter());
   const avatar = character.group;
   scene.add(avatar);
+  const heldBassPosition = new THREE.Vector3(0, 0.55, -0.24);
+  const heldBassRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 50 * Math.PI / 180));
+  const bassTarget = new THREE.Vector3();
+  const bassRotation = new THREE.Quaternion();
   // The bird is a living, solid room occupant, never a destructible prop.
   const bird = scope.own(createBird());
   scene.add(bird.group);
@@ -1065,6 +1077,23 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
       object: doorLeaf,
       open: doorMotion.open,
       isOpen: doorMotion.isOpen,
+    },
+    bass: {
+      anchor: BASS_GARDEN_LAYOUT.interaction,
+      radius: BASS_GARDEN_LAYOUT.interaction.radius,
+      animate(time, lift, pluck, bloom, reducedMotion) {
+        const amount = THREE.MathUtils.smoothstep(lift, 0, 1);
+        character.bassAnchor.updateWorldMatrix(true, false);
+        bassTarget.copy(heldBassPosition).applyMatrix4(character.bassAnchor.matrixWorld);
+        character.bassAnchor.getWorldQuaternion(bassRotation).multiply(heldBassRotation);
+        bassGarden.instrument.position.lerpVectors(bassGarden.restPosition, bassTarget, amount);
+        bassGarden.instrument.position.y += Math.sin(amount * Math.PI) * 0.13;
+        bassGarden.instrument.quaternion.slerpQuaternions(bassGarden.restQuaternion, bassRotation, amount);
+        bassGarden.instrument.scale.setScalar(THREE.MathUtils.lerp(1, 0.98, amount));
+        bassGarden.instrument.userData.roomRaycastIgnore = amount > 0;
+        bassObstacle.enabled = amount < 0.05;
+        bassGarden.animate(time, pluck, bloom, reducedMotion);
+      },
     },
     animateAvatar: character.animate,
     animateBird: bird.animate,

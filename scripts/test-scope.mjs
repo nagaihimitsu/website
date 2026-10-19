@@ -8,6 +8,7 @@ const roomSpecs = [
   "tests/e2e/room-instagram.spec.ts",
   "tests/e2e/bird.spec.ts",
   "tests/e2e/outdoors.spec.ts",
+  "tests/e2e/bass.spec.ts",
 ];
 const roomUnits = readdirSync(new URL("../tests/", import.meta.url))
   .filter((file) => /^room-.*\.test\.ts$/.test(file))
@@ -35,6 +36,10 @@ const scopes = {
   outdoors: {
     units: roomUnits,
     browser: [roomSpecs[0], roomSpecs[2], roomSpecs[3], "--grep", "@outdoors|@movement|@npc|@visual"],
+  },
+  music: {
+    units: ["tests/room-bass-game.test.ts", "tests/room-engine-lifecycle.test.ts", "tests/room-model-lifecycle.test.ts"],
+    browser: [roomSpecs[0], roomSpecs[3], roomSpecs[4], "--grep", "@bass|@outdoors|@visual"],
   },
   full: { units: [], browser: [], subpath: true },
 };
