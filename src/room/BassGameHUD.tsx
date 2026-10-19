@@ -1,19 +1,30 @@
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
-import { BASS_STRINGS, type BassGameSnapshot, type BassString } from "./bassGame";
+import {
+  BASS_PROXIMITY_SECONDS,
+  BASS_SONGS,
+  BASS_STRINGS,
+  type BassDifficulty,
+  type BassGameSnapshot,
+  type BassString,
+  type BassTechnique,
+} from "./bassGame";
+import { createBassGesture } from "./bassGesture";
 import "./bassGame.css";
 
 type BassGameHUDProps = {
   snapshot: BassGameSnapshot;
   onStart: () => void;
+  onDifficulty: (difficulty: BassDifficulty) => void;
   onHold: (string: BassString, fret: number) => void;
   onRelease: (string: BassString) => void;
-  onPluck: (string: BassString) => void;
+  onPluck: (string: BassString, technique?: BassTechnique) => void;
   onPutDown: () => void;
   paused: boolean;
   onLayout?: (occupiedBottomHeight: number) => void;
 };
 
-const LOOK_AHEAD = 2;
+const DIFFICULTIES: readonly BassDifficulty[] = ["easy", "normal", "hard"];
+const DIFFICULTY_HINTS = { easy: "8ビート", normal: "スウィング", hard: "テクニカル" };
 const HOLD_KEYS = ["1", "2", "3", "4"];
 const PICK_KEYS = ["7", "8", "9", "0"];
 const activationKey = (event: KeyboardEvent) => event.code === "Space" || event.code === "Enter";
@@ -43,12 +54,14 @@ type HoldButtonProps = {
   heldFret: number | null;
   required: boolean;
   nextFret: number | null;
+  mode: "hold" | "tap";
+  needsRepress: boolean;
   onHold: BassGameHUDProps["onHold"];
   onRelease: BassGameHUDProps["onRelease"];
 };
 
 /** Each left contact owns its capture; a right-hand tap cannot release it. */
-function HoldButton({ string, fret, heldFret, required, nextFret, onHold, onRelease }: HoldButtonProps) {
+function HoldButton({ string, fret, heldFret, required, nextFret, mode, needsRepress, onHold, onRelease }: HoldButtonProps) {
   const pointers = useRef(new Set<number>());
   const keyboard = useRef(false);
   const callbacks = useRef({ onHold, onRelease });
@@ -98,12 +111,15 @@ function HoldButton({ string, fret, heldFret, required, nextFret, onHold, onRele
       )}
     <button
       type="button"
-      className={`bass-hold ${held ? "is-held" : ""} ${required ? "is-required" : ""}`}
+      className={`bass-hold ${held ? "is-held" : ""} ${required ? "is-required" : ""} ${needsRepress ? "needs-repress" : ""}`}
       data-bass-hold={string}
       data-fret={fret}
       data-held-fret={heldFret ?? -1}
       data-bass-fret-position={fretPosition(displayedFret)}
+      data-bass-mode={mode}
+      data-needs-repress={needsRepress}
       aria-label={`左手 ${BASS_STRINGS[string].name}弦 ${displayedFret}フレットを押さえる`}
+      aria-description={mode === "tap" ? "音ごとに指を離し、押し直します" : "このフレーズでは押し続けます"}
       aria-pressed={held}
       aria-keyshortcuts={HOLD_KEYS[string]}
       onPointerDown={(event) => {
@@ -141,31 +157,50 @@ function HoldButton({ string, fret, heldFret, required, nextFret, onHold, onRele
       <kbd>{HOLD_KEYS[string]}</kbd>
       {required && <span className="bass-hold-indicator" aria-hidden="true" />}
       {nextFret !== null && !required && !movedPreview && <span className="bass-next-tag">次</span>}
+      {needsRepress && <span className="bass-repress-tag" aria-hidden="true">↻</span>}
     </button>
     </div>
   );
 }
 
-function PickButton({ string, enabled, onPluck }: { string: BassString; enabled: boolean; onPluck: BassGameHUDProps["onPluck"] }) {
+function PickButton({ string, enabled, instantPick, onPluck }: { string: BassString; enabled: boolean; instantPick: boolean; onPluck: BassGameHUDProps["onPluck"] }) {
   const keyboard = useRef(false);
   const pointer = useRef<number | null>(null);
+  const gesture = useRef(createBassGesture());
   useEffect(() => {
     const clearContacts = () => {
       keyboard.current = false;
       pointer.current = null;
+      gesture.current.reset();
     };
     const clearWhenHidden = () => { if (document.hidden) clearContacts(); };
     window.addEventListener("blur", clearContacts);
     document.addEventListener("visibilitychange", clearWhenHidden);
     return () => {
+      clearContacts();
       window.removeEventListener("blur", clearContacts);
       document.removeEventListener("visibilitychange", clearWhenHidden);
     };
   }, []);
-  const releasePointer = (event: PointerEvent<HTMLButtonElement>) => {
+  const point = (event: PointerEvent<HTMLButtonElement>) => ({
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    time: event.timeStamp,
+  });
+  const clearPointer = (event: PointerEvent<HTMLButtonElement>) => {
     if (pointer.current !== event.pointerId) return;
     pointer.current = null;
+    gesture.current.cancel(event.pointerId);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  const releasePointer = (event: PointerEvent<HTMLButtonElement>) => {
+    if (pointer.current !== event.pointerId) return;
+    if (!instantPick && enabled) {
+      const input = gesture.current.end(point(event));
+      if (input) onPluck(input.string, input.technique);
+    }
+    clearPointer(event);
   };
   return (
     <button
@@ -174,24 +209,31 @@ function PickButton({ string, enabled, onPluck }: { string: BassString; enabled:
       data-bass-pick={string}
       disabled={!enabled}
       aria-label={`右手 ${BASS_STRINGS[string].name}弦を弾く`}
-      aria-keyshortcuts={PICK_KEYS[string]}
+      aria-description={instantPick ? "タップでピッキング" : "タップでピッキング。上に素早く払うとスラップ"}
+      aria-keyshortcuts={instantPick ? PICK_KEYS[string] : `${PICK_KEYS[string]} Shift+${PICK_KEYS[string]}`}
       onPointerDown={(event) => {
         if (event.button !== 0 || pointer.current !== null) return;
         event.preventDefault();
+        if (!instantPick && !gesture.current.begin({ ...point(event), string })) return;
         pointer.current = event.pointerId;
         event.currentTarget.setPointerCapture(event.pointerId);
-        onPluck(string);
+        if (instantPick) onPluck(string, "pick");
+      }}
+      onPointerMove={(event) => {
+        if (instantPick || !enabled || pointer.current !== event.pointerId) return;
+        const input = gesture.current.move(point(event));
+        if (input) onPluck(input.string, input.technique);
       }}
       onPointerUp={releasePointer}
-      onPointerCancel={releasePointer}
-      onLostPointerCapture={releasePointer}
+      onPointerCancel={clearPointer}
+      onLostPointerCapture={clearPointer}
       onKeyDown={(event) => {
         if (!activationKey(event)) return;
         event.preventDefault();
         event.stopPropagation();
         if (event.repeat || keyboard.current) return;
         keyboard.current = true;
-        onPluck(string);
+        onPluck(string, event.shiftKey ? "slap" : "pick");
       }}
       onKeyUp={(event) => {
         if (!activationKey(event)) return;
@@ -201,18 +243,19 @@ function PickButton({ string, enabled, onPluck }: { string: BassString; enabled:
       }}
       onBlur={() => { keyboard.current = false; }}
       onClick={(event) => {
-        // The contact already plucked on down; its click must not play twice.
+        // The contact or key already emitted its one input, never a second click.
         event.preventDefault();
       }}
     >
       <span className="bass-pick-ring" aria-hidden="true" />
       <span className="bass-string-name">{BASS_STRINGS[string].name}</span>
       <kbd>{PICK_KEYS[string]}</kbd>
+      {!instantPick && <span className="bass-pick-slap-hint" aria-hidden="true">↑</span>}
     </button>
   );
 }
 
-export function BassGameHUD({ snapshot, onStart, onHold, onRelease, onPluck, onPutDown, paused, onLayout }: BassGameHUDProps) {
+export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease, onPluck, onPutDown, paused, onLayout }: BassGameHUDProps) {
   const { phase } = snapshot;
   const hud = useRef<HTMLElement>(null);
   const layoutCallback = useRef(onLayout);
@@ -244,7 +287,7 @@ export function BassGameHUD({ snapshot, onStart, onHold, onRelease, onPluck, onP
     const progress = phase === "pickup" ? 1 : snapshot.proximityProgress;
     return (
       <div className="bass-approach" data-bass-phase={phase}>
-        <div className="bass-approach-ring" role="progressbar" aria-label={phase === "pickup" ? "ベースを手に取る" : "近くで5秒待つとベースを持ちます"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+        <div className="bass-approach-ring" role="progressbar" aria-label={phase === "pickup" ? "ベースを手に取る" : `近くで${BASS_PROXIMITY_SECONDS}秒待つとベースを持ちます`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
           <svg viewBox="0 0 48 48" aria-hidden="true">
             <circle className="bass-ring-track" cx="24" cy="24" r="20" />
             <circle className="bass-ring-progress" cx="24" cy="24" r="20" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - Math.min(1, Math.max(0, progress)) * 100} />
@@ -258,6 +301,8 @@ export function BassGameHUD({ snapshot, onStart, onHold, onRelease, onPluck, onP
 
   const playing = phase === "playing";
   const performing = playing || phase === "countdown";
+  const easy = snapshot.difficulty === "easy";
+  const song = BASS_SONGS[snapshot.difficulty];
   const flowers = Math.round((snapshot.hits / Math.max(1, snapshot.notes.length)) * 100);
   const progress = Math.min(1, Math.max(0, snapshot.elapsed / Math.max(1, snapshot.duration)));
   const feedback = snapshot.feedback && snapshot.feedbackAge < 0.6 ? { perfect: "PERFECT", good: "GOOD", miss: "MISS" }[snapshot.feedback] : "";
@@ -266,22 +311,41 @@ export function BassGameHUD({ snapshot, onStart, onHold, onRelease, onPluck, onP
   const visualTime = phase === "countdown" ? -snapshot.countdownRemaining : snapshot.elapsed;
 
   return (
-    <section ref={hud} className={`bass-hud bass-phase-${phase}`} data-bass-phase={phase} aria-label="ベース演奏 EASY" onPointerDown={(event) => event.stopPropagation()} onPointerMove={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onContextMenu={(event) => event.preventDefault()}>
+    <section ref={hud} className={`bass-hud bass-phase-${phase}`} data-bass-phase={phase} data-selected-difficulty={snapshot.difficulty} aria-label={`ベース演奏 ${song.label}`} onPointerDown={(event) => event.stopPropagation()} onPointerMove={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onContextMenu={(event) => event.preventDefault()}>
       <div className="bass-hud-heading">
         <div className="bass-hud-title">
-          <span className="bass-difficulty">EASY</span>
+          <span className="bass-difficulty">{song.label}</span>
           {performing ? (
             <div className="bass-phrase-guide" aria-label="押弦ガイド">
-              {current && <span className="bass-phrase-now"><small>今</small> {BASS_STRINGS[current.string].name} <b>{current.fret}F</b></span>}
-              {next && <span className="bass-phrase-next"><span aria-hidden="true">→</span> <small>次</small> {BASS_STRINGS[next.string].name} <b>{next.fret}F</b></span>}
+              {current && <span className="bass-phrase-now"><small>今</small> {BASS_STRINGS[current.string].name} <b>{current.fret}F</b>{current.mode === "tap" && <em className="bass-mode-label">押し直し</em>}</span>}
+              {next && <span className="bass-phrase-next"><span aria-hidden="true">→</span> <small>次</small> {BASS_STRINGS[next.string].name} <b>{next.fret}F</b>{next.mode === "tap" && <em className="bass-mode-label" aria-label="次は押し直し">↻</em>}</span>}
             </div>
           ) : <span className="bass-ready-copy">左で押さえて、右で弾く</span>}
         </div>
         <button type="button" className="bass-put-down" onClick={onPutDown} aria-label="ベースを置く">置く <kbd>Esc</kbd></button>
       </div>
+      {(phase === "ready" || phase === "result") && (
+        <div className="bass-difficulty-selector" role="group" aria-label="難易度">
+          {DIFFICULTIES.map((difficulty) => (
+            <button
+              key={difficulty}
+              type="button"
+              data-bass-difficulty={difficulty}
+              aria-label={BASS_SONGS[difficulty].label}
+              aria-pressed={snapshot.difficulty === difficulty}
+              onClick={() => onDifficulty(difficulty)}
+            >
+              <span>{BASS_SONGS[difficulty].label}</span>
+              <small>{DIFFICULTY_HINTS[difficulty]}</small>
+            </button>
+          ))}
+        </div>
+      )}
       {phase === "ready" ? (
         <div className="bass-ready-actions">
-          <p className="bass-key-hint">同じ段の左を押し続けて<br />右の輪に音符が来たらタップ</p>
+          <p className="bass-key-hint">
+            {easy ? <>同じ段の左を押し続けて<br />右の輪に音符が来たらタップ</> : <>左：音ごとに押し直す<br />右：● タップ / ↑ 上に払う<span className="bass-keyboard-technique">7 / 8 / 9 / 0 · <kbd>Shift</kbd>＋同じキーで ↑</span></>}
+          </p>
           <button type="button" className="bass-start" onClick={onStart}>演奏する <span aria-hidden="true">→</span></button>
         </div>
       ) : phase === "result" ? (
@@ -306,20 +370,32 @@ export function BassGameHUD({ snapshot, onStart, onHold, onRelease, onPluck, onP
                     <div className="bass-string-wire" />
                     {snapshot.notes.map((note) => {
                       const offset = note.time - visualTime;
-                      if (note.string !== string || offset > LOOK_AHEAD || offset < -0.15 || note.state === "perfect" || note.state === "good") return null;
-                      return <span key={note.id} className={`bass-note ${note.state === "miss" ? "is-missed" : ""}`} style={{ left: `${100 - offset / LOOK_AHEAD * 100}%` }} />;
+                      const travel = Math.max(0.05, note.travelSeconds);
+                      if (note.string !== string || offset > travel || offset < -0.15 || note.state === "perfect" || note.state === "good") return null;
+                      return (
+                        <span
+                          key={note.id}
+                          className={`bass-note ${note.technique === "slap" ? "bass-note-slap" : ""} ${note.state === "miss" ? "is-missed" : ""}`}
+                          data-bass-note={note.id}
+                          data-technique={note.technique}
+                          data-travel-seconds={note.travelSeconds}
+                          style={{ left: `${100 - offset / travel * 100}%` }}
+                        >
+                          {note.technique === "slap" && <svg viewBox="0 0 18 22" fill="none"><path d="M9 19V3M3.5 8.5 9 3l5.5 5.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </span>
+                      );
                     })}
                   </div>
-                  <HoldButton string={string} fret={guide.fret} heldFret={guide.heldFret} required={guide.required} nextFret={guide.nextFret} onHold={onHold} onRelease={onRelease} />
+                  <HoldButton string={string} fret={guide.fret} heldFret={guide.heldFret} required={guide.required} nextFret={guide.nextFret} mode={current?.string === string ? current.mode : next?.string === string ? next.mode : "hold"} needsRepress={guide.needsRepress} onHold={onHold} onRelease={onRelease} />
                   <span className="bass-row-space" aria-hidden="true" />
-                  <PickButton string={string} enabled={playing} onPluck={onPluck} />
+                  <PickButton string={string} enabled={playing} instantPick={easy} onPluck={onPluck} />
                 </div>
               );
             })}
           </div>
           <div className="bass-playback-progress" aria-hidden="true"><span style={{ transform: `scaleX(${progress})` }} /></div>
           <div className="bass-performance">
-            <span className="bass-hand-hint">押し続ける <span aria-hidden="true">→</span> 弾く</span>
+            <span className="bass-hand-hint">{easy ? <>押し続ける <span aria-hidden="true">→</span> 弾く</> : <>左：押し直し <span aria-hidden="true">·</span> 右：● / ↑</>}</span>
             {phase === "countdown" ? <span className="bass-countdown" aria-label={`演奏開始まで ${snapshot.countdown}`}>{snapshot.countdown}</span> : <span className={`bass-feedback bass-feedback-${snapshot.feedback ?? "none"}`} aria-hidden="true">{feedback}</span>}
             <span className="bass-combo"><strong>{snapshot.combo}</strong> COMBO</span>
             <span className="bass-flower-progress" aria-label={`開花率 ${flowers}%`}><Flower />{flowers}<small>%</small></span>

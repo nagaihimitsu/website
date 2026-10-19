@@ -7,7 +7,7 @@ import { createRoomScene } from "./roomScene";
 import { createBirdMotion } from "./birdMotion";
 import { worldRecovery } from "./roomArchitecture";
 import { findRecoveryPosition } from "./worldRecovery";
-import { createBassGame, BASS_BEAT_SECONDS, type BassString } from "./bassGame";
+import { createBassGame, type BassDifficulty, type BassString, type BassTechnique } from "./bassGame";
 import { createBassAudio } from "./bassAudio";
 import {
   createPlayer,
@@ -190,6 +190,7 @@ function initializeRoomEngine(
   let bassReportedTime = -Infinity;
   let bassVisualLift = 0;
   let bassPluckPulse = 0;
+  let bassSlapPulse = 0;
   let bassSuccessPulse = 0;
   let bassPluckString: BassString = 3;
   let bassOverlayHeight = 0;
@@ -346,8 +347,18 @@ function initializeRoomEngine(
     bassAudio.unlock(); // Must run synchronously inside this key/tap gesture.
     bassPreviousTime = performance.now();
     if (!bassGame.start()) return;
+    bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
     bassState = bassGame.snapshot();
     bassAudio.sync(bassState);
+    reportBass(bassPreviousTime, true);
+  }
+
+  function setBassDifficulty(difficulty: BassDifficulty) {
+    if (disposed || failed || paused || document.hidden || !bassGame.setDifficulty(difficulty)) return;
+    bassAudio.stop();
+    clearInputs();
+    bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
+    bassPreviousTime = performance.now();
     reportBass(bassPreviousTime, true);
   }
 
@@ -367,16 +378,17 @@ function initializeRoomEngine(
     reportBass(performance.now(), true);
   }
 
-  function pluckBass(string: BassString) {
+  function pluckBass(string: BassString, technique: BassTechnique = "pick") {
     if (disposed || failed || paused || document.hidden || bassState.phase !== "playing") return;
     advanceBass(performance.now()); // Judge at input time, independently of render FPS.
-    const judgement = bassGame.pluck(string);
+    const judgement = bassGame.pluck(string, technique);
     if (!judgement) return;
     bassAudio.unlock();
-    bassAudio.pluck(judgement.frequency);
+    bassAudio.pluck(judgement.frequency, technique);
     bassPluckPulse = 1;
+    bassSlapPulse = technique === "slap" ? 1 : 0;
     bassPluckString = string;
-    if (judgement.kind !== "miss") bassSuccessPulse = 1;
+    bassSuccessPulse = judgement.kind === "miss" ? 0 : 1;
     bassState = bassGame.snapshot();
     reportBass(performance.now(), true);
   }
@@ -389,6 +401,7 @@ function initializeRoomEngine(
     bassPreviousTime = performance.now();
     bassNeedsExit = true;
     bassPluckPulse = 0;
+    bassSlapPulse = 0;
     bassSuccessPulse = 0;
     clearInputs();
     reportBass(bassPreviousTime, true);
@@ -647,7 +660,7 @@ function initializeRoomEngine(
         }
       } else if (Object.hasOwn(BASS_PLUCK_KEYS, event.code)) {
         event.preventDefault();
-        if (!event.repeat) pluckBass(BASS_PLUCK_KEYS[event.code]);
+        if (!event.repeat) pluckBass(BASS_PLUCK_KEYS[event.code], event.shiftKey ? "slap" : "pick");
       } else if (["Space", "Enter"].includes(event.code)) {
         if (["Space", "Enter"].includes(event.code) && event.target instanceof HTMLElement && event.target.closest("button, a")) return;
         event.preventDefault();
@@ -965,6 +978,7 @@ function initializeRoomEngine(
     const liftTarget = bassHeld() ? (bassState.phase === "pickup" ? bassState.pickupProgress : 1) : 0;
     bassVisualLift = bassHeld() ? liftTarget : Math.max(0, bassVisualLift - elapsed * 2.5);
     bassPluckPulse *= Math.exp(-12 * elapsed);
+    bassSlapPulse *= Math.exp(-12 * elapsed);
     bassSuccessPulse *= Math.exp(-5 * elapsed);
     const moving =
       Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) > 0.0001;
@@ -1016,7 +1030,7 @@ function initializeRoomEngine(
       const bassLeft = heldString >= 0
         ? { string: heldString, fret: bassState.heldFrets[heldString]! }
         : bassState.currentPhrase ?? bassState.nextPhrase ?? { string: 3, fret: 3 };
-      const bassBeat = bassState.elapsed / BASS_BEAT_SECONDS;
+      const bassBeat = bassState.elapsed / bassState.beatSeconds;
       room.animateAvatar({
         time: animationTime,
         speed:
@@ -1036,11 +1050,12 @@ function initializeRoomEngine(
           lift: bassVisualLift, pluck: bassPluckPulse, playing: bassState.phase === "playing",
           beat: bassBeat, string: bassLeft.string, fret: bassLeft.fret,
           fretting: heldString >= 0, pluckString: bassPluckString,
+          slap: bassSlapPulse,
         },
       });
       room.bass.animate(animationTime, bassVisualLift, bassPluckPulse,
         bassState.notes.length ? bassState.hits / bassState.notes.length : 0, reducedMotion,
-        { playing: bassState.phase === "playing", beat: bassBeat, success: bassSuccessPulse, string: bassPluckString });
+        { playing: bassState.phase === "playing", beat: bassBeat, success: bassSuccessPulse, string: bassPluckString, slap: bassSlapPulse });
       room.scene.updateMatrixWorld();
       if (time - aimTime >= 100 && !opening && !opened && !bassHeld()) {
         aimTime = time;
@@ -1131,6 +1146,7 @@ function initializeRoomEngine(
     jump,
     punch,
     startBass,
+    setBassDifficulty,
     holdBass,
     releaseBass,
     pluckBass,

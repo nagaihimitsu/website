@@ -591,6 +591,8 @@ function buildCharacter(scope: DisposalScope) {
       if (state.bass && state.bass.lift > 0) {
         const lift = THREE.MathUtils.clamp(state.bass.lift, 0, 1);
         const pluck = THREE.MathUtils.clamp(state.bass.pluck, 0, 1);
+        const slap = THREE.MathUtils.clamp(state.bass.slap ?? 0, 0, 1);
+        const fingerPluck = pluck * (1 - slap);
         const beat = state.bass.beat * Math.PI * 2;
         const groove = state.bass.playing && !state.reducedMotion;
         // A brief forward reach and settling bend makes picking up the bass an
@@ -620,15 +622,22 @@ function buildCharacter(scope: DisposalScope) {
           frettingX = bassStringX(state.bass.string, fingerboardY);
         }
         const pickX = bassStringX(state.bass.pluckString ?? state.bass.string);
+        const thumbX = bassStringX(state.bass.pluckString ?? state.bass.string, 0.067);
         const touchZ = bassStringZ(fingerboardY) + (state.bass.fretting ? 0 : 0.014);
         playingFingers.visible = lift > 0.65;
         playingFingers.scale.setScalar(BASS_HELD_SCALE * THREE.MathUtils.smoothstep(lift, 0.65, 1));
-        pluckingIndex([[0.065, 0.011, 0.101], [0.043, 0.02, 0.097],
-          [pickX + 0.01, 0.02, 0.068], [pickX - pluck * 0.007, 0.015, bassStringZ(0.015) + 0.002 + pluck * 0.003]]);
-        pluckingMiddle([[0.065, -0.011, 0.101], [0.043, -0.006, 0.097],
-          [pickX + 0.013, -0.008, 0.064], [pickX + 0.003, -0.009, 0.049]]);
-        pluckingThumb([[0.068, 0.033, 0.093], [0.055, 0.062, 0.088],
-          [0.032, 0.07, 0.063], [0.025, 0.067, 0.046]]);
+        // A slap straightens the thumb onto the chosen string while the other
+        // fingers lift clear. The small wrist rotation is input feedback even
+        // with reduced motion, without moving the elbow through the instrument.
+        pluckingIndex([[0.065, 0.011, 0.101 + slap * 0.003], [0.043, 0.02, 0.097 + slap * 0.006],
+          [pickX + 0.01, 0.02, 0.068 + slap * 0.011],
+          [pickX - fingerPluck * 0.007, 0.015, bassStringZ(0.015) + 0.002 + fingerPluck * 0.003 + slap * 0.015]]);
+        pluckingMiddle([[0.065, -0.011, 0.101 + slap * 0.003], [0.043, -0.006, 0.097 + slap * 0.006],
+          [pickX + 0.013, -0.008, 0.064 + slap * 0.011], [pickX + 0.003, -0.009, 0.049 + slap * 0.015]]);
+        pluckingThumb([[0.068, 0.033, 0.093 + slap * 0.003], [0.055 - slap * 0.004, 0.062, 0.088],
+          [THREE.MathUtils.lerp(0.032, thumbX + 0.009, slap), 0.07, 0.063 - slap * 0.005],
+          [THREE.MathUtils.lerp(0.025, thumbX, slap), 0.067,
+            THREE.MathUtils.lerp(0.046, bassStringZ(0.067) + 0.0008, slap)]]);
         frettingIndex([[-0.057, fingerboardY - 0.02, 0.079], [-0.036, fingerboardY + 0.005, 0.084],
           [frettingX - 0.006, fingerboardY + 0.006, touchZ + 0.023], [frettingX, fingerboardY, touchZ + 0.0008]]);
         frettingMiddle([[-0.058, fingerboardY - 0.041, 0.076], [-0.035, fingerboardY - 0.02, 0.078],
@@ -644,7 +653,8 @@ function buildCharacter(scope: DisposalScope) {
           rig.pile.forEach((item) => { item.visible = lift < 0.01; });
           // Palm position is expressed in instrument space, separate from the
           // string-contacting fingertips. Only the wrist shifts on a pluck.
-          if (index === 0) bassPosePoint(0.07 - pluck * 0.003, 0.007, 0.105 + pluck * 0.001, handTarget);
+          if (index === 0) bassPosePoint(0.07 - fingerPluck * 0.003, 0.007,
+            0.105 + fingerPluck * 0.001 + slap * 0.003, handTarget);
           else bassPosePoint(-0.055, fingerboardY - 0.022, 0.079, handTarget);
           sleeveCurve.v0.set(0, 0.012, 0);
           sleeveCurve.v1.set(side * 0.04, -0.11, -0.04);
@@ -661,7 +671,8 @@ function buildCharacter(scope: DisposalScope) {
             sleeveCurve.v3.copy(wrist).add(new THREE.Vector3(-0.025, 0.012, 0.002));
           }
           palmRotation.copy(BASS_HELD_ROTATION).multiply(frameRotation.setFromAxisAngle(
-            new THREE.Vector3(0, 0, 1), (index === 0 ? -Math.PI / 2 : Math.PI / 2) + (index === 0 ? -pluck * 0.09 : 0)));
+            new THREE.Vector3(0, 0, 1), (index === 0 ? -Math.PI / 2 : Math.PI / 2)
+              + (index === 0 ? -fingerPluck * 0.09 - slap * 0.12 : 0)));
           // Every ring shares a centre and tangent. Evaluate each section once,
           // rather than repeating curve sampling for its 49 surface vertices.
           for (const section of rig.sections.values()) {

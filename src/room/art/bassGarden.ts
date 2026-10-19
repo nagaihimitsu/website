@@ -17,6 +17,8 @@ export type BassGardenPerformance = {
   success: number;
   /** Last physically plucked HUD row: G=0, D=1, A=2, E=3. */
   string?: number;
+  /** Actual slap input pulse; success gates all celebratory accents. */
+  slap?: number;
 };
 
 /**
@@ -539,10 +541,10 @@ function buildBassGarden(scope: DisposalScope) {
     effectSeed = (Math.imul(effectSeed, 1664525) + 1013904223) >>> 0;
     return effectSeed / 0x100000000;
   };
-  function launchSuccess(time: number) {
+  function launchSuccess(time: number, slapAccent = 0) {
     for (const pool of [petalPool, notePool]) {
       const isNote = pool === notePool;
-      for (let i = 0; i < (isNote ? 2 : 5); i++) {
+      for (let i = 0; i < (isNote ? 2 : 5) + (slapAccent > 0.35 ? (isNote ? 1 : 2) : 0); i++) {
         const particle = pool.particles[pool.cursor];
         pool.cursor = (pool.cursor + 1) % pool.particles.length;
         const flower = flowers[(flourishCount * 3 + i * 3 + (isNote ? 2 : 0)) % flowers.length];
@@ -553,9 +555,11 @@ function buildBassGarden(scope: DisposalScope) {
         particle.start = time;
         particle.lifetime = isNote ? 1.1 + random() * 0.25 : 0.8 + random() * 0.35;
         particle.velocity.set((random() - 0.5) * 0.27, 0.3 + random() * 0.25, -0.08 - random() * 0.14);
+        particle.velocity.y *= 1 + slapAccent * 0.25;
         particle.rotation = (random() - 0.5) * 0.8;
         particle.spin = (random() - 0.5) * (isNote ? 0.8 : 3.5);
         particle.size = isNote ? 0.076 + random() * 0.014 : 0.021 + random() * 0.015;
+        particle.size *= 1 + slapAccent * 0.12;
       }
     }
     flourishCount++;
@@ -593,14 +597,20 @@ function buildBassGarden(scope: DisposalScope) {
   pollenMaterial.emissive.set("#6b4b20");
   pollenMaterial.emissiveIntensity = 0;
   function animate(timeSeconds: number, hitPulse = 0, bloom = 0, reducedMotion = false, performance?: BassGardenPerformance) {
-    const pulse = THREE.MathUtils.clamp(hitPulse, 0, 1);
+    const inputPulse = THREE.MathUtils.clamp(hitPulse, 0, 1);
     const growth = THREE.MathUtils.clamp(bloom, 0, 1);
     const success = THREE.MathUtils.clamp(performance?.success ?? 0, 0, 1);
+    const slap = THREE.MathUtils.clamp(performance?.slap ?? 0, 0, 1);
+    const slapAccent = slap * success;
+    // A wrong slap moves the player's hand only. The engine clears success on
+    // each miss, so a preceding correct note cannot lend it a success flourish.
+    const pulse = slap > 0 ? inputPulse * success : inputPulse;
+    const flowerPulse = success * (1 + slap * 0.35);
     const delta = Math.max(0, Math.min(0.1, timeSeconds - previousTime));
     previousTime = timeSeconds;
     performanceAmount = THREE.MathUtils.damp(performanceAmount, performance?.playing ? 1 : 0, 7, delta);
     const beat = performance?.beat ?? 0;
-    if (!reducedMotion && performance?.playing && success > 0.35 && success > previousSuccess + 0.2) launchSuccess(timeSeconds);
+    if (!reducedMotion && performance?.playing && success > 0.35 && success > previousSuccess + 0.2) launchSuccess(timeSeconds, slapAccent);
     previousSuccess = success;
     for (let i = 0; i < flowers.length; i++) {
       const flower = flowers[i];
@@ -608,15 +618,15 @@ function buildBassGarden(scope: DisposalScope) {
       const nod = Math.sin(beat * Math.PI * 2 + i * 0.34);
       flower.stem.rotation.z = reducedMotion ? 0 :
         Math.sin(timeSeconds * 1.25 + flower.phase) * 0.016 * (1 - performanceAmount)
-        + sway * 0.13 * performanceAmount + Math.sin(flower.phase) * success * 0.09;
-      flower.stem.rotation.x = reducedMotion ? 0 : (nod * 0.045 * performanceAmount + success * 0.035);
+        + sway * 0.13 * performanceAmount + Math.sin(flower.phase) * flowerPulse * 0.09;
+      flower.stem.rotation.x = reducedMotion ? 0 : (nod * 0.045 * performanceAmount + flowerPulse * 0.035);
       flower.crown.rotation.copy(flower.crownRotation);
       if (!reducedMotion) {
         flower.crown.rotation.x += nod * 0.13 * performanceAmount;
         flower.crown.rotation.z += sway * 0.075 * performanceAmount;
       }
-      flower.crown.scale.setScalar(0.87 + growth * 0.13 + (reducedMotion ? 0 : success * 0.055));
-      const opening = reducedMotion ? growth * 0.035 : performanceAmount * 0.09 + success * 0.08 + growth * 0.035;
+      flower.crown.scale.setScalar(0.87 + growth * 0.13 + (reducedMotion ? 0 : flowerPulse * 0.055));
+      const opening = reducedMotion ? growth * 0.035 : performanceAmount * 0.09 + flowerPulse * 0.08 + growth * 0.035;
       flower.petals.scale.set(1 + opening, 1 + opening, 1 - opening * 0.7);
       flower.face.visible = performanceAmount > 0.08;
       for (let leafIndex = 0; leafIndex < flower.leaves.length; leafIndex++) {
@@ -631,7 +641,7 @@ function buildBassGarden(scope: DisposalScope) {
       // Geometry is built from negative X (thick E) to positive X (G),
       // matching bassStringX's reverse mapping from the HUD's G/D/A/E rows.
       const selected = performance?.string === undefined || performance.string === 3 - geometryIndex;
-      const amplitude = reducedMotion || !selected ? 0 : pulse * Math.sin(timeSeconds * 145 + string.phase) * 0.0018;
+      const amplitude = reducedMotion || !selected ? 0 : pulse * Math.sin(timeSeconds * 145 + string.phase) * 0.0018 * (1 + slapAccent * 0.55);
       for (let vertex = 0; vertex < positions.count; vertex++) {
         const index = vertex * 3;
         const along = string.rest[index + 1] / string.length + 0.5;
@@ -640,7 +650,7 @@ function buildBassGarden(scope: DisposalScope) {
       positions.needsUpdate = true;
     }
     emissive.emissiveIntensity = 0.35 + pulse * (reducedMotion ? 0.08 : 0.35);
-    pollenMaterial.emissiveIntensity = success * (reducedMotion ? 0.08 : 0.14);
+    pollenMaterial.emissiveIntensity = success * (reducedMotion ? 0.08 : 0.14 * (1 + slap * 0.2));
     animateParticles(timeSeconds, reducedMotion);
     updateCable();
   }

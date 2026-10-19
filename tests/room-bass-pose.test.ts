@@ -39,7 +39,7 @@ describe("the actual bass-performing model", () => {
       normals: Array.from(mesh.geometry.getAttribute("normal").array),
     }));
     for (const lift of [0.2, 0.7, 1, 1, 1, 1, 0.6, 0.1]) {
-      pose({ lift, pluck: time % 1, playing: true, beat: time * 1.6,
+      pose({ lift, pluck: time % 1, slap: Math.floor(time * 20) % 2, playing: true, beat: time * 1.6,
         string: Math.floor(time * 10) % 4, fret: 2 + Math.floor(time * 10) % 4, fretting: true });
       for (const { mesh } of originals) {
         expect(Array.from(mesh.geometry.getAttribute("position").array).every(Number.isFinite)).toBe(true);
@@ -55,7 +55,7 @@ describe("the actual bass-performing model", () => {
     expect(character.group.getObjectByName("bass-shoulder-support-strap")!.visible).toBe(false);
   });
 
-  it("places the fretting fingertip on each actual string and the plucking fingertip just above it", () => {
+  it("places fretting, plucking and slap-thumb tips on their actual strings", () => {
     const strings = garden.instrument.children.filter((item): item is THREE.Mesh<THREE.CylinderGeometry> =>
       item instanceof THREE.Mesh && item.name === "bass-steel-string");
     expect(strings).toHaveLength(4);
@@ -72,6 +72,16 @@ describe("the actual bass-performing model", () => {
         const tip = character.group.getObjectByName(name)!.getWorldPosition(new THREE.Vector3());
         expect(tip.distanceTo(axis.closestPointToPoint(tip, true, point))).toBeLessThan(tolerance);
       }
+      pose({ lift: 1, pluck: 1, slap: 1, playing: true, beat: time * 1.6,
+        string, fret: string % 2 ? 5 : 2, fretting: true, pluckString: string });
+      // The input gesture changes hands, while the next beat may move the whole
+      // performer. Rebuild the real string's world axis after this new pose.
+      axis.start.set(0, -halfLength, 0).applyMatrix4(actualString.matrixWorld);
+      axis.end.set(0, halfLength, 0).applyMatrix4(actualString.matrixWorld);
+      const thumb = character.group.getObjectByName("bass-plucking-thumb-tip")!.getWorldPosition(new THREE.Vector3());
+      expect(thumb.distanceTo(axis.closestPointToPoint(thumb, true, point))).toBeLessThan(0.0015);
+      const liftedIndex = character.group.getObjectByName("bass-plucking-index-tip")!.getWorldPosition(new THREE.Vector3());
+      expect(liftedIndex.distanceTo(axis.closestPointToPoint(liftedIndex, true, point))).toBeGreaterThan(0.01);
     }
   });
 
@@ -85,8 +95,8 @@ describe("the actual bass-performing model", () => {
     const ray = new THREE.Raycaster();
     const direction = new THREE.Vector3(0, 0, 1);
     try {
-      for (const beat of [0, 0.25, 0.5, 0.75, 1]) for (const pluck of [0, 1]) {
-        pose({ lift: 1, pluck, playing: true, beat, string: Math.floor(beat * 4) % 4, fret: 3, fretting: true });
+      for (const beat of [0, 0.25, 0.5, 0.75, 1]) for (const pluck of [0, 1]) for (const slap of [0, 0.5, 1]) {
+        pose({ lift: 1, pluck, slap, playing: true, beat, string: Math.floor(beat * 4) % 4, fret: 3, fretting: true });
         const torsoInverse = character.bassAnchor.matrixWorld.clone().invert();
         let torsoFront = Infinity, bassBack = -Infinity;
         for (const name of ["loose-cotton-body", "sewn-kangaroo-pocket"]) {

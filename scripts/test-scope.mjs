@@ -38,7 +38,7 @@ const scopes = {
     browser: [roomSpecs[0], roomSpecs[2], roomSpecs[3], "--grep", "@outdoors|@movement|@npc|@visual"],
   },
   music: {
-    units: ["tests/room-bass-game.test.ts", "tests/room-bass-pose.test.ts", "tests/room-engine-lifecycle.test.ts", "tests/room-model-lifecycle.test.ts"],
+    units: ["tests/room-bass-game.test.ts", "tests/room-bass-gesture.test.ts", "tests/room-bass-audio.test.ts", "tests/room-bass-pose.test.ts", "tests/room-engine-lifecycle.test.ts", "tests/room-model-lifecycle.test.ts"],
     browser: [roomSpecs[0], roomSpecs[3], roomSpecs[4], "--grep", "@bass|@outdoors|@visual"],
   },
   full: { units: [], browser: [], subpath: true },

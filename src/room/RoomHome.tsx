@@ -104,9 +104,10 @@ function BassOverlay({ store, engine, paused }: {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return <BassGameHUD snapshot={snapshot} paused={paused}
     onStart={() => engine.current?.startBass()}
+    onDifficulty={(difficulty) => engine.current?.setBassDifficulty(difficulty)}
     onHold={(string, fret) => engine.current?.holdBass(string, fret)}
     onRelease={(string) => engine.current?.releaseBass(string)}
-    onPluck={(string) => engine.current?.pluckBass(string)}
+    onPluck={(string, technique) => engine.current?.pluckBass(string, technique)}
     onLayout={(height) => engine.current?.setBassOverlayHeight(height)}
     onPutDown={() => engine.current?.putDownBass()} />;
 }
@@ -175,6 +176,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           setBassHeld((previous) => previous === held ? previous : held);
           if (room.current) {
             room.current.dataset.bassPhase = value.phase;
+            room.current.dataset.bassDifficulty = value.difficulty;
+            room.current.dataset.bassBpm = String(value.bpm);
             room.current.dataset.bassProgress = value.proximityProgress.toFixed(3);
             room.current.dataset.bassElapsed = value.elapsed.toFixed(3);
             room.current.dataset.bassHits = String(value.hits);

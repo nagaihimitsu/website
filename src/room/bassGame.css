@@ -40,11 +40,19 @@
 .bass-hud-heading { min-height: 44px; margin-bottom: 2px; }
 .bass-hud-title { justify-content: flex-start; gap: 12px; min-width: 0; }
 .bass-difficulty { padding: 4px 6px; border: 1px solid #7b8d6f3b; border-radius: 4px; font: 9px var(--mono); letter-spacing: 1px; color: #5e7351; }
+.bass-difficulty-selector { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 4px 0 10px; }
+.bass-difficulty-selector button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 5px 8px; border: 1px solid #a1ae8b45; border-radius: 6px; color: #7b866e; background: #f2f1e7; }
+.bass-difficulty-selector button > span { font: 10px var(--mono); letter-spacing: .5px; }
+.bass-difficulty-selector button > small { font-size: 8px; }
+.bass-difficulty-selector button[aria-pressed="true"] { border-color: #8a9d6e9e; background: #e4ead6; color: #4d663b; box-shadow: inset 0 -2px #8b9e6f54; }
+.bass-difficulty-selector button:hover { border-color: #8a9d6e; }
 .bass-ready-copy { font-size: 11px; line-height: 1.6; }
 .bass-put-down { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 64px; min-height: 44px; flex-shrink: 0; font-size: 11px; color: #67725d; }
 .bass-hud kbd { padding: 2px 4px; border: 1px solid #8a987d42; border-radius: 3px; font: 8px var(--mono); font-weight: normal; }
 .bass-ready-actions { padding: 5px 0 2px; }
 .bass-key-hint { margin: 0; font-size: 10px; line-height: 1.8; color: #738067; }
+.bass-keyboard-technique { display: block; margin-top: 2px; font-size: 8px; color: #859174; }
+.bass-keyboard-technique kbd { font-size: 7px; }
 .bass-start { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 46px; padding: 10px 22px; border: 1px solid #5e73552b; border-radius: 8px; color: #fcfbf4; background: #586c4b; font-size: 12px; transition: background 100ms; }
 .bass-start:hover { background: #485d3c; }
 .bass-start:active { background: #77875a; }
@@ -55,6 +63,7 @@
 .bass-phrase-now { color: #526c41; }
 .bass-phrase-next { color: #89917c; }
 .bass-phrase-next > span { margin-right: 7px; color: #b5bba9; }
+.bass-mode-label { display: inline-block; margin-left: 5px; color: #8b8a69; font-size: 8px; font-style: normal; }
 .bass-string-board { position: relative; display: grid; gap: 4px; touch-action: none; }
 .bass-string-row { --bass-hold-width: 68px; --bass-fret-travel: 24px; position: relative; display: grid; grid-template-columns: calc(var(--bass-hold-width) + var(--bass-fret-travel)) 1fr 60px; align-items: center; min-height: 46px; }
 .bass-string-track { position: absolute; z-index: 0; left: calc(var(--bass-hold-width) / 2 + var(--bass-fret-travel)); right: 30px; top: 0; bottom: 0; overflow: hidden; pointer-events: none; }
@@ -76,6 +85,8 @@
 .bass-fret-preview small { font-size: 6px; }
 .bass-hold.is-required { border-color: #8d9e70b8; box-shadow: inset 3px 0 #9aab77; color: #526640; background: #e9eddb; }
 .bass-hold.is-held { background: #657d50; border-color: #657d50; box-shadow: none; color: #fffdf3; }
+.bass-hold.needs-repress { border-style: dashed; border-color: #bdb581; background: #7a8465; }
+.bass-repress-tag { position: absolute; top: 2px; right: 4px; color: #f2edc9; font: 12px var(--mono); }
 .bass-hold .bass-string-name { font: 13px var(--mono); }
 .bass-fret { font: 11px var(--mono); }
 .bass-fret small { margin-left: 1px; font-size: 8px; opacity: .65; }
@@ -86,11 +97,16 @@
 .bass-pick-ring { position: absolute; width: 34px; height: 34px; border: 1px solid #94a27699; border-radius: 50%; background: #f7f5eb80; }
 .bass-pick .bass-string-name { position: relative; font: 11px var(--mono); color: #63784d; }
 .bass-pick kbd { position: absolute; right: -11px; padding: 0; border: 0; font-size: 7px; color: #8f9b81; }
+.bass-pick-slap-hint { position: absolute; top: 3px; right: 6px; color: #9d9879; font: 10px var(--mono); }
 .bass-pick:active .bass-pick-ring { background: #bdcc9a; border-color: #728956; }
 .bass-string-row.is-resonating .bass-pick-ring { border-color: #a39658; background: #dfe6bf99; box-shadow: 0 0 8px #a5b9804d; }
 .bass-pick:disabled { opacity: .6; }
 .bass-note { position: absolute; z-index: 1; top: 50%; width: 11px; height: 11px; transform: translate(-50%, -50%); border: 1.5px solid #f8f8eb; border-radius: 50%; background: #7d955e; box-shadow: 0 0 0 1px #7d955e7a; }
 .bass-note.is-missed { opacity: .25; background: #9a998a; }
+.bass-note-slap { z-index: 2; width: 15px; height: 21px; border: 0; border-radius: 0; background: none; box-shadow: none; color: #9e7847; }
+.bass-note-slap svg { position: relative; display: block; width: 15px; height: 21px; filter: drop-shadow(0 1px #fff8); }
+.bass-note-slap::before { content: ""; position: absolute; top: calc(50% - 1px); right: 9px; width: 22px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, transparent, #baa8736b); }
+.bass-note-slap.is-missed { background: none; }
 .bass-playback-progress { height: 2px; margin: 8px 0 7px; overflow: hidden; border-radius: 1px; background: #6578511a; }
 .bass-playback-progress > span { display: block; width: 100%; height: 100%; transform-origin: left; background: #8d9b6c; }
 .bass-performance { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 21px; }
@@ -126,6 +142,7 @@
   .bass-phrase-guide { gap: 6px; font-size: 10px; }
   .bass-phrase-next > span { margin-right: 3px; }
   .bass-phrase-guide b { font-size: 9px; }
+  .bass-mode-label { margin-left: 3px; font-size: 7px; }
   .bass-string-row { --bass-hold-width: 56px; --bass-fret-travel: 18px; grid-template-columns: calc(var(--bass-hold-width) + var(--bass-fret-travel)) 1fr 52px; min-height: 48px; }
   .bass-string-track { right: 26px; }
   [data-bass-fret-position="middle"] { --bass-fret-offset: 7px; }
@@ -142,7 +159,7 @@
   .bass-result-score strong { font-size: 25px; }
 }
 @media (pointer: coarse) {
-  .bass-hold kbd, .bass-pick kbd { display: none; }
+  .bass-hold kbd, .bass-pick kbd, .bass-keyboard-technique { display: none; }
 }
 @media (max-height: 500px) and (min-aspect-ratio: 6/5) {
   .bass-hud { bottom: max(8px, env(safe-area-inset-bottom)); width: min(880px, calc(100% - 40px)); padding: 0 18px 5px; border-radius: 10px; }

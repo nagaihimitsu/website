@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBassAudio } from "../src/room/bassAudio";
 import {
   BASS_CHART, BASS_COUNTDOWN_SECONDS, BASS_DURATION, BASS_GOOD_WINDOW,
-  BASS_PICKUP_SECONDS, BASS_PROXIMITY_SECONDS, BASS_PHRASES, BASS_STRINGS, BASS_BEAT_SECONDS, createBassGame,
+  BASS_PICKUP_SECONDS, BASS_PROXIMITY_SECONDS, BASS_PHRASES, BASS_STRINGS, BASS_BEAT_SECONDS, BASS_SONGS,
+  type BassDifficulty, createBassGame,
 } from "../src/room/bassGame";
 
 function readyGame() {
@@ -12,10 +13,11 @@ function readyGame() {
   return game;
 }
 
-function playingGame() {
+function playingGame(difficulty: BassDifficulty = "easy") {
   const game = readyGame();
+  game.setDifficulty(difficulty);
   game.start();
-  game.tick(BASS_COUNTDOWN_SECONDS, true);
+  game.tick(BASS_SONGS[difficulty].countdownSeconds, true);
   return game;
 }
 
@@ -42,12 +44,12 @@ describe("terrace bass game", () => {
     }
   });
 
-  it("requires five continuous nearby seconds and removes all progress on leaving", () => {
+  it("requires exactly three continuous nearby seconds and removes all progress on leaving", () => {
     const game = createBassGame();
     expect(game.start()).toBe(false);
-    expect(game.tick(4.5, true).proximityProgress).toBe(0.9);
+    expect(game.tick(2.7, true).proximityProgress).toBe(0.9);
     expect(game.tick(0, false)).toMatchObject({ phase: "idle", proximityProgress: 0 });
-    expect(game.tick(4.99, true).phase).toBe("approaching");
+    expect(game.tick(2.99, true).phase).toBe("approaching");
     expect(game.tick(0.01, true).phase).toBe("pickup");
     expect(game.snapshot().pickupProgress).toBeCloseTo(0);
     expect(game.start()).toBe(false);
@@ -68,9 +70,9 @@ describe("terrace bass game", () => {
 
   it("freezes pickup, countdown, notes and input throughout pauses, without catch-up misses", () => {
     const game = createBassGame();
-    game.tick(4, true);
-    expect(game.tick(60, true, true).proximityProgress).toBe(0.8);
-    game.tick(1 + BASS_PICKUP_SECONDS, true);
+    game.tick(2.4, true);
+    expect(game.tick(60, true, true).proximityProgress).toBeCloseTo(0.8);
+    game.tick(0.6 + BASS_PICKUP_SECONDS, true);
     game.start();
     const countdown = game.tick(0.4, true);
     expect(game.tick(300, true, true)).toEqual(countdown);
@@ -207,7 +209,7 @@ describe("terrace bass game", () => {
     game.cancel();
     expect(game.snapshot()).toMatchObject({ phase: "idle", elapsed: 0, proximityProgress: 0, pickupProgress: 0 });
     expect(game.start()).toBe(false);
-    expect(game.tick(4.9, true).phase).toBe("approaching");
+    expect(game.tick(2.9, true).phase).toBe("approaching");
   });
 
   it("ignores invalid time and does not expose mutable scoring state through snapshots", () => {
@@ -217,6 +219,119 @@ describe("terrace bass game", () => {
     expect(game.tick(-10, true)).toEqual(before);
     before.notes[0].state = "perfect";
     expect(game.snapshot().notes[0].state).toBe("pending");
+  });
+
+  it("switches difficulty only before a run or after a result, safely resetting selected-song state", () => {
+    const game = createBassGame();
+    expect(game.setDifficulty("hard")).toBe(false);
+    game.tick(BASS_PROXIMITY_SECONDS + BASS_PICKUP_SECONDS, true);
+    const before = game.snapshot();
+    for (const invalid of ["legend", "EASY", "constructor", "__proto__", null]) {
+      expect(game.setDifficulty(invalid as BassDifficulty)).toBe(false);
+      expect(game.snapshot()).toEqual(before);
+    }
+    expect(game.setDifficulty("normal")).toBe(true);
+    expect(game.snapshot()).toMatchObject({ difficulty: "normal", bpm: 104, beatSeconds: 60 / 104, duration: 37.5 });
+    game.start();
+    expect(game.setDifficulty("hard")).toBe(false);
+    game.tick(BASS_SONGS.normal.countdownSeconds + BASS_SONGS.normal.duration, true);
+    expect(game.snapshot().phase).toBe("result");
+    expect(game.setDifficulty("hard")).toBe(true);
+    expect(game.snapshot()).toMatchObject({ phase: "ready", difficulty: "hard", score: 0, hits: 0, misses: 0, elapsed: 0, bpm: 120 });
+    expect(game.snapshot().notes).toHaveLength(BASS_SONGS.hard.notes.length);
+    expect(game.snapshot().notes.every((note) => note.state === "pending")).toBe(true);
+  });
+
+  it.each(["easy", "normal", "hard"] as const)("allows every %s note to be performed perfectly with its actual left contact and technique", (difficulty) => {
+    const game = playingGame(difficulty);
+    const song = BASS_SONGS[difficulty];
+    let lastPhrase: number | null = null;
+    for (const note of song.notes) {
+      game.tick(note.time - game.snapshot().elapsed, true);
+      if (note.phraseId !== lastPhrase) {
+        game.releaseAll();
+        expect(game.hold(note.string, note.fret)).toBe(true);
+        lastPhrase = note.phraseId;
+      }
+      expect(game.pluck(note.string, note.technique)).toEqual({ kind: "perfect", noteId: note.id, frequency: note.frequency });
+    }
+    game.tick(song.duration, true);
+    expect(game.snapshot()).toMatchObject({ phase: "result", accuracy: 100, hits: song.notes.length,
+      combo: song.notes.length, maxCombo: song.notes.length, score: song.notes.length * 1000, misses: 0, strayPlucks: 0 });
+  });
+
+  it("requires a fresh contact for the next tap phrase, while keeping release/repress recovery possible", () => {
+    const game = playingGame("normal");
+    const song = BASS_SONGS.normal;
+    const first = song.notes.find((note) => song.phrases[note.phraseId].mode === "tap")!;
+    const next = song.notes[first.id + 1];
+    expect(next.string).toBe(first.string);
+    expect(next.fret).toBe(first.fret);
+    game.tick(first.time, true);
+    game.hold(first.string, first.fret);
+    expect(game.pluck(first.string, first.technique)?.kind).toBe("perfect");
+    game.tick(next.time - first.time, true);
+    expect(game.snapshot().leftGuides[next.string].needsRepress).toBe(true);
+    expect(game.snapshot().heldFrets[next.string]).toBe(next.fret);
+    game.hold(next.string, next.fret); // A repeated down does not replace a living contact.
+    expect(game.pluck(next.string, next.technique)?.frequency).toBeNull();
+    expect(game.snapshot().notes[next.id].state).toBe("pending");
+    game.release(next.string);
+    expect(game.hold(next.string, next.fret)).toBe(true);
+    expect(game.snapshot().leftGuides[next.string].needsRepress).toBe(false);
+    expect(game.pluck(next.string, next.technique)).toMatchObject({ kind: "perfect", noteId: next.id });
+  });
+
+  it("selects the nearest scheduled note before checking technique, without skipping to a matching later slap", () => {
+    const game = playingGame("hard");
+    const [pick, slap] = BASS_SONGS.hard.notes;
+    expect(pick.technique).toBe("pick");
+    expect(slap.technique).toBe("slap");
+    const between = pick.time + 0.11;
+    expect(slap.time - between).toBeLessThan(BASS_GOOD_WINDOW);
+    game.tick(between, true);
+    game.hold(pick.string, pick.fret);
+    expect(game.pluck(pick.string, "slap")).toEqual({ kind: "miss", frequency: null, noteId: null });
+    expect(game.snapshot().notes.slice(0, 2).map((note) => note.state)).toEqual(["pending", "pending"]);
+    expect(game.pluck(pick.string, "pick")).toMatchObject({ kind: "good", noteId: pick.id });
+    game.tick(slap.time - game.snapshot().elapsed, true);
+    expect(game.pluck(slap.string, "pick")?.frequency).toBeNull();
+    expect(game.pluck(slap.string, "slap")).toMatchObject({ kind: "perfect", noteId: slap.id });
+    expect(game.snapshot().hits).toBe(2);
+  });
+
+  it("keeps all songs single-note playable with advance guides, safe slap recovery and real overtaking", () => {
+    for (const song of Object.values(BASS_SONGS)) {
+      expect(song.duration).toBeGreaterThanOrEqual(30);
+      expect(song.duration).toBeLessThanOrEqual(45);
+      for (let index = 0; index < song.notes.length; index++) {
+        const note = song.notes[index], next = song.notes[index + 1];
+        expect([2, 3, 5]).toContain(note.fret);
+        if (next) {
+          expect(next.time - note.time).toBeGreaterThanOrEqual(0.2);
+          if (note.technique === "slap") expect(next.time - note.time).toBeGreaterThanOrEqual(0.26);
+          if (note.string !== next.string || note.fret !== next.fret)
+            expect(next.time - song.phrases[next.phraseId].prepareAt).toBeGreaterThanOrEqual(0.4);
+        }
+      }
+      for (const phrase of song.phrases) {
+        expect(phrase.prepareAt).toBeLessThan(phrase.start);
+        expect(phrase.previewAt).toBeLessThanOrEqual(phrase.start - 1);
+      }
+      if (song.difficulty !== "easy") {
+        const pair = song.notes.flatMap((slap, index) => {
+          const pick = song.notes[index + 1];
+          return slap.technique === "slap" && pick?.technique === "pick" &&
+            slap.time - slap.travelSeconds > pick.time - pick.travelSeconds ? [[slap, pick]] : [];
+        })[0];
+        expect(pair).toBeDefined();
+        const [slap, pick] = pair;
+        expect(slap.time).toBeLessThan(pick.time);
+        expect(slap.time - slap.travelSeconds).toBeGreaterThan(pick.time - pick.travelSeconds);
+      }
+    }
+    expect(BASS_SONGS.normal.swing).toBeGreaterThan(0.5);
+    expect(BASS_SONGS.hard.phrases.filter((phrase) => phrase.mode === "tap").length).toBeGreaterThan(20);
   });
 });
 
