@@ -9,6 +9,7 @@ type Window = { start: number; end: number };
 const ATTACK = 0.006;
 const RELEASE = 0.012;
 const DRIFT_LIMIT = 0.12;
+const SUCCESS_BASS_GAIN = 2; // +6 dB relative to the accompaniment.
 
 /** The supplied recording and its isolated bass share one sample-accurate transport. */
 export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => void) {
@@ -75,7 +76,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
         if (!AudioContextConstructor) { setStatus("unavailable"); return; }
         context = new AudioContextConstructor();
         master = context.createGain();
-        // Stems retain their original relative level. Leave headroom for the count-in.
+        // Leave mix headroom; successful bass segments have their own boost.
         master.gain.value = 0.9;
         master.connect(context.destination);
       }
@@ -238,7 +239,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     }
     windows = merged;
     parameter.cancelScheduledValues(now);
-    const oldLevel = levelAt(timeline, prior);
+    const oldLevel = levelAt(timeline, prior) * SUCCESS_BASS_GAIN;
     parameter.setValueAtTime(oldLevel, now);
     for (const interval of windows) {
       if (interval.end <= timeline) continue;
@@ -248,8 +249,8 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
       const end = transport.anchor + interval.end;
       if (start > now) parameter.setValueAtTime(0, start);
       const riseEnd = Math.min(end - release, Math.max(start + attack, now + ATTACK));
-      if (riseEnd > now) parameter.linearRampToValueAtTime(1, riseEnd);
-      parameter.setValueAtTime(1, Math.max(now, end - release));
+      if (riseEnd > now) parameter.linearRampToValueAtTime(SUCCESS_BASS_GAIN, riseEnd);
+      parameter.setValueAtTime(SUCCESS_BASS_GAIN, Math.max(now, end - release));
       parameter.linearRampToValueAtTime(0, end);
     }
   }

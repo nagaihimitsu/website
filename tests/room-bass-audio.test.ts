@@ -149,7 +149,7 @@ describe("recorded bass transport", () => {
     context.currentTime = 10.9;
     audio.pluck(82.4, "pick", success(snapshot(0.9), 0), 0);
     expect(gate.setValueAtTime).toHaveBeenCalledWith(0, 11);
-    expect(gate.linearRampToValueAtTime).toHaveBeenCalledWith(1, 11.006);
+    expect(gate.linearRampToValueAtTime).toHaveBeenCalledWith(2, 11.006);
     expect(gate.linearRampToValueAtTime).toHaveBeenCalledWith(0, 12);
     expect(tones()).toHaveLength(0); // Success reveals the real bass, never doubled synth.
     const scheduled = gate.linearRampToValueAtTime.mock.calls.length;
@@ -168,7 +168,7 @@ describe("recorded bass transport", () => {
     audio.pluck(82.4, "slap", success(snapshot(1.14), 0), 0);
     const gate = gains[2].gain;
     expect(gate.cancelScheduledValues).toHaveBeenCalledWith(11.14);
-    expect(gate.linearRampToValueAtTime).toHaveBeenCalledWith(1, 11.146);
+    expect(gate.linearRampToValueAtTime).toHaveBeenCalledWith(2, 11.146);
     expect(gate.linearRampToValueAtTime).toHaveBeenCalledWith(0, 12);
     for (const [, time] of gate.setValueAtTime.mock.calls) expect(time).toBeGreaterThanOrEqual(11.14);
     audio.dispose();
@@ -186,7 +186,7 @@ describe("recorded bass transport", () => {
     expect(gate.cancelScheduledValues).toHaveBeenLastCalledWith(11.95);
     expect(gate.linearRampToValueAtTime).toHaveBeenLastCalledWith(0, 13);
     // The old scheduled fade at 12 is canceled, not left under the sustained segment.
-    expect(gate.setValueAtTime).toHaveBeenLastCalledWith(1, 12.988);
+    expect(gate.setValueAtTime).toHaveBeenLastCalledWith(2, 12.988);
     audio.dispose();
   });
 
