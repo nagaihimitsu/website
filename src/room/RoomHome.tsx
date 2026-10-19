@@ -145,6 +145,9 @@ export default function RoomHome({ archive }: { archive: Archive }) {
         onBreak: (label) => {
           if (!disposed) setNotice(`${label}を壊しました`);
         },
+        onDoorOpen: () => {
+          if (!disposed) setNotice("ドアを開けました");
+        },
         onSnapshot: (value) => {
           if (!disposed) reportSnapshot(value);
         },

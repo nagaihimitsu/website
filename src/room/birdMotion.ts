@@ -1,4 +1,6 @@
-import { AVATAR_RADIUS, ROOM_LIMITS, createPlayer, type RoomPlayer } from "./movement";
+import { obstacleLocalPoint, overlapsObstacle } from "./collision";
+import { AVATAR_RADIUS, createPlayer, type RoomPlayer } from "./movement";
+import { ROOM_BIRD_HABITAT } from "./roomArchitecture";
 import type { RoomObstacle } from "./types";
 
 export const BIRD_RADIUS = 0.21;
@@ -26,6 +28,8 @@ export interface BirdMotionState {
 interface BirdMotionOptions {
   random?: () => number;
   spawn?: { x: number; z: number };
+  /** The indoor companion's habitat, independent of the player's world. */
+  habitat?: { minX: number; maxX: number; minZ: number; maxZ: number };
 }
 
 interface Hop {
@@ -70,13 +74,25 @@ export function createBirdMotion(
   options: BirdMotionOptions = {},
 ) {
   const random = options.random ?? seededRandom();
+  const habitat = options.habitat ?? ROOM_BIRD_HABITAT;
+
+  // This companion lives on the room's level floor. Its entire footprint needs
+  // real support; a habitat rectangle alone must never create invisible ground.
+  const hasFloor = (x: number, z: number) => obstacles.some((obstacle) => {
+    if (obstacle.enabled === false || obstacle.support !== "ground" ||
+      Math.abs(obstacle.top) > 0.000001) return false;
+    const local = obstacleLocalPoint(x, z, obstacle);
+    return Math.abs(local.x) + BIRD_RADIUS <= obstacle.width / 2 &&
+      Math.abs(local.z) + BIRD_RADIUS <= obstacle.depth / 2;
+  });
 
   const isClear = (x: number, z: number, player: RoomPlayer) => {
     if (
-      x < ROOM_LIMITS.minX + BIRD_RADIUS ||
-      x > ROOM_LIMITS.maxX - BIRD_RADIUS ||
-      z < ROOM_LIMITS.minZ + BIRD_RADIUS ||
-      z > ROOM_LIMITS.maxZ - BIRD_RADIUS
+      x < habitat.minX + BIRD_RADIUS ||
+      x > habitat.maxX - BIRD_RADIUS ||
+      z < habitat.minZ + BIRD_RADIUS ||
+      z > habitat.maxZ - BIRD_RADIUS ||
+      !hasFloor(x, z)
     ) return false;
 
     // Check the player's circle against the bird's *square collider*, rather
@@ -88,12 +104,8 @@ export function createBirdMotion(
 
     return !obstacles.some((obstacle) =>
       obstacle.id !== BIRD_COLLIDER_ID &&
-      obstacle.enabled !== false &&
       obstacle.top > 0 && obstacle.base < COLLIDER_TOP &&
-      rectangleDistance(
-        x, z, obstacle.x, obstacle.z,
-        obstacle.width / 2, obstacle.depth / 2,
-      ) < BIRD_RADIUS + 0.008,
+      overlapsObstacle(x, z, BIRD_RADIUS + 0.008, obstacle),
     );
   };
 
@@ -113,8 +125,8 @@ export function createBirdMotion(
   let spawn = options.spawn ?? { x: 0.05, z: -1.45 };
   if (!isClear(spawn.x, spawn.z, initialPlayer)) {
     const candidates: { x: number; z: number }[] = [];
-    for (let x = ROOM_LIMITS.minX + BIRD_RADIUS + 0.02; x < ROOM_LIMITS.maxX - BIRD_RADIUS; x += 0.25)
-      for (let z = ROOM_LIMITS.minZ + BIRD_RADIUS + 0.02; z < ROOM_LIMITS.maxZ - BIRD_RADIUS; z += 0.25)
+    for (let x = habitat.minX + BIRD_RADIUS + 0.02; x < habitat.maxX - BIRD_RADIUS; x += 0.25)
+      for (let z = habitat.minZ + BIRD_RADIUS + 0.02; z < habitat.maxZ - BIRD_RADIUS; z += 0.25)
         if (isClear(x, z, initialPlayer)) candidates.push({ x, z });
     candidates.sort((a, b) =>
       Math.hypot(a.x - spawn.x, a.z - spawn.z) - Math.hypot(b.x - spawn.x, b.z - spawn.z),

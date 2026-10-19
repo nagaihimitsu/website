@@ -1,4 +1,4 @@
-import { ROOM_CEILING } from "./movement";
+import { obstacleLocalPoint } from "./collision";
 import type { RoomObstacle } from "./types";
 
 export const FOLLOW_TARGET_HEIGHT = 1.02;
@@ -30,7 +30,7 @@ export function shortestAngle(from: number, to: number) {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
-/** A swept camera volume, not just its center, stays inside the architecture. */
+/** Sweep the camera volume against actual solids, indoors and outdoors. */
 export function cameraBoomLimit(
   origin: Point3,
   direction: Point3,
@@ -39,47 +39,43 @@ export function cameraBoomLimit(
   radius = CAMERA_RADIUS,
 ): number {
   let distance = Math.max(0, wantedDistance);
-  const roomMin = { x: -4.91 + radius, y: radius, z: -3.91 + radius };
-  const roomMax = {
-    x: 4.91 - radius,
-    y: ROOM_CEILING - radius,
-    z: 3.91 - radius,
-  };
-  for (const axis of ["x", "y", "z"] as const) {
-    if (direction[axis] > 0.000001)
-      distance = Math.min(
-        distance,
-        (roomMax[axis] - origin[axis]) / direction[axis],
-      );
-    else if (direction[axis] < -0.000001)
-      distance = Math.min(
-        distance,
-        (roomMin[axis] - origin[axis]) / direction[axis],
-      );
-  }
   for (const obstacle of obstacles) {
     if (obstacle.enabled === false) continue;
+    // The swept volume is expanded in each solid's local coordinates, so a
+    // hinged door blocks its actual rotated footprint rather than its old AABB.
+    const localOrigin = {
+      ...obstacleLocalPoint(origin.x, origin.z, obstacle),
+      y: origin.y,
+    };
+    const yaw = obstacle.rotationY ?? 0;
+    const cosine = Math.cos(yaw);
+    const sine = Math.sin(yaw);
+    const localDirection = {
+      x: cosine * direction.x - sine * direction.z,
+      y: direction.y,
+      z: sine * direction.x + cosine * direction.z,
+    };
     const min = {
-      x: obstacle.x - obstacle.width / 2 - radius,
+      x: -obstacle.width / 2 - radius,
       y: obstacle.base - radius,
-      z: obstacle.z - obstacle.depth / 2 - radius,
+      z: -obstacle.depth / 2 - radius,
     };
     const max = {
-      x: obstacle.x + obstacle.width / 2 + radius,
+      x: obstacle.width / 2 + radius,
       y: obstacle.top + radius,
-      z: obstacle.z + obstacle.depth / 2 + radius,
+      z: obstacle.depth / 2 + radius,
     };
     let entry = -Infinity;
     let exit = Infinity;
     for (const axis of ["x", "y", "z"] as const) {
-      if (Math.abs(direction[axis]) < 0.000001) {
-        if (origin[axis] < min[axis] || origin[axis] > max[axis]) {
+      if (Math.abs(localDirection[axis]) < 0.000001) {
+        if (localOrigin[axis] < min[axis] || localOrigin[axis] > max[axis]) {
           entry = Infinity;
           break;
         }
       } else {
-        const a = (min[axis] - origin[axis]) / direction[axis];
-        const b = (max[axis] - origin[axis]) / direction[axis];
+        const a = (min[axis] - localOrigin[axis]) / localDirection[axis];
+        const b = (max[axis] - localOrigin[axis]) / localDirection[axis];
         entry = Math.max(entry, Math.min(a, b));
         exit = Math.min(exit, Math.max(a, b));
       }

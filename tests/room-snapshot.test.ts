@@ -44,6 +44,7 @@ describe("room snapshot reporting", () => {
       cameraDistance: "2.126", cameraX: "2.111", cameraY: "3.222", cameraZ: "4.333",
       punching: "false", brokenCount: "2",
       birdX: "5.000", birdZ: "-1.500", birdHeight: "0.123", birdMoving: "true",
+      doorOpen: "false",
     });
     expect(punchChanges).toEqual([false]);
 

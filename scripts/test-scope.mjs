@@ -7,6 +7,7 @@ const roomSpecs = [
   "tests/e2e/room.spec.ts",
   "tests/e2e/room-instagram.spec.ts",
   "tests/e2e/bird.spec.ts",
+  "tests/e2e/outdoors.spec.ts",
 ];
 const roomUnits = readdirSync(new URL("../tests/", import.meta.url))
   .filter((file) => /^room-.*\.test\.ts$/.test(file))
@@ -31,6 +32,10 @@ const scopes = {
     browser: ["tests/e2e/site.spec.ts", "--grep", "@records"],
   },
   room: { units: roomUnits, browser: roomSpecs },
+  outdoors: {
+    units: roomUnits,
+    browser: [roomSpecs[0], roomSpecs[2], roomSpecs[3], "--grep", "@outdoors|@movement|@npc|@visual"],
+  },
   full: { units: [], browser: [], subpath: true },
 };
 // Refactoring the room uses the same complete room scope, with no unrelated

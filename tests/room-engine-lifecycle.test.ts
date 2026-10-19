@@ -88,7 +88,10 @@ function createHarness() {
   scene.add(avatar, bird);
   const room: RoomScene = {
     scene, avatar, bird,
-    obstacles: [], portals: [], breakables: [],
+    obstacles: [{ id: "floor", x: 0, z: 0, width: 10, depth: 8,
+      base: -0.1, top: 0, support: "ground", enabled: true }],
+    portals: [], breakables: [],
+    door: { object: new THREE.Group(), open: vi.fn(() => false), isOpen: () => false },
     breakObject: vi.fn(() => false),
     resetObjects: vi.fn(),
     animate: vi.fn(),

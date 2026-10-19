@@ -14,6 +14,10 @@ export interface RoomObstacle {
   base: number;
   top: number;
   enabled?: boolean;
+  /** Rotation about the solid's center, using Three.js Y-axis convention. */
+  rotationY?: number;
+  /** Ground contacts keep the visitor's supportId independent of floor tiles. */
+  support?: "ground" | "platform";
 }
 export interface RoomBreakable {
   id: string;
@@ -42,6 +46,11 @@ export interface RoomScene {
   portals: RoomPortal[];
   obstacles: RoomObstacle[];
   breakables: RoomBreakable[];
+  door: {
+    object: THREE.Object3D;
+    open: (immediate?: boolean) => boolean;
+    isOpen: () => boolean;
+  };
   breakObject: (id: string, impulse: THREE.Vector3) => boolean;
   resetObjects: () => void;
   animate: (time: number, moving: boolean, reducedMotion: boolean) => void;
@@ -69,6 +78,7 @@ export interface RoomSnapshot {
   birdZ: number;
   birdHeight: number;
   birdMoving: boolean;
+  doorOpen: boolean;
 }
 export interface RoomEngineOptions {
   host: HTMLElement;
@@ -80,6 +90,7 @@ export interface RoomEngineOptions {
   onOpen: (section: Section) => void;
   onHover: (section: RoomDestination | null) => void;
   onBreak: (label: string) => void;
+  onDoorOpen?: () => void;
   onSnapshot: (snapshot: RoomSnapshot) => void;
 }
 export interface RoomEngine {

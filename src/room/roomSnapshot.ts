@@ -21,6 +21,7 @@ export const INITIAL_ROOM_SNAPSHOT: Readonly<RoomSnapshot> = {
   birdZ: 0,
   birdHeight: 0,
   birdMoving: false,
+  doorOpen: false,
 };
 
 /** Preserve the public diagnostics used by browser checks without React renders. */
@@ -47,6 +48,7 @@ export function writeRoomDiagnostics(
     birdZ: snapshot.birdZ.toFixed(3),
     birdHeight: snapshot.birdHeight.toFixed(3),
     birdMoving: String(snapshot.birdMoving),
+    doorOpen: String(snapshot.doorOpen),
   };
   for (const [name, value] of Object.entries(attributes)) {
     if (element.dataset[name] !== value) element.dataset[name] = value;

@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       validation:
-        description: "Validation scope: visual, links, movement, NPC, records, room/refactor or full"
+        description: "Validation scope: visual, links, movement, NPC, outdoors, records, room/refactor or full"
         type: choice
         required: true
         default: full
-        options: [full, visual, links, movement, records, npc, room, refactor]
+        options: [full, visual, links, movement, records, npc, outdoors, room, refactor]
 permissions:
   contents: read
   pages: write

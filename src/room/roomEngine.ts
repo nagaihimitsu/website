@@ -5,6 +5,8 @@ import { createRoomTargeting, firstVisibleHit } from "./targeting";
 import { withDisposalScope, type DisposalScope } from "./disposal";
 import { createRoomScene } from "./roomScene";
 import { createBirdMotion } from "./birdMotion";
+import { worldRecovery } from "./roomArchitecture";
+import { findRecoveryPosition } from "./worldRecovery";
 import {
   createPlayer,
   movementVector,
@@ -200,6 +202,7 @@ function initializeRoomEngine(
     if (serialized) {
       const saved: unknown = JSON.parse(serialized);
       if (typeof saved === "object" && saved !== null) {
+        if ("doorOpen" in saved && saved.doorOpen === true) room.door.open(true);
         if ("brokenIds" in saved && Array.isArray(saved.brokenIds)) {
           for (const id of saved.brokenIds) {
             if (
@@ -260,6 +263,7 @@ function initializeRoomEngine(
           yaw,
           pitch,
           facing,
+          doorOpen: room.door.isOpen(),
           brokenIds: room.breakables
             .filter((item) => item.broken)
             .map((item) => item.id),
@@ -316,6 +320,7 @@ function initializeRoomEngine(
       birdZ: birdMotion.state.z,
       birdHeight: birdMotion.state.y,
       birdMoving: birdMotion.state.moving,
+      doorOpen: room.door.isOpen(),
     });
   }
 
@@ -429,6 +434,30 @@ function initializeRoomEngine(
     // something behind their back or extend the fist from the camera position.
     const origin = new THREE.Vector3(player.x, player.y + 0.76, player.z);
     const forward = new THREE.Vector3(-Math.sin(facing), 0, -Math.cos(facing));
+    if (!room.door.isOpen()) {
+      const bounds = new THREE.Box3().setFromObject(room.door.object);
+      const target = bounds.getCenter(new THREE.Vector3());
+      target.y = Math.max(bounds.min.y, Math.min(origin.y, bounds.max.y));
+      const nearest = bounds.clampPoint(origin, new THREE.Vector3());
+      const direction = target.clone().sub(origin);
+      if (
+        nearest.distanceTo(origin) <= 1.25 &&
+        direction.clone().setY(0).normalize().dot(forward) >= 0.55
+      ) {
+        raycaster.set(origin, direction.clone().normalize());
+        raycaster.far = direction.length() + 0.03;
+        const hit = firstVisibleHit(raycaster.intersectObjects(targeting.roots(), true));
+        for (let object: THREE.Object3D | null = hit?.object ?? null; object; object = object.parent) {
+          if (object === room.door.object && room.door.open()) {
+            shadowDynamicUntil = performance.now() + 1000;
+            options.onDoorOpen?.();
+            savePosition();
+            snapshot();
+            return;
+          }
+        }
+      }
+    }
     const candidates = room.breakables
       .flatMap((item) => {
         if (item.broken) return [];
@@ -671,7 +700,7 @@ function initializeRoomEngine(
       wantedDistance,
       room.obstacles,
     );
-    // The swept volume covers the furniture solids and room boundaries. This
+    // The swept volume covers actual walls, ground, doors and furniture. This
     // extra ray catches smaller visible fixtures such as lamps and picture ledges.
     cameraRay.set(cameraTarget, boomDirection);
     cameraRay.far = safeDistance + CAMERA_RADIUS;
@@ -723,6 +752,14 @@ function initializeRoomEngine(
 
   function render(time: number) {
     if (disposed || failed || paused || document.hidden) return;
+    try {
+      advanceFrame(time);
+    } catch {
+      fail();
+    }
+  }
+
+  function advanceFrame(time: number) {
     const elapsed = Math.max((time - previousTime) / 1000, 0);
     previousTime = time;
     animationTime += elapsed;
@@ -756,6 +793,15 @@ function initializeRoomEngine(
       );
     }
     jumpRequested = false;
+    if (player.y < worldRecovery.fallBelow) {
+      const recovered = findRecoveryPosition(worldRecovery.position, room.obstacles);
+      if (!recovered) throw new Error("No supported recovery position is available.");
+      player = recovered;
+      moveVelocity = { x: 0, z: 0 };
+      cameraInitialized = false;
+      clearInputs();
+      savePosition();
+    }
     const moving =
       Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) > 0.0001;
     room.avatar.position.set(player.x, player.y, player.z);
@@ -766,6 +812,10 @@ function initializeRoomEngine(
       birdMotion.state.z,
     );
     room.bird.rotation.y = birdMotion.state.heading;
+    const doorAngle = room.door.object.rotation.y;
+    room.animate(animationTime, moving, reducedMotion);
+    if (Math.abs(room.door.object.rotation.y - doorAngle) > 0.000001)
+      shadowDynamicUntil = Math.max(shadowDynamicUntil, time + 120);
     room.scene.updateMatrixWorld();
     if (opening) {
       const progress = Math.min(1, (time - opening.started) / 500);
@@ -790,7 +840,6 @@ function initializeRoomEngine(
     } else setCameraFromPlayer(elapsed);
     camera.updateMatrixWorld();
     try {
-      room.animate(animationTime, moving, reducedMotion);
       room.animateBird({
         time: animationTime,
         hopPhase: birdMotion.state.hopPhase,

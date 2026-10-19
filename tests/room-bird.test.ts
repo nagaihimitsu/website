@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BIRD_COLLIDER_ID, BIRD_RADIUS, createBirdMotion } from "../src/room/birdMotion";
-import { AVATAR_RADIUS, ROOM_LIMITS, createPlayer, stepPlayer } from "../src/room/movement";
+import { AVATAR_RADIUS, createPlayer, stepPlayer } from "../src/room/movement";
+import { ROOM_BIRD_HABITAT } from "../src/room/roomArchitecture";
 import type { RoomObstacle } from "../src/room/types";
 
+const ground: RoomObstacle = {
+  id: "room-floor", x: 0, z: 0, width: 10, depth: 8, base: -0.2, top: 0, support: "ground",
+};
 const furniture: RoomObstacle[] = [
   { id: "bed", x: -3.35, z: -1.85, width: 2.25, depth: 3.6, base: 0, top: 1.03 },
   { id: "desk", x: 3.18, z: -2.67, width: 2.92, depth: 1.42, base: 0, top: 1.36 },
@@ -10,6 +14,8 @@ const furniture: RoomObstacle[] = [
   { id: "table", x: -0.15, z: 1.88, width: 1.7, depth: 1.14, base: 0, top: 0.635 },
   { id: "blocks", x: -0.8, z: -1, width: 0.5, depth: 0.45, base: 0, top: 0.6 },
 ];
+
+const roomObstacles = [ground, ...furniture];
 
 function distanceToRectangle(x: number, z: number, box: RoomObstacle) {
   return Math.hypot(
@@ -21,11 +27,11 @@ function distanceToRectangle(x: number, z: number, box: RoomObstacle) {
 describe("room bird companion", () => {
   it("spawns clear of furniture and restored player positions, and ignores its own collider", () => {
     const player = createPlayer(0.05, -1.45);
-    const bird = createBirdMotion(furniture, player);
+    const bird = createBirdMotion(roomObstacles, player);
     expect(distanceToRectangle(player.x, player.z, bird.collider)).toBeGreaterThan(AVATAR_RADIUS);
     for (const obstacle of furniture)
       expect(distanceToRectangle(bird.state.x, bird.state.z, obstacle)).toBeGreaterThan(BIRD_RADIUS);
-    const sceneObstacles = [...furniture];
+    const sceneObstacles = [...roomObstacles];
     const withOwnCollider = createBirdMotion(sceneObstacles);
     sceneObstacles.push(withOwnCollider.collider);
     for (let frame = 0; frame < 300; frame++) withOwnCollider.update(1 / 60, createPlayer(), false);
@@ -35,7 +41,7 @@ describe("room bird companion", () => {
 
   it("makes small hops and pauses while roaming within walls and outside furniture", () => {
     const player = createPlayer();
-    const bird = createBirdMotion(furniture, player);
+    const bird = createBirdMotion(roomObstacles, player);
     let highest = 0;
     let hops = 0;
     let rests = 0;
@@ -48,10 +54,10 @@ describe("room bird companion", () => {
       if (wasMoving && !moving) rests++;
       highest = Math.max(highest, y);
       furthest = Math.max(furthest, Math.hypot(x - 0.05, z + 1.45));
-      expect(x).toBeGreaterThanOrEqual(ROOM_LIMITS.minX + BIRD_RADIUS);
-      expect(x).toBeLessThanOrEqual(ROOM_LIMITS.maxX - BIRD_RADIUS);
-      expect(z).toBeGreaterThanOrEqual(ROOM_LIMITS.minZ + BIRD_RADIUS);
-      expect(z).toBeLessThanOrEqual(ROOM_LIMITS.maxZ - BIRD_RADIUS);
+      expect(x).toBeGreaterThanOrEqual(ROOM_BIRD_HABITAT.minX + BIRD_RADIUS);
+      expect(x).toBeLessThanOrEqual(ROOM_BIRD_HABITAT.maxX - BIRD_RADIUS);
+      expect(z).toBeGreaterThanOrEqual(ROOM_BIRD_HABITAT.minZ + BIRD_RADIUS);
+      expect(z).toBeLessThanOrEqual(ROOM_BIRD_HABITAT.maxZ - BIRD_RADIUS);
       expect(y).toBeGreaterThanOrEqual(0);
       expect(y).toBeLessThanOrEqual(0.135);
       for (const obstacle of furniture)
@@ -70,9 +76,9 @@ describe("room bird companion", () => {
     const divider = { id: "thin-leg", x: 0, z: 0, width: 0.01, depth: 7.4, base: 0, top: 0.03 };
     const player = createPlayer(4, 0);
     const options = { spawn: { x: -1, z: 0 }, random: () => 0.5 };
-    const blocked = createBirdMotion([divider], player, options);
-    const removed = createBirdMotion([{ ...divider, enabled: false }], player, options);
-    const overhead = createBirdMotion([{ ...divider, base: 0.8, top: 0.9 }], player, options);
+    const blocked = createBirdMotion([ground, divider], player, options);
+    const removed = createBirdMotion([ground, { ...divider, enabled: false }], player, options);
+    const overhead = createBirdMotion([ground, { ...divider, base: 0.8, top: 0.9 }], player, options);
     for (let frame = 0; frame < 24; frame++) {
       blocked.update(0.5, player, false);
       removed.update(0.5, player, false);
@@ -83,9 +89,51 @@ describe("room bird companion", () => {
     expect(overhead.state.x).toBe(removed.state.x);
   });
 
+  it("avoids the actual rotated door leaf while its disabled footprint is passable", () => {
+    const door: RoomObstacle = {
+      id: "door", x: 0, z: 0, width: 0.12, depth: 8,
+      base: 0, top: 2.4, rotationY: Math.PI / 2,
+    };
+    const player = createPlayer(0, 3.4);
+    const options = { spawn: { x: 0, z: -1 }, random: () => 0.5 };
+    const blocked = createBirdMotion([ground, door], player, options);
+    const removed = createBirdMotion([ground, { ...door, enabled: false }], player, options);
+    for (let frame = 0; frame < 24; frame++) {
+      blocked.update(0.5, player, false);
+      removed.update(0.5, player, false);
+      expect(blocked.state.z).toBeLessThanOrEqual(-BIRD_RADIUS - 0.06);
+    }
+    expect(removed.state.z).toBeGreaterThan(0);
+  });
+
+  it("requires a real level floor and keeps its full footprint supported", () => {
+    expect(() => createBirdMotion([])).toThrow("no free floor space");
+    expect(() => createBirdMotion([{ ...ground, enabled: false }])).toThrow("no free floor space");
+    expect(() => createBirdMotion([{ ...ground, top: 1 }])).toThrow("no free floor space");
+    const smallFloor = { ...ground, width: 1.6, depth: 1.6 };
+    const player = createPlayer(4, 0);
+    const bird = createBirdMotion([smallFloor], player, { spawn: { x: 0, z: 0 } });
+    for (let frame = 0; frame < 120; frame++) {
+      bird.update(0.5, player, false);
+      expect(Math.abs(bird.state.x) + BIRD_RADIUS).toBeLessThanOrEqual(smallFloor.width / 2);
+      expect(Math.abs(bird.state.z) + BIRD_RADIUS).toBeLessThanOrEqual(smallFloor.depth / 2);
+    }
+  });
+
+  it("uses its own indoor habitat even when the world floor extends outside", () => {
+    const habitat = { minX: -0.8, maxX: 0.8, minZ: -0.8, maxZ: 0.8 };
+    const player = createPlayer(4, 0);
+    const bird = createBirdMotion([ground], player, { habitat, spawn: { x: 0, z: 0 } });
+    for (let frame = 0; frame < 120; frame++) {
+      bird.update(0.5, player, false);
+      expect(Math.abs(bird.state.x) + BIRD_RADIUS).toBeLessThanOrEqual(habitat.maxX);
+      expect(Math.abs(bird.state.z) + BIRD_RADIUS).toBeLessThanOrEqual(habitat.maxZ);
+    }
+  });
+
   it("blocks a player walking directly into it and never moves its collider into the player", () => {
     let player = createPlayer(1, 0);
-    const obstacles: RoomObstacle[] = [];
+    const obstacles: RoomObstacle[] = [ground];
     const bird = createBirdMotion(obstacles, player, { spawn: { x: 0, z: 0 } });
     obstacles.push(bird.collider);
     for (let frame = 0; frame < 600; frame++) {
@@ -100,7 +148,7 @@ describe("room bird companion", () => {
   });
 
   it("settles in place if the player lands above it, without sliding its support away", () => {
-    const bird = createBirdMotion([]);
+    const bird = createBirdMotion([ground]);
     bird.update(0.9, createPlayer(), false);
     expect(bird.state.moving).toBe(true);
     const x = bird.state.x;
@@ -114,7 +162,7 @@ describe("room bird companion", () => {
   });
 
   it("finishes a hop before resting for reduced motion, and resumes without a phase jump", () => {
-    const bird = createBirdMotion([]);
+    const bird = createBirdMotion([ground]);
     const player = createPlayer();
     bird.update(0.85, player, false);
     const before = { ...bird.state };
@@ -137,14 +185,14 @@ describe("room bird companion", () => {
   it("follows the same route at 2, 15 and 60 FPS and bounds a resumed tab's elapsed time", () => {
     const player = createPlayer();
     const states = [2, 15, 60].map((fps) => {
-      const bird = createBirdMotion(furniture, player);
+      const bird = createBirdMotion(roomObstacles, player);
       for (let frame = 0; frame < fps * 30; frame++) bird.update(1 / fps, player, false);
       return { ...bird.state };
     });
     expect(states[0]).toEqual(states[1]);
     expect(states[1]).toEqual(states[2]);
-    const resumed = createBirdMotion([]);
-    const normal = createBirdMotion([]);
+    const resumed = createBirdMotion([ground]);
+    const normal = createBirdMotion([ground]);
     resumed.update(3600, player, false);
     normal.update(1, player, false);
     expect(resumed.state).toEqual(normal.state);

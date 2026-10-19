@@ -9,6 +9,7 @@ export interface SavedRoomPosition {
   pitch?: number;
   facing?: number;
   brokenIds?: string[];
+  doorOpen?: boolean;
 }
 
 export async function savedPosition(page: Page, pose: SavedRoomPosition) {

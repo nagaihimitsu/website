@@ -1,20 +1,18 @@
 import type { Direction, RoomObstacle } from "./types";
+import { COLLISION_EPSILON as EPSILON, overlapsObstacle } from "./collision";
 
-export const ROOM_LIMITS = { minX: -4.7, maxX: 4.7, minZ: -3.7, maxZ: 3.7 };
-export const ROOM_CEILING = 4.55;
 export const AVATAR_RADIUS = 0.22;
 export const PLAYER_HEIGHT = 1.28;
 export const PLAYER_SPEED = 2.8;
 export const JUMP_SPEED = 6.6;
 export const GRAVITY = 12;
 
-const EPSILON = 0.000001;
 const MAX_STEP = 1 / 180;
 const MAX_ELAPSED = 1;
 
 export interface RoomPlayer {
   x: number;
-  /** Height of the feet above the room floor. */
+  /** World-space feet height, including terrain below the room's origin. */
   y: number;
   z: number;
   velocityY: number;
@@ -45,25 +43,7 @@ export function movementVector(
 }
 
 function overlapsFootprint(x: number, z: number, obstacle: RoomObstacle) {
-  if (obstacle.enabled === false) return false;
-  const nearestX = Math.max(
-    obstacle.x - obstacle.width / 2,
-    Math.min(x, obstacle.x + obstacle.width / 2),
-  );
-  const nearestZ = Math.max(
-    obstacle.z - obstacle.depth / 2,
-    Math.min(z, obstacle.z + obstacle.depth / 2),
-  );
-  return Math.hypot(x - nearestX, z - nearestZ) < AVATAR_RADIUS - EPSILON;
-}
-
-function insideWalls(x: number, z: number) {
-  return (
-    x >= ROOM_LIMITS.minX + AVATAR_RADIUS &&
-    x <= ROOM_LIMITS.maxX - AVATAR_RADIUS &&
-    z >= ROOM_LIMITS.minZ + AVATAR_RADIUS &&
-    z <= ROOM_LIMITS.maxZ - AVATAR_RADIUS
-  );
+  return overlapsObstacle(x, z, AVATAR_RADIUS, obstacle);
 }
 
 /** Test the complete upright body, including furniture sides and undersides. */
@@ -73,13 +53,7 @@ export function positionIsClear(
   obstacles: readonly RoomObstacle[],
   y = 0,
 ): boolean {
-  if (
-    ![x, y, z].every(Number.isFinite) ||
-    !insideWalls(x, z) ||
-    y < -EPSILON ||
-    y + PLAYER_HEIGHT > ROOM_CEILING + EPSILON
-  )
-    return false;
+  if (![x, y, z].every(Number.isFinite)) return false;
   return !obstacles.some(
     (obstacle) =>
       y < obstacle.top - EPSILON &&
@@ -91,8 +65,7 @@ export function positionIsClear(
 function supportAt(
   player: Pick<RoomPlayer, "x" | "y" | "z">,
   obstacles: readonly RoomObstacle[],
-): RoomObstacle | "floor" | null {
-  if (Math.abs(player.y) <= EPSILON) return "floor";
+): RoomObstacle | null {
   return (
     obstacles.find(
       (obstacle) =>
@@ -100,6 +73,10 @@ function supportAt(
         overlapsFootprint(player.x, player.z, obstacle),
     ) ?? null
   );
+}
+
+function supportId(support: RoomObstacle | null): string | null {
+  return support?.support === "ground" ? null : (support?.id ?? null);
 }
 
 /** Advance every elapsed second in small physics steps, independently of rendering. */
@@ -113,8 +90,7 @@ export function stepPlayer(
   const player = { ...state };
   const support = supportAt(player, obstacles);
   player.grounded = player.grounded && support !== null;
-  player.supportId =
-    player.grounded && support !== "floor" ? (support?.id ?? null) : null;
+  player.supportId = player.grounded ? supportId(support) : null;
   if (jumpRequested && player.grounded) {
     player.velocityY = JUMP_SPEED;
     player.grounded = false;
@@ -140,25 +116,16 @@ export function stepPlayer(
     player.velocityY -= GRAVITY * delta;
     // The higher feet position permits clearing an edge during ascent and
     // crossing an edge before the vertical sweep lands on its top.
-    const sideY = Math.min(
-      ROOM_CEILING - PLAYER_HEIGHT,
-      Math.max(previousY, wantedY),
-    );
-    const nextX = Math.max(
-      ROOM_LIMITS.minX + AVATAR_RADIUS,
-      Math.min(ROOM_LIMITS.maxX - AVATAR_RADIUS, player.x + stepX),
-    );
-    const nextZ = Math.max(
-      ROOM_LIMITS.minZ + AVATAR_RADIUS,
-      Math.min(ROOM_LIMITS.maxZ - AVATAR_RADIUS, player.z + stepZ),
-    );
+    const sideY = Math.max(previousY, wantedY);
+    const nextX = player.x + stepX;
+    const nextZ = player.z + stepZ;
     if (positionIsClear(nextX, player.z, obstacles, sideY)) player.x = nextX;
     if (positionIsClear(player.x, nextZ, obstacles, sideY)) player.z = nextZ;
 
     player.grounded = false;
     player.supportId = null;
     if (wantedY > previousY) {
-      let headLimit = ROOM_CEILING;
+      let headLimit = Infinity;
       for (const obstacle of obstacles) {
         if (
           overlapsFootprint(player.x, player.z, obstacle) &&
@@ -170,7 +137,7 @@ export function stepPlayer(
       player.y = Math.min(wantedY, headLimit - PLAYER_HEIGHT);
       if (player.y < wantedY) player.velocityY = 0;
     } else {
-      let landingHeight = 0;
+      let landingHeight = -Infinity;
       let landingId: string | null = null;
       for (const obstacle of obstacles) {
         if (
@@ -180,7 +147,7 @@ export function stepPlayer(
           overlapsFootprint(player.x, player.z, obstacle)
         ) {
           landingHeight = obstacle.top;
-          landingId = obstacle.id;
+          landingId = supportId(obstacle);
         }
       }
       player.y = Math.max(wantedY, landingHeight);
@@ -206,17 +173,21 @@ export function validatePlayerPosition(
   if (typeof y !== "number" || ![saved.x, y, saved.z].every(Number.isFinite))
     return null;
   const player = { ...createPlayer(saved.x, saved.z), y };
-  if (Math.abs(y) < 0.03) player.y = 0;
-  else {
-    const support = obstacles.find(
-      (obstacle) =>
-        Math.abs(y - obstacle.top) < 0.03 &&
-        overlapsFootprint(player.x, player.z, obstacle),
-    );
-    if (!support) return null;
-    player.y = support.top;
-    player.supportId = support.id;
+  let support: RoomObstacle | null = null;
+  let nearestHeight = 0.03;
+  for (const obstacle of obstacles) {
+    const difference = Math.abs(y - obstacle.top);
+    if (
+      difference < nearestHeight &&
+      overlapsFootprint(player.x, player.z, obstacle)
+    ) {
+      support = obstacle;
+      nearestHeight = difference;
+    }
   }
+  if (!support) return null;
+  player.y = support.top;
+  player.supportId = supportId(support);
   return positionIsClear(player.x, player.z, obstacles, player.y)
     ? player
     : null;

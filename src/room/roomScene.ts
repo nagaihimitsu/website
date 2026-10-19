@@ -15,6 +15,15 @@ import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
 import type { RoomDestinationId } from "./destinations";
 import { withDisposalScope, type DisposalScope } from "./disposal";
+import { overlapsObstacle } from "./collision";
+import { AVATAR_RADIUS, PLAYER_HEIGHT } from "./movement";
+import {
+  architectureLayout,
+  architectureObstacle,
+  createEntryDoorMotion,
+  entryDoorLayout,
+  entryDoorPose,
+} from "./roomArchitecture";
 import {
   createFurnitureGroup,
   furnitureLayout,
@@ -39,6 +48,8 @@ export function createRoomScene(archive: Archive): RoomScene {
 
 function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const scene = new THREE.Scene();
+  // The open terrace sees a pale daytime sky; the room keeps its own lighting.
+  scene.background = new THREE.Color("#dceaf0");
   scope.defer(() => scene.clear());
   const portals: RoomPortal[] = [];
   const obstacles: RoomObstacle[] = [];
@@ -253,7 +264,25 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
 
   // A thick architectural plinth and individual timber floorboards.
   rounded(10.3, 0.34, 8.3, cream, 0.09, scene, 0, -0.24, 0);
-  box(10, 0.09, 8, woodDark, scene, 0, -0.075, 0);
+  const terrace = mat("#cfc5b0");
+  const ceilingMaterial = mat("#f4f0e4");
+  ceilingMaterial.emissive.set("#ded8c6");
+  ceilingMaterial.emissiveIntensity = 0.24;
+  const architectureMaterials = { wall, woodDark, terrace, ceiling: ceilingMaterial };
+  for (const part of architectureLayout) {
+    obstacles.push(architectureObstacle(part));
+    if ("visible" in part && part.visible === false) continue;
+    const mesh = box(
+      part.width,
+      part.height,
+      part.depth,
+      architectureMaterials[part.material],
+      scene,
+      ...part.position,
+    );
+    mesh.name = part.id;
+    if (part.id === "room-ceiling") mesh.castShadow = false;
+  }
   const plankMats = ["#c9ac87", "#d0b28c", "#ccb08c", "#d3b995", "#cbb18d"].map(
     (c) => mat(c),
   );
@@ -280,41 +309,84 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     const z = -3.7 + ((i * 19) % 73) / 10;
     box(0.006, 0.002, 0.3 + (i % 5) * 0.11, grain, scene, x, 0.009, z);
   }
-  box(10.2, 4.65, 0.18, wall, scene, 0, 2.28, -4.05);
-  // Left wall is cut around an actual luminous window opening.
-  box(0.18, 4.65, 1.1, wall, scene, -5.05, 2.28, -3.5);
-  box(0.18, 4.65, 2.65, wall, scene, -5.05, 2.28, 2.72);
-  box(0.18, 0.9, 4.25, wall, scene, -5.05, 0.4, -0.85);
-  box(0.18, 0.85, 4.25, wall, scene, -5.05, 4.18, -0.85);
+  // Mouldings remain decorative; the shared solids above provide the walls.
   box(10.05, 0.13, 0.06, white, scene, 0, 0.08, -3.91);
   box(0.06, 0.13, 8, white, scene, -4.91, 0.08, 0);
   box(10.2, 0.08, 0.21, white, scene, 0, 4.62, -4.05);
 
   // Complete the architecture for an eye-level view in every direction.
-  box(0.18, 4.65, 8.2, wall, scene, 5.05, 2.28, 0);
-  box(10.2, 4.65, 0.18, wall, scene, 0, 2.28, 4.05);
   box(0.06, 0.13, 8, white, scene, 4.91, 0.08, 0);
-  box(10.05, 0.13, 0.06, white, scene, 0, 0.08, 3.91);
-  const ceilingMaterial = mat("#f4f0e4");
-  ceilingMaterial.emissive.set("#ded8c6");
-  ceilingMaterial.emissiveIntensity = 0.24;
-  const ceiling = box(10.2, 0.14, 8.2, ceilingMaterial, scene, 0, 4.67, 0);
-  ceiling.castShadow = false;
+  for (const [left, right] of [[-5.025, entryDoorLayout.openingLeft], [entryDoorLayout.openingRight, 5.025]])
+    box(right - left, 0.13, 0.06, white, scene, (left + right) / 2, 0.08, 3.91);
   for (const x of [-4.9, 4.9]) box(0.09, 0.1, 8.0, white, scene, x, 4.54, 0);
   for (const z of [-3.9, 3.9]) box(9.8, 0.1, 0.09, white, scene, 0, 4.54, z);
 
-  // A flush ash door, brass hardware and a discreet switch finish the entry wall.
-  const door = group(2.75, 0, 3.91);
-  rounded(1.45, 2.8, 0.09, woodLight, 0.025, door, 0, 1.4, 0);
+  // The ash leaf swings outwards through a real opening in the entry wall.
+  const doorFrame = group(entryDoorLayout.centerX, 0, entryDoorLayout.hingeZ);
   for (const x of [-0.79, 0.79])
-    rounded(0.09, 2.9, 0.11, white, 0.014, door, x, 1.45, -0.045);
-  rounded(1.67, 0.09, 0.11, white, 0.014, door, 0, 2.91, -0.045);
+    rounded(0.09, 2.9, 0.11, white, 0.014, doorFrame, x, 1.45, -0.045);
+  rounded(1.67, 0.09, 0.11, white, 0.014, doorFrame, 0, 2.91, -0.045);
+  // Lined jambs bridge the thickness of the wall instead of exposing its cut.
+  for (const x of [-0.765, 0.765])
+    box(0.04, 2.865, 0.23, white, doorFrame, x, 1.4325, 0.12);
+  box(1.57, 0.04, 0.23, white, doorFrame, 0, 2.885, 0.12);
+  const doorLeaf = group(entryDoorLayout.hingeX, 0, entryDoorLayout.hingeZ);
+  doorLeaf.name = "entry-door";
+  const leafCenterX = -entryDoorLayout.width / 2;
+  rounded(entryDoorLayout.width, entryDoorLayout.height, entryDoorLayout.depth, woodLight, 0.025,
+    doorLeaf, leafCenterX, entryDoorLayout.height / 2, 0);
   for (const y of [0.68, 1.9])
-    rounded(1.13, 0.94, 0.025, wood, 0.025, door, 0, y, -0.065);
-  rounded(0.07, 0.22, 0.035, brass, 0.02, door, -0.54, 1.25, -0.087);
-  rounded(0.22, 0.035, 0.07, brass, 0.015, door, -0.46, 1.27, -0.12);
+    for (const side of [-1, 1])
+      rounded(1.13, 0.94, 0.025, wood, 0.025, doorLeaf, leafCenterX, y, side * 0.065);
+  for (const side of [-1, 1]) {
+    rounded(0.07, 0.22, 0.035, brass, 0.02, doorLeaf, leafCenterX - 0.54, 1.25, side * 0.087);
+    rounded(0.22, 0.035, 0.07, brass, 0.015, doorLeaf, leafCenterX - 0.46, 1.27, side * 0.12);
+  }
+  const doorCollider: RoomObstacle = {
+    id: "entry-door",
+    ...entryDoorPose(0),
+    width: entryDoorLayout.width,
+    depth: entryDoorLayout.depth,
+    base: 0,
+    top: entryDoorLayout.height,
+    enabled: true,
+  };
+  obstacles.push(doorCollider);
+  const doorMotion = createEntryDoorMotion(
+    (angle) => {
+      doorLeaf.rotation.y = angle;
+      Object.assign(doorCollider, entryDoorPose(angle));
+    },
+    (angle) => {
+      if (avatar.position.y >= doorCollider.top || avatar.position.y + PLAYER_HEIGHT <= doorCollider.base)
+        return false;
+      return overlapsObstacle(avatar.position.x, avatar.position.z, AVATAR_RADIUS,
+        { ...doorCollider, ...entryDoorPose(angle) });
+    },
+  );
   rounded(0.15, 0.19, 0.035, white, 0.014, scene, 1.65, 1.3, 3.91);
   rounded(0.065, 0.09, 0.018, cream, 0.01, scene, 1.65, 1.3, 3.886);
+
+  // A small sunlit terrace is continuous with the floor beyond the doorway.
+  // Subtle paving joints and two planted pots keep its scale domestic.
+  const pavingJoint = mat("#b8ae98");
+  for (const x of [1.04, 2.08, 3.12, 4.16])
+    box(0.009, 0.002, 3.82, pavingJoint, scene, x, 0.001, 6.04);
+  for (const z of [5.04, 6.08, 7.12])
+    box(5.04, 0.002, 0.009, pavingJoint, scene, 2.6, 0.001, z);
+  for (const x of [0.6, 4.6]) {
+    const pot = group(x, 0, 7.45);
+    cylinder(0.32, 0.25, 0.56, terracotta, pot, 0, 0.28, 0, 32);
+    cylinder(0.29, 0.29, 0.025, woodDark, pot, 0, 0.555, 0, 32);
+    for (let index = 0; index < 7; index++) {
+      const angle = index * 2.4;
+      const leaf = sphere(0.21, green, pot, Math.sin(angle) * 0.17, 0.72 + (index % 3) * 0.13,
+        Math.cos(angle) * 0.17);
+      leaf.scale.set(0.72, 1.45, 0.72);
+      leaf.rotation.z = Math.cos(angle) * 0.34;
+    }
+    obstruction(`terrace-planter-${x < 2.6 ? "left" : "right"}`, x, 7.45, 0.64, 0.64, 0.56);
+  }
 
   // Original geometric wall art and a shallow ledge, with no fabricated records.
   const wallArt = group(4.9, 2.8, 1.65);
@@ -989,6 +1061,11 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     portals,
     obstacles,
     breakables,
+    door: {
+      object: doorLeaf,
+      open: doorMotion.open,
+      isOpen: doorMotion.isOpen,
+    },
     animateAvatar: character.animate,
     animateBird: bird.animate,
     breakObject(id, impulse) {
@@ -1003,11 +1080,13 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     resetObjects() {
       fractureSystem.resetObjects();
       for (const target of breakables) target.broken = false;
-      for (const collider of obstacles) collider.enabled = true;
+      for (const collider of obstacles)
+        if (breakables.some((target) => target.id === collider.id)) collider.enabled = true;
     },
     animate(time, _moving, reducedMotion) {
       const delta = Math.max(0, time - lastAnimationTime);
       lastAnimationTime = time;
+      doorMotion.animate(delta, reducedMotion);
       fractureSystem.animate(delta, reducedMotion);
       for (const entry of portals) {
         const target = entry.object.userData.active ? 1.025 : 1;
