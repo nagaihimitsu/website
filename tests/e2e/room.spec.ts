@@ -260,7 +260,8 @@ test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメ�
   // WebGL takes to paint or return a diagnostic query to the test runner.
   const startTime = new Date("2026-01-01T00:00:00Z");
   await page.clock.install({ time: startTime });
-  await page.clock.pauseAt(startTime);
+  // Pause in the future before navigation, so slow CI cannot rewind the clock.
+  await page.clock.pauseAt(new Date(startTime.getTime() + 60_000));
   await savedPosition(page, { x: 0.95, z: -0.9, yaw: 0.4 });
   await enterRoom(page, { pausedClock: true });
   const start = await position(page);
