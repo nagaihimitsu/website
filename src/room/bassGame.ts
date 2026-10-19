@@ -11,7 +11,7 @@ export type BassNoteState = "pending" | "perfect" | "good" | "miss";
 export type BassFeedback = Exclude<BassNoteState, "pending">;
 export type BassDifficulty = "easy" | "normal" | "hard";
 export type BassTechnique = "pick" | "slap";
-/** Row order is shared by both hands, the chart and the instrument: G, D, A, E. */
+/** Row order is shared by the picking controls, chart and instrument: G, D, A, E. */
 export type BassString = 0 | 1 | 2 | 3;
 export const BASS_STRINGS = Object.freeze([
   Object.freeze({ name: "G", openMidi: 43 }),
@@ -29,16 +29,6 @@ export interface BassPhrase {
   previewAt: number;
   frequency: number;
   mode: "hold" | "tap";
-}
-export interface BassLeftGuide {
-  string: BassString;
-  fret: number;
-  phraseId: number | null;
-  required: boolean;
-  heldFret: number | null;
-  nextFret: number | null;
-  nextPhraseId: number | null;
-  needsRepress: boolean;
 }
 export interface BassNote {
   id: number;
@@ -93,10 +83,8 @@ export interface BassGameSnapshot {
   feedback: BassFeedback | null;
   feedbackAge: number;
   notes: readonly BassGameNote[];
-  heldFrets: readonly (number | null)[];
   currentPhrase: BassPhrase | null;
   nextPhrase: BassPhrase | null;
-  leftGuides: readonly BassLeftGuide[];
 }
 
 type RecordedAttack = { time: number; midi: number; string: BassString; fret: number };
@@ -106,7 +94,7 @@ function frettedAttack(note: Readonly<{ time: number; midi: number }>): Recorded
   let best: RecordedAttack | null = null;
   for (let row = 0; row < BASS_STRINGS.length; row++) {
     const fret = note.midi - BASS_STRINGS[row].openMidi;
-    // Open-string attacks are omitted in this physical-contact prototype.
+    // Retain the recorded arrangement and the avatar's fretted playing positions.
     if (fret < 1 || fret > 5) continue;
     if (!best || Math.abs(fret - 3) < Math.abs(best.fret - 3))
       best = { ...note, string: row as BassString, fret };
@@ -216,19 +204,11 @@ export function createBassGame() {
   let feedbackAge = 0;
   let isPaused = false;
   let notes: BassGameNote[] = [];
-  const heldFrets: (number | null)[] = [null, null, null, null];
-  const heldPhraseIds: (number | null)[] = [null, null, null, null];
-
-  function releaseAll() {
-    heldFrets.fill(null);
-    heldPhraseIds.fill(null);
-  }
 
   function resetScore() {
     countdownRemaining = song().countdownSeconds;
     elapsed = score = combo = maxCombo = hits = misses = strayPlucks = feedbackAge = 0;
     feedback = null;
-    releaseAll();
     notes = song().notes.map((note) => ({ ...note, state: "pending" }));
   }
   resetScore();
@@ -240,22 +220,7 @@ export function createBassGame() {
     const latest = prepared[prepared.length - 1] ?? null;
     const currentPhrase = latest && time <= latest.end + BASS_GOOD_WINDOW ? latest : null;
     const nextPhrase = showingGuides ? song().phrases.find((phrase) => phrase.prepareAt > time && phrase.previewAt <= time) ?? null : null;
-    const leftGuides: BassLeftGuide[] = BASS_STRINGS.map((_, row) => {
-      const string = row as BassString;
-      const available = prepared.filter((phrase) => phrase.string === string);
-      const target = available[available.length - 1];
-      const initial = song().phrases.find((phrase) => phrase.string === string);
-      return {
-        string, fret: target?.fret ?? initial?.fret ?? 3, phraseId: target?.id ?? null,
-        required: currentPhrase?.string === string,
-        heldFret: heldFrets[string],
-        nextFret: nextPhrase?.string === string ? nextPhrase.fret : null,
-        nextPhraseId: nextPhrase?.string === string ? nextPhrase.id : null,
-        needsRepress: heldFrets[string] !== null && currentPhrase?.string === string &&
-          currentPhrase.mode === "tap" && heldPhraseIds[string] !== currentPhrase.id,
-      };
-    });
-    return { currentPhrase, nextPhrase, leftGuides };
+    return { currentPhrase, nextPhrase };
   }
 
   function snapshot(): BassGameSnapshot {
@@ -271,17 +236,13 @@ export function createBassGame() {
       accuracy: Math.round(penalizedScore / (song().notes.length * 1000) * 100),
       feedback, feedbackAge,
       notes: notes.map((note) => ({ ...note })),
-      heldFrets: [...heldFrets],
       ...guideState(),
     };
   }
 
   function tick(deltaSeconds: number, nearBass: boolean, paused = false): BassGameSnapshot {
     isPaused = paused;
-    if (paused) {
-      releaseAll();
-      return snapshot();
-    }
+    if (paused) return snapshot();
     let remaining = Number.isFinite(deltaSeconds) ? Math.max(0, deltaSeconds) : 0;
     if (feedback) {
       feedbackAge += remaining;
@@ -327,7 +288,6 @@ export function createBassGame() {
       }
       if (elapsed >= song().duration) {
         phase = "result";
-        releaseAll();
       }
     }
     return snapshot();
@@ -349,24 +309,6 @@ export function createBassGame() {
     return true;
   }
 
-  /** A held contact keeps its fret until release; left-hand input never emits a note. */
-  function hold(string: BassString, fret: number) {
-    if (isPaused || (phase !== "countdown" && phase !== "playing") || !Number.isInteger(string) || string < 0 || string > 3) return false;
-    if (heldFrets[string] !== null) return heldFrets[string] === fret;
-    const guide = guideState().leftGuides[string];
-    if (guide.phraseId === null || guide.fret !== fret) return false;
-    heldFrets[string] = fret;
-    heldPhraseIds[string] = guide.phraseId;
-    return true;
-  }
-
-  function release(string: BassString) {
-    if (Number.isInteger(string) && string >= 0 && string < 4) {
-      heldFrets[string] = null;
-      heldPhraseIds[string] = null;
-    }
-  }
-
   function pluck(string: BassString, technique: BassTechnique = "pick"): BassJudgement | null {
     if (isPaused || phase !== "playing") return null;
     let closest: BassGameNote | undefined;
@@ -379,9 +321,7 @@ export function createBassGame() {
       }
     }
     feedbackAge = 0;
-    if (!closest || difference > BASS_GOOD_WINDOW || heldFrets[string] !== closest.fret ||
-      closest.technique !== technique ||
-      (song().phrases[closest.phraseId].mode === "tap" && heldPhraseIds[string] !== closest.phraseId)) {
+    if (!closest || difference > BASS_GOOD_WINDOW || closest.technique !== technique) {
       strayPlucks++;
       combo = 0;
       feedback = "miss";
@@ -404,5 +344,5 @@ export function createBassGame() {
     resetScore();
   }
 
-  return { tick, start, setDifficulty, hold, release, releaseAll, pluck, cancel, snapshot };
+  return { tick, start, setDifficulty, pluck, cancel, snapshot };
 }

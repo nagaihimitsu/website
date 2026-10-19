@@ -44,7 +44,6 @@ const PUNCH_DURATION = 420;
 const PUNCH_IMPACT = 125;
 const BIRD_FLOOR_OFFSET = 0.012;
 const BASS_VIEW_YAW = Math.PI;
-const BASS_HOLD_KEYS: Record<string, BassString> = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 };
 const BASS_PLUCK_KEYS: Record<string, BassString> = { Digit7: 0, Digit8: 1, Digit9: 2, Digit0: 3 };
 const KEY_DIRECTIONS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -312,7 +311,6 @@ function initializeRoomEngine(
     analog.z = 0;
     moveVelocity = { x: 0, z: 0 };
     jumpRequested = false;
-    bassGame.releaseAll();
     bassState = bassGame.snapshot();
     releaseViewPointer();
   }
@@ -389,23 +387,6 @@ function initializeRoomEngine(
     bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
     bassPreviousTime = performance.now();
     reportBass(bassPreviousTime, true);
-  }
-
-  function holdBass(string: BassString, fret: number) {
-    if (disposed || failed || paused || document.hidden || !bassHeld()) return;
-    if (!bassAudio.isRunning()) return;
-    advanceBass(performance.now());
-    bassGame.hold(string, fret);
-    bassState = bassGame.snapshot();
-    reportBass(performance.now(), true);
-  }
-
-  function releaseBass(string: BassString) {
-    if (disposed || failed || !bassHeld()) return;
-    if (!paused && !document.hidden) advanceBass(performance.now());
-    bassGame.release(string);
-    bassState = bassGame.snapshot();
-    reportBass(performance.now(), true);
   }
 
   function pluckBass(string: BassString, technique: BassTechnique = "pick") {
@@ -683,13 +664,6 @@ function initializeRoomEngine(
       if (event.code === "Escape") {
         event.preventDefault();
         if (!event.repeat) putDownBass();
-      } else if (Object.hasOwn(BASS_HOLD_KEYS, event.code)) {
-        event.preventDefault();
-        if (!event.repeat) {
-          advanceBass(performance.now());
-          const string = BASS_HOLD_KEYS[event.code];
-          holdBass(string, bassState.leftGuides[string].fret);
-        }
       } else if (Object.hasOwn(BASS_PLUCK_KEYS, event.code)) {
         event.preventDefault();
         if (!event.repeat) pluckBass(BASS_PLUCK_KEYS[event.code], event.shiftKey ? "slap" : "pick");
@@ -736,7 +710,6 @@ function initializeRoomEngine(
 
   function keyUp(event: KeyboardEvent) {
     keyboard.delete(event.code);
-    if (Object.hasOwn(BASS_HOLD_KEYS, event.code)) releaseBass(BASS_HOLD_KEYS[event.code]);
   }
 
   function pointerDown(event: PointerEvent) {
@@ -1059,10 +1032,8 @@ function initializeRoomEngine(
         reducedMotion,
       });
       const punchProgress = updatePunch(time);
-      const heldString = bassState.heldFrets.findIndex((fret) => fret !== null);
-      const bassLeft = heldString >= 0
-        ? { string: heldString, fret: bassState.heldFrets[heldString]! }
-        : bassState.currentPhrase ?? bassState.nextPhrase ?? { string: 3, fret: 3 };
+      const automaticPhrase = bassState.currentPhrase ?? bassState.nextPhrase;
+      const bassLeft = automaticPhrase ?? { string: 3, fret: 3 };
       const bassBeat = bassState.beat;
       room.animateAvatar({
         time: animationTime,
@@ -1082,7 +1053,7 @@ function initializeRoomEngine(
         bass: {
           lift: bassVisualLift, pluck: bassPluckPulse, playing: bassState.phase === "playing",
           beat: bassBeat, string: bassLeft.string, fret: bassLeft.fret,
-          fretting: heldString >= 0, pluckString: bassPluckString,
+          fretting: automaticPhrase !== null, pluckString: bassPluckString,
           slap: bassSlapPulse,
         },
       });
@@ -1180,8 +1151,6 @@ function initializeRoomEngine(
     punch,
     startBass,
     setBassDifficulty,
-    holdBass,
-    releaseBass,
     pluckBass,
     putDownBass,
     setBassOverlayHeight(value) { bassOverlayHeight = Number.isFinite(value) ? Math.max(0, value) : 0; },

@@ -24,10 +24,6 @@ function playingGame(difficulty: BassDifficulty = "easy") {
 const first = BASS_CHART[0];
 const second = BASS_CHART[1];
 
-function holdFirst(game: ReturnType<typeof createBassGame>) {
-  return game.hold(first.string, first.fret);
-}
-
 describe("Garden-Party Groove chart and clock", () => {
   it("uses measured recording beats, including the offset and tempo drift, in both directions", () => {
     expect(gardenBeatToTime(0)).toBe(0.171592);
@@ -80,7 +76,7 @@ describe("Garden-Party Groove chart and clock", () => {
       }
       expect(song.notes.some((note) => note.time >= 2.9 && note.time <= 9.2)).toBe(false);
       expect(song.notes.at(-1)).toMatchObject({ time: 55.027, string: 2, fret: 5 });
-      expect(playingGame(song.difficulty).snapshot().leftGuides.every((guide) => Number.isFinite(guide.fret))).toBe(true);
+      expect(playingGame(song.difficulty).snapshot().currentPhrase).toMatchObject({ string: song.notes[0].string, fret: song.notes[0].fret });
     }
   });
 });
@@ -120,89 +116,68 @@ describe("terrace bass game", () => {
     expect(game.tick(300, true, true)).toEqual(countdown);
     game.tick(countdown.countdownRemaining, true);
     game.tick(first.time, true);
-    holdFirst(game);
     const paused = game.tick(600, true, true);
     expect(paused.misses).toBe(0);
-    expect(paused.heldFrets).toEqual([null, null, null, null]);
     expect(game.pluck(first.string)).toBeNull();
-    expect(holdFirst(game)).toBe(false);
     game.tick(0, true);
-    expect(game.pluck(first.string)?.frequency).toBeNull();
-    holdFirst(game);
     expect(game.pluck(first.string)).toMatchObject({ kind: "perfect", noteId: 0 });
     expect(game.snapshot().elapsed).toBe(first.time);
   });
 
   it("judges the nearest pending note once and charges off-beat and duplicate plucks", () => {
     const game = playingGame();
-    holdFirst(game);
     game.tick(first.time, true);
     expect(game.pluck(first.string)).toMatchObject({ kind: "perfect", noteId: 0, frequency: first.frequency });
     expect(game.pluck(first.string)).toEqual({ kind: "miss", noteId: null, frequency: null });
     expect(game.snapshot()).toMatchObject({ hits: 1, score: 750, combo: 0, maxCombo: 1, strayPlucks: 1 });
     game.tick(second.time - first.time - 0.13, true);
-    game.releaseAll();
-    game.hold(second.string, second.fret);
     expect(game.pluck(second.string)).toMatchObject({ kind: "good", noteId: 1 });
     expect(game.snapshot()).toMatchObject({ hits: 2, score: 1400, combo: 1 });
   });
 
-  it("requires matching left contact at every right pluck, without tap-latching or a left-hand sound", () => {
+  it("judges a right-hand input by string and timing with no left contact requirement", () => {
     const game = playingGame();
-    game.tick(first.time, true);
     expect(game.pluck(first.string)).toEqual({ kind: "miss", frequency: null, noteId: null });
-    expect(game.hold(first.string, first.fret + 1)).toBe(false);
-    expect(holdFirst(game)).toBe(true);
-    expect(game.snapshot()).toMatchObject({ hits: 0, combo: 0 });
-    expect(game.pluck(((first.string + 1) % 4) as typeof first.string)?.frequency).toBeNull();
     expect(game.snapshot().notes[0].state).toBe("pending");
-    expect(game.pluck(first.string)).toMatchObject({ kind: "perfect", noteId: 0 });
-    game.release(first.string);
+    game.tick(first.time, true);
+    expect(game.pluck(((first.string + 1) % 4) as typeof first.string)).toEqual({ kind: "miss", frequency: null, noteId: null });
+    expect(game.snapshot().notes[0].state).toBe("pending");
+    expect(game.pluck(first.string)).toMatchObject({ kind: "perfect", noteId: 0, frequency: first.frequency });
     game.tick(second.time - first.time, true);
-    expect(game.pluck(second.string)?.frequency).toBeNull();
-    expect(game.snapshot().hits).toBe(1);
-    expect(game.hold(second.string, second.fret)).toBe(true);
-    expect(game.pluck(second.string)).toMatchObject({ kind: "perfect", noteId: 1 });
+    expect(game.pluck(second.string)).toMatchObject({ kind: "perfect", noteId: 1, frequency: second.frequency });
+    expect(game.snapshot()).toMatchObject({ hits: 2, combo: 2 });
   });
 
-  it("previews new fret positions but never moves an existing held contact to the new fret", () => {
+  it("moves the avatar's prepared fret automatically as the recorded phrase changes", () => {
     const game = playingGame();
     const earlier = BASS_PHRASES.find((phrase) => BASS_PHRASES.some((later) => later.id > phrase.id && later.string === phrase.string && later.fret !== phrase.fret))!;
     const next = BASS_PHRASES.find((phrase) => phrase.id > earlier.id && phrase.string === earlier.string && phrase.fret !== earlier.fret)!;
     expect(earlier).toBeDefined();
     game.tick(Math.max(0, earlier.prepareAt), true);
-    expect(game.hold(earlier.string, earlier.fret)).toBe(true);
-    game.tick(next.previewAt - game.snapshot().elapsed, true);
-    expect(game.snapshot().leftGuides[next.string].heldFret).toBe(earlier.fret);
+    expect(game.snapshot().currentPhrase).toMatchObject({ id: earlier.id, string: earlier.string, fret: earlier.fret });
     game.tick(next.prepareAt - game.snapshot().elapsed, true);
-    expect(game.snapshot().leftGuides[next.string]).toMatchObject({ fret: next.fret, heldFret: earlier.fret, required: true });
-    expect(game.hold(next.string, next.fret)).toBe(false);
+    expect(game.snapshot().currentPhrase).toMatchObject({ id: next.id, string: next.string, fret: next.fret });
     game.tick(next.start - game.snapshot().elapsed, true);
-    expect(game.pluck(next.string)?.frequency).toBeNull();
-    game.release(next.string);
-    expect(game.hold(next.string, next.fret)).toBe(true);
     expect(game.pluck(next.string)).toMatchObject({ kind: "perfect", frequency: next.frequency });
   });
 
-  it("prepares the first phrase during countdown and clears contacts on replay or putting down", () => {
+  it("prepares the first automatic fret during countdown and resets the score on replay or putting down", () => {
     const game = readyGame();
-    expect(holdFirst(game)).toBe(false);
     game.start();
-    expect(holdFirst(game)).toBe(true);
+    expect(game.snapshot().currentPhrase).toMatchObject({ string: first.string, fret: first.fret });
     expect(game.pluck(first.string)).toBeNull();
     game.tick(BASS_COUNTDOWN_SECONDS + first.time, true);
     expect(game.pluck(first.string)?.kind).toBe("perfect");
     game.tick(BASS_DURATION, true);
-    expect(game.snapshot().heldFrets.every((fret) => fret === null)).toBe(true);
-    game.start();
-    holdFirst(game);
+    expect(game.snapshot().currentPhrase).toBeNull();
+    expect(game.start()).toBe(true);
+    expect(game.snapshot()).toMatchObject({ hits: 0, score: 0, currentPhrase: { string: first.string, fret: first.fret } });
     game.cancel();
-    expect(game.snapshot().heldFrets.every((fret) => fret === null)).toBe(true);
+    expect(game.snapshot()).toMatchObject({ phase: "idle", currentPhrase: null, nextPhrase: null, hits: 0, score: 0 });
   });
 
   it("resolves missed notes and completes after the recording tail without requiring a final input", () => {
     const game = playingGame();
-    holdFirst(game);
     game.tick(first.time, true);
     game.pluck(first.string);
     game.tick(second.time - first.time + BASS_GOOD_WINDOW + 0.001, true);
@@ -221,8 +196,6 @@ describe("terrace bass game", () => {
       mashing.tick(0.05, true);
       const phrase = mashing.snapshot().currentPhrase;
       if (phrase) {
-        mashing.releaseAll();
-        mashing.hold(phrase.string, phrase.fret);
         mashing.pluck(phrase.string);
       }
     }
@@ -270,17 +243,11 @@ describe("terrace bass game", () => {
     expect(game.snapshot().notes.every((note) => note.state === "pending")).toBe(true);
   });
 
-  it.each(["easy", "normal", "hard"] as const)("allows every %s note to be performed perfectly with its actual left contact and technique", (difficulty) => {
+  it.each(["easy", "normal", "hard"] as const)("allows every %s note to be performed perfectly with picking or slap alone", (difficulty) => {
     const game = playingGame(difficulty);
     const song = BASS_SONGS[difficulty];
-    let lastPhrase: number | null = null;
     for (const note of song.notes) {
       game.tick(note.time - game.snapshot().elapsed, true);
-      if (note.phraseId !== lastPhrase) {
-        game.releaseAll();
-        expect(game.hold(note.string, note.fret)).toBe(true);
-        lastPhrase = note.phraseId;
-      }
       expect(game.pluck(note.string, note.technique)).toEqual({ kind: "perfect", noteId: note.id, frequency: note.frequency });
     }
     game.tick(song.duration, true);
@@ -288,7 +255,7 @@ describe("terrace bass game", () => {
       combo: song.notes.length, maxCombo: song.notes.length, score: song.notes.length * 1000, misses: 0, strayPlucks: 0 });
   });
 
-  it("requires fresh contact for a new tap phrase and permits release/repress recovery", () => {
+  it("plays successive NORMAL accents with right-hand input alone", () => {
     const game = playingGame("normal");
     const song = BASS_SONGS.normal;
     const first = song.notes.find((note, index) => {
@@ -299,18 +266,11 @@ describe("terrace bass game", () => {
     expect(first).toBeDefined();
     const next = song.notes[first.id + 1];
     game.tick(first.time, true);
-    game.hold(first.string, first.fret);
     expect(game.pluck(first.string, first.technique)?.kind).toBe("perfect");
     game.tick(next.time - first.time, true);
-    expect(game.snapshot().leftGuides[next.string].needsRepress).toBe(true);
-    expect(game.snapshot().heldFrets[next.string]).toBe(next.fret);
-    game.hold(next.string, next.fret);
-    expect(game.pluck(next.string, next.technique)?.frequency).toBeNull();
-    expect(game.snapshot().notes[next.id].state).toBe("pending");
-    game.release(next.string);
-    expect(game.hold(next.string, next.fret)).toBe(true);
-    expect(game.snapshot().leftGuides[next.string].needsRepress).toBe(false);
+    expect(game.snapshot().currentPhrase).toMatchObject({ id: next.phraseId, string: next.string, fret: next.fret });
     expect(game.pluck(next.string, next.technique)).toMatchObject({ kind: "perfect", noteId: next.id });
+    expect(game.snapshot()).toMatchObject({ hits: 2, combo: 2 });
   });
 
   it("selects the nearest scheduled note before checking technique, without skipping ahead", () => {
@@ -325,13 +285,10 @@ describe("terrace bass game", () => {
     const slap = song.notes[pick.id + 1];
     const between = (pick.time + slap.time) / 2 - 0.01;
     game.tick(between, true);
-    game.hold(pick.string, pick.fret);
     expect(game.pluck(pick.string, "slap")).toEqual({ kind: "miss", frequency: null, noteId: null });
     expect(game.snapshot().notes.slice(pick.id, slap.id + 1).map((note) => note.state)).toEqual(["pending", "pending"]);
     expect(game.pluck(pick.string, "pick")).toMatchObject({ kind: "good", noteId: pick.id });
     game.tick(slap.time - game.snapshot().elapsed, true);
-    game.releaseAll();
-    game.hold(slap.string, slap.fret);
     expect(game.pluck(slap.string, "pick")?.frequency).toBeNull();
     expect(game.pluck(slap.string, "slap")).toMatchObject({ kind: "perfect", noteId: slap.id });
     expect(game.snapshot().hits).toBe(2);

@@ -107,8 +107,6 @@ function BassOverlay({ store, engine, paused, audioStatus }: {
   return <BassGameHUD snapshot={snapshot} paused={paused} audioStatus={audioStatus}
     onStart={() => engine.current?.startBass()}
     onDifficulty={(difficulty) => engine.current?.setBassDifficulty(difficulty)}
-    onHold={(string, fret) => engine.current?.holdBass(string, fret)}
-    onRelease={(string) => engine.current?.releaseBass(string)}
     onPluck={(string, technique) => engine.current?.pluckBass(string, technique)}
     onLayout={(height) => engine.current?.setBassOverlayHeight(height)}
     onPutDown={() => engine.current?.putDownBass()} />;

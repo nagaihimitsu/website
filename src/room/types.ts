@@ -115,8 +115,6 @@ export interface RoomEngine {
   punch: () => void;
   startBass: () => void;
   setBassDifficulty: (difficulty: BassDifficulty) => void;
-  holdBass: (string: BassString, fret: number) => void;
-  releaseBass: (string: BassString) => void;
   pluckBass: (string: BassString, technique?: BassTechnique) => void;
   putDownBass: () => void;
   setBassOverlayHeight: (height: number) => void;
