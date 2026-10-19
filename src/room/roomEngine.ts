@@ -184,7 +184,9 @@ function initializeRoomEngine(
   let punchStarted: number | null = null;
   let punchImpacted = false;
   const bassGame = createBassGame();
-  const bassAudio = scope.own(createBassAudio());
+  const bassAudio = scope.own(createBassAudio((status) => {
+    if (!disposed && !failed) options.onBassAudioStatus?.(status);
+  }));
   let bassState = bassGame.snapshot();
   let bassPreviousTime = performance.now();
   let bassReportedTime = -Infinity;
@@ -196,6 +198,8 @@ function initializeRoomEngine(
   let bassOverlayHeight = 0;
   let bassViewOffset = 0;
   let bassNeedsExit = false;
+  let bassStartGeneration = 0;
+  let bassStartPending = false;
   let bassPickupStart = { x: 0, z: 0 };
   const bassHeld = () => !["idle", "approaching"].includes(bassState.phase);
   const bassControlsLocked = () => bassHeld() || bassVisualLift > 0;
@@ -328,7 +332,15 @@ function initializeRoomEngine(
       Math.hypot(player.x - room.bass.anchor.x, player.z - room.bass.anchor.z) <= room.bass.radius;
     if (!near) bassNeedsExit = false;
     const phase = bassState.phase;
-    bassState = bassGame.tick(delta, near && !bassNeedsExit && !opening && !opened);
+    const performing = phase === "countdown" || phase === "playing";
+    const playbackTime = bassAudio.playbackTime();
+    const timeline = phase === "countdown" ? -bassState.countdownRemaining : bassState.elapsed;
+    // The device's sample clock owns the score. Wall/RAF clocks may run at a
+    // different rate under load; seeking the recording to them would skip audio.
+    // A missing transport freezes the score until sync() anchors its resume.
+    const musicDelta = playbackTime === null ? 0 : Math.max(0, playbackTime - timeline);
+    bassState = bassGame.tick(performing ? musicDelta : delta, near && !bassNeedsExit && !opening && !opened);
+    if (phase === "idle" && bassState.phase === "approaching") void bassAudio.preload();
     if ((phase === "idle" || phase === "approaching") && bassHeld()) {
       bassPickupStart = { x: player.x, z: player.z };
       clearInputs();
@@ -343,18 +355,35 @@ function initializeRoomEngine(
   }
 
   function startBass() {
-    if (disposed || failed || paused || document.hidden || !["ready", "result"].includes(bassState.phase)) return;
+    const resumeOnly = ["countdown", "playing"].includes(bassState.phase) && !bassAudio.isRunning();
+    if (disposed || failed || paused || document.hidden || bassStartPending ||
+      (!resumeOnly && !["ready", "result"].includes(bassState.phase))) return;
     bassAudio.unlock(); // Must run synchronously inside this key/tap gesture.
-    bassPreviousTime = performance.now();
-    if (!bassGame.start()) return;
-    bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
-    bassState = bassGame.snapshot();
-    bassAudio.sync(bassState);
-    reportBass(bassPreviousTime, true);
+    const generation = ++bassStartGeneration;
+    bassStartPending = true;
+    void bassAudio.prepare().then((loaded) => {
+      if (!loaded || generation !== bassStartGeneration || disposed || failed || paused || document.hidden ||
+        !(resumeOnly ? ["countdown", "playing"] : ["ready", "result"]).includes(bassState.phase)) return;
+      bassPreviousTime = performance.now();
+      if (resumeOnly) clearInputs();
+      else if (!bassGame.start()) return;
+      bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
+      bassState = bassGame.snapshot();
+      bassAudio.sync(bassState);
+      reportBass(bassPreviousTime, true);
+    }).finally(() => {
+      if (generation === bassStartGeneration) bassStartPending = false;
+    });
+  }
+
+  function cancelBassStart() {
+    bassStartGeneration++;
+    bassStartPending = false;
   }
 
   function setBassDifficulty(difficulty: BassDifficulty) {
     if (disposed || failed || paused || document.hidden || !bassGame.setDifficulty(difficulty)) return;
+    cancelBassStart();
     bassAudio.stop();
     clearInputs();
     bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
@@ -364,6 +393,7 @@ function initializeRoomEngine(
 
   function holdBass(string: BassString, fret: number) {
     if (disposed || failed || paused || document.hidden || !bassHeld()) return;
+    if (!bassAudio.isRunning()) return;
     advanceBass(performance.now());
     bassGame.hold(string, fret);
     bassState = bassGame.snapshot();
@@ -380,21 +410,23 @@ function initializeRoomEngine(
 
   function pluckBass(string: BassString, technique: BassTechnique = "pick") {
     if (disposed || failed || paused || document.hidden || bassState.phase !== "playing") return;
+    if (!bassAudio.isRunning()) return;
     advanceBass(performance.now()); // Judge at input time, independently of render FPS.
     const judgement = bassGame.pluck(string, technique);
     if (!judgement) return;
     bassAudio.unlock();
-    bassAudio.pluck(judgement.frequency, technique);
+    bassState = bassGame.snapshot();
+    bassAudio.pluck(judgement.frequency, technique, bassState, judgement.noteId);
     bassPluckPulse = 1;
     bassSlapPulse = technique === "slap" ? 1 : 0;
     bassPluckString = string;
     bassSuccessPulse = judgement.kind === "miss" ? 0 : 1;
-    bassState = bassGame.snapshot();
     reportBass(performance.now(), true);
   }
 
   function putDownBass() {
     if (disposed || failed) return;
+    cancelBassStart();
     bassAudio.stop();
     bassGame.cancel();
     bassState = bassGame.snapshot();
@@ -802,6 +834,7 @@ function initializeRoomEngine(
   }
 
   function syncSuspension() {
+    cancelBassStart();
     clearInputs();
     reportBass(performance.now(), true);
     bassAudio.stop();
@@ -1030,7 +1063,7 @@ function initializeRoomEngine(
       const bassLeft = heldString >= 0
         ? { string: heldString, fret: bassState.heldFrets[heldString]! }
         : bassState.currentPhrase ?? bassState.nextPhrase ?? { string: 3, fret: 3 };
-      const bassBeat = bassState.elapsed / bassState.beatSeconds;
+      const bassBeat = bassState.beat;
       room.animateAvatar({
         time: animationTime,
         speed:
@@ -1215,6 +1248,7 @@ function initializeRoomEngine(
     },
     dispose() {
       if (disposed) return;
+      cancelBassStart();
       disposed = true;
       savePosition();
       scope.dispose();

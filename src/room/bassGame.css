@@ -56,6 +56,8 @@
 .bass-start { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 46px; padding: 10px 22px; border: 1px solid #5e73552b; border-radius: 8px; color: #fcfbf4; background: #586c4b; font-size: 12px; transition: background 100ms; }
 .bass-start:hover { background: #485d3c; }
 .bass-start:active { background: #77875a; }
+.bass-start:disabled { opacity: .65; cursor: default; }
+.bass-audio-resume { width: 100%; min-height: 44px; margin-bottom: 8px; border: 1px solid #8d9e70b8; border-radius: 8px; background: #e9eddb; color: #526640; font-size: 12px; }
 .bass-start > span { font-size: 17px; }
 .bass-phrase-guide { display: flex; align-items: center; gap: 12px; font: 11px var(--mono); white-space: nowrap; }
 .bass-phrase-guide b { font-size: 10px; font-weight: 400; }

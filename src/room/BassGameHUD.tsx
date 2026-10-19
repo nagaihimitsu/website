@@ -9,6 +9,8 @@ import {
   type BassTechnique,
 } from "./bassGame";
 import { createBassGesture } from "./bassGesture";
+import type { BassAudioStatus } from "./bassAudio";
+import { GARDEN_TRACK } from "./gardenTrack";
 import "./bassGame.css";
 
 type BassGameHUDProps = {
@@ -20,6 +22,7 @@ type BassGameHUDProps = {
   onPluck: (string: BassString, technique?: BassTechnique) => void;
   onPutDown: () => void;
   paused: boolean;
+  audioStatus: BassAudioStatus;
   onLayout?: (occupiedBottomHeight: number) => void;
 };
 
@@ -255,7 +258,7 @@ function PickButton({ string, enabled, instantPick, onPluck }: { string: BassStr
   );
 }
 
-export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease, onPluck, onPutDown, paused, onLayout }: BassGameHUDProps) {
+export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease, onPluck, onPutDown, paused, onLayout, audioStatus }: BassGameHUDProps) {
   const { phase } = snapshot;
   const hud = useRef<HTMLElement>(null);
   const layoutCallback = useRef(onLayout);
@@ -302,6 +305,9 @@ export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease
   const playing = phase === "playing";
   const performing = playing || phase === "countdown";
   const easy = snapshot.difficulty === "easy";
+  const audioBusy = audioStatus === "loading";
+  const audioUnavailable = audioStatus === "unavailable";
+  const startLabel = audioBusy ? "曲を準備中…" : audioUnavailable ? "音声を再試行" : audioStatus === "error" ? "曲の読み込みを再試行" : phase === "result" ? "もう一度" : "演奏する";
   const song = BASS_SONGS[snapshot.difficulty];
   const flowers = Math.round((snapshot.hits / Math.max(1, snapshot.notes.length)) * 100);
   const progress = Math.min(1, Math.max(0, snapshot.elapsed / Math.max(1, snapshot.duration)));
@@ -320,7 +326,7 @@ export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease
               {current && <span className="bass-phrase-now"><small>今</small> {BASS_STRINGS[current.string].name} <b>{current.fret}F</b>{current.mode === "tap" && <em className="bass-mode-label">押し直し</em>}</span>}
               {next && <span className="bass-phrase-next"><span aria-hidden="true">→</span> <small>次</small> {BASS_STRINGS[next.string].name} <b>{next.fret}F</b>{next.mode === "tap" && <em className="bass-mode-label" aria-label="次は押し直し">↻</em>}</span>}
             </div>
-          ) : <span className="bass-ready-copy">左で押さえて、右で弾く</span>}
+          ) : <span className="bass-ready-copy">{GARDEN_TRACK.title} · 0:56</span>}
         </div>
         <button type="button" className="bass-put-down" onClick={onPutDown} aria-label="ベースを置く">置く <kbd>Esc</kbd></button>
       </div>
@@ -346,7 +352,7 @@ export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease
           <p className="bass-key-hint">
             {easy ? <>同じ段の左を押し続けて<br />右の輪に音符が来たらタップ</> : <>左：音ごとに押し直す<br />右：● タップ / ↑ 上に払う<span className="bass-keyboard-technique">7 / 8 / 9 / 0 · <kbd>Shift</kbd>＋同じキーで ↑</span></>}
           </p>
-          <button type="button" className="bass-start" onClick={onStart}>演奏する <span aria-hidden="true">→</span></button>
+          <button type="button" className="bass-start" onClick={onStart} disabled={audioBusy} aria-busy={audioBusy}>{startLabel} <span aria-hidden="true">→</span></button>
         </div>
       ) : phase === "result" ? (
         <div className="bass-result">
@@ -354,10 +360,11 @@ export function BassGameHUD({ snapshot, onStart, onDifficulty, onHold, onRelease
             <div className="bass-result-score"><span>SCORE</span><strong>{snapshot.score.toLocaleString()}</strong></div>
             <dl><div><dt>精度</dt><dd>{Math.round(snapshot.accuracy)}<small>%</small></dd></div><div><dt>最高コンボ</dt><dd>{snapshot.maxCombo}</dd></div></dl>
           </div>
-          <button type="button" className="bass-start" onClick={onStart}>もう一度 <span aria-hidden="true">↻</span></button>
+          <button type="button" className="bass-start" onClick={onStart} disabled={audioBusy} aria-busy={audioBusy}>{startLabel} <span aria-hidden="true">↻</span></button>
         </div>
       ) : (
         <>
+          {(audioUnavailable || audioBusy) && <button type="button" className="bass-audio-resume" onClick={onStart} disabled={audioBusy} aria-busy={audioBusy}>{audioBusy ? "音声を準備中…" : "音声を再開"}</button>}
           <div className="bass-string-board">
             {BASS_STRINGS.map((_, index) => {
               const string = index as BassString;

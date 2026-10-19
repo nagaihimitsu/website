@@ -1,230 +1,319 @@
-import { BASS_SONGS, type BassDifficulty, type BassGameSnapshot, type BassTechnique } from "./bassGame";
+import backingUrl from "../assets/audio/garden-party-backing.mp3?url";
+import bassUrl from "../assets/audio/garden-party-bass.mp3?url";
+import { BASS_SONGS, type BassGameSnapshot, type BassTechnique } from "./bassGame";
 
-type Sound = "count" | "kick" | "snare" | "hat" | "chord";
-interface Event { time: number; sound: Sound; midi?: number; minor?: boolean; accent?: number }
+export type BassAudioStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
+type Stems = readonly [AudioBuffer, AudioBuffer];
+type Bytes = readonly [ArrayBuffer, ArrayBuffer];
+type Window = { start: number; end: number };
+const ATTACK = 0.006;
+const RELEASE = 0.012;
+const DRIFT_LIMIT = 0.12;
 
-function backingEvents(difficulty: BassDifficulty): readonly Event[] {
-  const song = BASS_SONGS[difficulty];
-  const events: Event[] = [];
-  const add = (beat: number, sound: Sound, extra: Partial<Event> = {}) => {
-    if (beat < song.beats) events.push({ time: beat * song.beatSeconds, sound, ...extra });
-  };
-  for (let beat = 0; beat < 3; beat++)
-    events.push({ time: -song.countdownSeconds + beat * song.beatSeconds, sound: "count" });
-  for (let beat = 0; beat < song.beats; beat++) {
-    const inBar = beat % 4;
-    add(beat, "hat", { accent: difficulty === "easy" || inBar === 0 ? 1 : 0.85 });
-    add(beat + song.swing, "hat", { accent: difficulty === "easy" ? 1 : 0.7 });
-    if (difficulty === "easy") {
-      add(beat, beat % 2 === 0 ? "kick" : "snare");
-    } else {
-      if (inBar === 1 || inBar === 3) add(beat, "snare");
-      if (inBar === 0 || inBar === 2) add(beat, "kick");
-      if (difficulty === "normal" && inBar === 2 && Math.floor(beat / 4) % 2 === 1)
-        add(beat + song.swing, "kick", { accent: 0.65 });
-      if (difficulty === "hard" && (inBar === 1 || (inBar === 3 && Math.floor(beat / 4) % 2 === 0)))
-        add(beat + 0.5, "kick", { accent: 0.8 });
-    }
-  }
-  for (let bar = 0; bar * 4 < song.beats; bar++) {
-    // The rhythm section leaves rests between stabs. All melodic backing is
-    // above the bass register, so missing a player note leaves a real gap.
-    const offsets = difficulty === "easy" ? [0] : difficulty === "normal" ? [song.swing, 2 + song.swing] : [0, 1.5, 2.75, 3.5];
-    for (const offset of offsets) {
-      const beat = bar * 4 + offset;
-      let chord = song.chords[0];
-      for (const entry of song.chords) {
-        if (entry.beat > beat) break;
-        chord = entry;
-      }
-      if (chord) add(beat, "chord", { midi: chord.midi, minor: chord.minor });
-    }
-  }
-  return events.sort((a, b) => a.time - b.time);
-}
-const backing = {
-  easy: backingEvents("easy"), normal: backingEvents("normal"), hard: backingEvents("hard"),
-};
-
-/** Procedural original backing: no downloaded song, sample, or third-party recording. */
-export function createBassAudio() {
+/** The supplied recording and its isolated bass share one sample-accurate transport. */
+export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => void) {
   let context: AudioContext | null = null;
   let master: GainNode | null = null;
-  let noise: AudioBuffer | null = null;
+  let state: BassAudioStatus = "idle";
   let disposed = false;
-  let difficulty: BassDifficulty | null = null;
-  let cursor = 0;
-  let lastTimeline: number | null = null;
+  let generation = 0;
+  let bytes: Bytes | null = null;
+  let stems: Stems | null = null;
+  let loading: Promise<boolean> | null = null;
+  let preparing: Promise<boolean> | null = null;
+  let resuming: Promise<void> | null = null;
+  let controller: AbortController | null = null;
+  let transport: { sources: AudioBufferSourceNode[]; gains: GainNode[]; anchor: number; difficulty: string } | null = null;
+  let windows: Window[] = [];
+  const seenHits = new Set<number>();
+  const countTicks = new Set<number>();
   const voices = new Map<AudioScheduledSourceNode, AudioNode[]>();
 
-  function track(source: AudioScheduledSourceNode, nodes: AudioNode[], end: number) {
-    voices.set(source, nodes);
-    source.onended = () => {
-      voices.delete(source);
-      source.disconnect();
-      for (const node of nodes) node.disconnect();
-    };
-    source.stop(end);
+  function setStatus(status: BassAudioStatus) {
+    if (disposed || state === status) return;
+    state = status;
+    onStatusChange?.(status);
   }
 
-  function tone(frequency: number, time: number, duration: number, volume: number, type: OscillatorType = "sine", bend?: number, attack = 0.006) {
-    if (!context || !master) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, time);
-    if (bend) oscillator.frequency.exponentialRampToValueAtTime(bend, time + duration * 0.7);
-    gain.gain.setValueAtTime(0, time);
-    gain.gain.linearRampToValueAtTime(volume, time + attack);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-    oscillator.connect(gain).connect(master);
-    oscillator.start(time);
-    track(oscillator, [gain], time + duration + 0.01);
+  /** Fetching is silent and does not create or unlock an AudioContext. */
+  function preload(): Promise<boolean> {
+    if (disposed) return Promise.resolve(false);
+    if (bytes) return Promise.resolve(true);
+    if (loading) return loading;
+    const requestGeneration = generation;
+    const request = new AbortController();
+    controller = request;
+    setStatus("loading");
+    const load = Promise.all([backingUrl, bassUrl].map(async (url) => {
+      const response = await fetch(url, { signal: request.signal });
+      if (!response.ok) throw new Error("The music file could not be loaded.");
+      return response.arrayBuffer();
+    })).then((result) => {
+      if (disposed || requestGeneration !== generation) return false;
+      bytes = result as unknown as Bytes;
+      if (!preparing) setStatus("idle");
+      return true;
+    }).catch(() => {
+      request.abort();
+      if (!disposed && requestGeneration === generation) setStatus("error");
+      return false;
+    }).finally(() => {
+      if (loading === load) loading = null;
+      if (controller === request) controller = null;
+    });
+    loading = load;
+    return load;
   }
 
-  function hiss(time: number, duration: number, volume: number, cutoff: number) {
-    if (!context || !master || !noise) return;
-    const source = context.createBufferSource();
-    const gain = context.createGain();
-    const filter = context.createBiquadFilter();
-    source.buffer = noise;
-    filter.type = "highpass";
-    filter.frequency.setValueAtTime(cutoff, time);
-    gain.gain.setValueAtTime(volume, time);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-    source.connect(filter).connect(gain).connect(master);
-    source.start(time);
-    track(source, [filter, gain], time + duration + 0.01);
-  }
-
-  function schedule(event: Event, time: number, mode: BassDifficulty) {
-    const accent = event.accent ?? 1;
-    switch (event.sound) {
-      case "count": tone(660, time, 0.055, 0.1); break;
-      case "kick": tone(115, time, 0.19, 0.28 * accent, "sine", 42); break;
-      case "snare":
-        hiss(time, 0.09, 0.085, 1400);
-        tone(165, time, 0.06, 0.045, "triangle");
-        break;
-      case "hat": hiss(time, 0.035, 0.035 * accent, 6800); break;
-      case "chord": {
-        let root = 440 * 2 ** (((event.midi ?? 55) - 69) / 12);
-        while (root < 180) root *= 2;
-        const duration = mode === "easy" ? 1.15 : mode === "normal" ? 0.13 : 0.17;
-        const volume = mode === "easy" ? 0.014 : 0.018;
-        for (const interval of [0, event.minor ? 3 : 4, 7])
-          tone(root * 2 ** (interval / 12), time, duration, volume, "triangle");
-        if (mode === "hard") {
-          // A restrained upper-register edge gives the original syncopated
-          // rock accompaniment bite without doubling the playable bass line.
-          tone(root * 2, time, 0.075, 0.008, "sawtooth");
-        }
-        break;
-      }
-    }
-  }
-
-  /** Call directly from a click/key handler. Merely standing nearby never creates audio. */
+  /** Call directly from a click/key handler; proximity alone never unlocks sound. */
   function unlock() {
     if (disposed || typeof window === "undefined") return;
     try {
       if (!context) {
         const AudioContextConstructor = window.AudioContext ??
           (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (!AudioContextConstructor) return;
+        if (!AudioContextConstructor) { setStatus("unavailable"); return; }
         context = new AudioContextConstructor();
         master = context.createGain();
-        master.gain.value = 0.48;
+        // Stems retain their original relative level. Leave headroom for the count-in.
+        master.gain.value = 0.9;
         master.connect(context.destination);
-        noise = context.createBuffer(1, Math.ceil(context.sampleRate * 0.25), context.sampleRate);
-        const samples = noise.getChannelData(0);
-        let seed = 8191;
-        for (let index = 0; index < samples.length; index++) {
-          seed = (seed * 1664525 + 1013904223) >>> 0;
-          samples[index] = seed / 2147483648 - 1;
-        }
       }
-      // Safari can report "interrupted" after a device/app interruption. Resume
-      // from either inactive state on this explicit gesture, never from sync().
-      if (context.state !== "running" && context.state !== "closed")
-        void context.resume().catch(() => undefined);
+      if (context.state !== "running" && context.state !== "closed" && !resuming) {
+        stop(); // An interrupted device clock invalidates the old playback anchor.
+        const resume = context.resume().then(() => {
+          if (context?.state === "running" && stems) setStatus("ready");
+        }).catch(() => { setStatus("unavailable"); }).finally(() => {
+          if (resuming === resume) resuming = null;
+        });
+        resuming = resume;
+      }
     } catch {
-      // Visual play remains available on browsers/devices without usable Web Audio.
       stop();
+      setStatus("unavailable");
     }
   }
 
-  function stop() {
-    for (const [voice, nodes] of voices) {
-      try { voice.stop(); } catch { /* A source may have ended since the previous frame. */ }
-      voice.onended = null;
-      voice.disconnect();
-      for (const node of nodes) node.disconnect();
+  /** Decode after unlock(), before the engine starts its countdown. Safe to retry. */
+  function prepare(): Promise<boolean> {
+    if (disposed) return Promise.resolve(false);
+    if (preparing) return preparing;
+    if (!context || !master) { setStatus("unavailable"); return Promise.resolve(false); }
+    const audio = context;
+    const requestGeneration = generation;
+    setStatus("loading");
+    const preparation = (async () => {
+      if (resuming) await resuming;
+      if (audio.state !== "running" || disposed || requestGeneration !== generation) return false;
+      if (!stems) {
+        if (!await preload() || !bytes || disposed || requestGeneration !== generation) return false;
+        // decodeAudioData may detach its input; preserve fetched bytes for an explicit retry.
+        const decoded = await Promise.all(bytes.map((data) => audio.decodeAudioData(data.slice(0))));
+        if (disposed || requestGeneration !== generation) return false;
+        if (decoded.some((buffer) => !Number.isFinite(buffer.duration) || buffer.duration <= 0) ||
+          Math.abs(decoded[0].duration - decoded[1].duration) > 0.05) throw new Error("Unaligned music stems.");
+        stems = decoded as unknown as Stems;
+      }
+      if (audio.state !== "running") { setStatus("unavailable"); return false; }
+      setStatus("ready");
+      return true;
+    })().catch(() => {
+      if (!disposed && requestGeneration === generation) setStatus("error");
+      return false;
+    }).finally(() => {
+      if (preparing === preparation) preparing = null;
+      if (!disposed && state === "loading") setStatus(audio.state === "running" ? "error" : "unavailable");
+    });
+    preparing = preparation;
+    return preparation;
+  }
+
+  function clearVoices() {
+    for (const [source, nodes] of voices) {
+      source.onended = null;
+      try { source.stop(); } catch { /* A source can already have ended. */ }
+      source.disconnect();
+      nodes.forEach((node) => node.disconnect());
     }
     voices.clear();
-    cursor = 0;
-    lastTimeline = null;
-    difficulty = null;
   }
 
-  /** Only schedules ~120 ms ahead, anchored to the same active time as visual notes. */
+  function stopTransport() {
+    if (transport) {
+      transport.sources.forEach((source) => {
+        source.onended = null;
+        try { source.stop(); } catch { /* A source can already have ended. */ }
+        source.disconnect();
+      });
+      transport.gains.forEach((gain) => gain.disconnect());
+      transport = null;
+    }
+    windows = [];
+    seenHits.clear();
+    countTicks.clear();
+  }
+
+  /** Keep decoded music for replay; pause/put-down cancels every scheduled sound. */
+  function stop() {
+    stopTransport();
+    clearVoices();
+  }
+
+  function tone(frequency: number, time: number, duration: number, volume: number) {
+    if (!context || !master) return;
+    const source = context.createOscillator();
+    const gain = context.createGain();
+    source.type = "sine";
+    source.frequency.setValueAtTime(frequency, time);
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(volume, time + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+    source.connect(gain).connect(master);
+    voices.set(source, [gain]);
+    source.onended = () => {
+      voices.delete(source);
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start(time);
+    source.stop(time + duration + 0.01);
+  }
+
+  function startTransport(snapshot: BassGameSnapshot, timeline: number) {
+    if (!context || !master || !stems) return;
+    stop();
+    const now = context.currentTime;
+    const offset = Math.max(0, timeline);
+    if (offset >= Math.min(stems[0].duration, stems[1].duration)) return;
+    const anchor = now - timeline;
+    const when = Math.max(now, anchor);
+    const sources: AudioBufferSourceNode[] = [];
+    const gains: GainNode[] = [];
+    for (const [index, buffer] of stems.entries()) {
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      source.buffer = buffer;
+      source.loop = false;
+      gain.gain.value = index === 0 ? 1 : 0;
+      source.connect(gain).connect(master);
+      sources.push(source);
+      gains.push(gain);
+      source.start(when, offset);
+    }
+    transport = { sources, gains, anchor, difficulty: snapshot.difficulty };
+  }
+
+  function levelAt(time: number, intervals: Window[]) {
+    return intervals.reduce((level, interval) => {
+      if (time < interval.start || time >= interval.end) return level;
+      const attack = Math.min(ATTACK, (interval.end - interval.start) / 2);
+      const release = Math.min(RELEASE, (interval.end - interval.start) / 2);
+      return Math.max(level, Math.min(1, (time - interval.start) / attack, (interval.end - time) / release));
+    }, 0);
+  }
+
+  function scheduleGate(snapshot: BassGameSnapshot, timeline: number) {
+    if (!context || !transport) return;
+    const prior = windows;
+    let changed = false;
+    for (let index = 0; index < snapshot.notes.length; index++) {
+      const note = snapshot.notes[index];
+      if ((note.state !== "perfect" && note.state !== "good") || seenHits.has(note.id)) continue;
+      seenHits.add(note.id);
+      const start = Math.max(note.time, timeline);
+      const end = Math.min(snapshot.notes[index + 1]?.time ?? snapshot.duration,
+        stems![1].duration, snapshot.duration);
+      if (end > start) { windows = [...windows, { start, end }]; changed = true; }
+    }
+    if (!changed) return;
+    const now = context.currentTime;
+    const parameter = transport.gains[1].gain;
+    // Merge adjoining successful segments. A missed next note leaves its entire
+    // interval muted; two early successes sustain naturally through their boundary.
+    const merged: Window[] = [];
+    for (const interval of [...windows].sort((a, b) => a.start - b.start)) {
+      const last = merged[merged.length - 1];
+      if (last && interval.start <= last.end + 1e-6) last.end = Math.max(last.end, interval.end);
+      else merged.push({ ...interval });
+    }
+    windows = merged;
+    parameter.cancelScheduledValues(now);
+    const oldLevel = levelAt(timeline, prior);
+    parameter.setValueAtTime(oldLevel, now);
+    for (const interval of windows) {
+      if (interval.end <= timeline) continue;
+      const attack = Math.min(ATTACK, (interval.end - interval.start) / 2);
+      const release = Math.min(RELEASE, (interval.end - interval.start) / 2);
+      const start = Math.max(now, transport.anchor + interval.start);
+      const end = transport.anchor + interval.end;
+      if (start > now) parameter.setValueAtTime(0, start);
+      const riseEnd = Math.min(end - release, Math.max(start + attack, now + ATTACK));
+      if (riseEnd > now) parameter.linearRampToValueAtTime(1, riseEnd);
+      parameter.setValueAtTime(1, Math.max(now, end - release));
+      parameter.linearRampToValueAtTime(0, end);
+    }
+  }
+
+  /** One continuous recording; slow rendered frames do not restart or age the music. */
   function sync(snapshot: BassGameSnapshot, paused = false) {
     if (disposed) return;
-    if (paused || (snapshot.phase !== "countdown" && snapshot.phase !== "playing")) {
+    if (paused || (snapshot.phase !== "countdown" && snapshot.phase !== "playing")) { stop(); return; }
+    if (!context || context.state !== "running") {
       stop();
+      if (context) setStatus("unavailable");
       return;
     }
-    if (!context || context.state !== "running") return;
-    const song = BASS_SONGS[snapshot.difficulty];
-    const events = backing[snapshot.difficulty];
+    if (!stems) return;
+    if (state === "unavailable") setStatus("ready");
     const timeline = snapshot.phase === "countdown" ? -snapshot.countdownRemaining : snapshot.elapsed;
-    if (difficulty !== snapshot.difficulty || lastTimeline === null || timeline < lastTimeline || timeline - lastTimeline > 0.25) {
-      stop();
-      difficulty = snapshot.difficulty;
-      cursor = events.findIndex((event) => event.time >= timeline - 0.02);
-      if (cursor < 0) cursor = events.length;
+    if (!transport || transport.difficulty !== snapshot.difficulty ||
+      Math.abs(context.currentTime - transport.anchor - timeline) > DRIFT_LIMIT) startTransport(snapshot, timeline);
+    if (!transport) return;
+    const song = BASS_SONGS[snapshot.difficulty];
+    if (snapshot.phase === "countdown") {
+      for (let index = 0; index < Math.round(song.countdownSeconds / song.beatSeconds); index++) {
+        const tick = -song.countdownSeconds + index * song.beatSeconds;
+        if (countTicks.has(index) || tick < timeline - 0.02 || tick > timeline + 0.12) continue;
+        countTicks.add(index);
+        tone(660, Math.max(context.currentTime, transport.anchor + tick), 0.05, 0.075);
+      }
     }
-    lastTimeline = timeline;
-    const audioNow = context.currentTime;
-    while (cursor < events.length && events[cursor].time <= Math.min(song.duration, timeline + 0.12)) {
-      const event = events[cursor++];
-      if (event.time < timeline - 0.02) continue;
-      schedule(event, audioNow + Math.max(0, event.time - timeline), snapshot.difficulty);
-    }
+    scheduleGate(snapshot, timeline);
   }
 
-  function pluck(frequency: number | null, technique: BassTechnique = "pick") {
+  /** Success reveals the recorded bass, never a second synthesized bass melody. */
+  function pluck(frequency: number | null, _technique: BassTechnique = "pick",
+    snapshot?: BassGameSnapshot, noteId?: number | null) {
     if (disposed || !context || context.state !== "running") return;
-    const time = context.currentTime;
     if (frequency === null) {
-      tone(85, time, 0.045, 0.12, "triangle", 55);
+      tone(85, context.currentTime, 0.03, 0.035);
       return;
     }
-    if (technique === "slap") {
-      // Short, bright overtones and a string-on-fret transient distinguish a
-      // thumb strike from the rounder picked note, at the same musical pitch.
-      tone(frequency, time, 0.27, 0.32, "sine", undefined, 0.001);
-      tone(frequency * 2, time, 0.13, 0.11, "triangle", undefined, 0.001);
-      tone(frequency * 3, time, 0.075, 0.065, "triangle", undefined, 0.001);
-      tone(frequency * 5, time, 0.045, 0.035, "sine", undefined, 0.001);
-      hiss(time, 0.038, 0.07, 2700);
-      return;
-    }
-    tone(frequency, time, 0.34, 0.32, "triangle");
-    tone(frequency * 2, time, 0.15, 0.065, "sine");
-    hiss(time, 0.018, 0.025, 2400);
+    if (snapshot && noteId !== null && noteId !== undefined &&
+      snapshot.notes.some((note) => note.id === noteId && (note.state === "perfect" || note.state === "good"))) sync(snapshot);
   }
 
   function dispose() {
     if (disposed) return;
     disposed = true;
+    generation++;
+    controller?.abort();
+    controller = null;
     stop();
     master?.disconnect();
     if (context && context.state !== "closed") void context.close().catch(() => undefined);
     context = null;
     master = null;
-    noise = null;
+    bytes = null;
+    stems = null;
   }
 
-  return { unlock, sync, pluck, stop, dispose };
+  /** Musical time comes from the sample clock, including the negative count-in. */
+  function playbackTime(): number | null {
+    if (!context || context.state !== "running" || !transport) return null;
+    return context.currentTime - transport.anchor;
+  }
+
+  return { unlock, preload, prepare, status: () => state,
+    isRunning: () => context?.state === "running", playbackTime, sync, pluck, stop, dispose };
 }

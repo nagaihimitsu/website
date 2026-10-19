@@ -3,6 +3,7 @@ import type { Archive, Section } from "../data/model";
 import type { BirdAnimationState } from "./art/bird";
 import type { RoomDestinationId } from "./destinations";
 import type { BassDifficulty, BassGameSnapshot, BassString, BassTechnique } from "./bassGame";
+import type { BassAudioStatus } from "./bassAudio";
 
 export type Direction = "up" | "down" | "left" | "right";
 export type RoomDestination = RoomDestinationId;
@@ -103,6 +104,7 @@ export interface RoomEngineOptions {
   onBreak: (label: string) => void;
   onDoorOpen?: () => void;
   onBassSnapshot?: (snapshot: BassGameSnapshot) => void;
+  onBassAudioStatus?: (status: BassAudioStatus) => void;
   onSnapshot: (snapshot: RoomSnapshot) => void;
 }
 export interface RoomEngine {

@@ -17,6 +17,7 @@ import {
 import { createRoomSnapshotReporter } from "./roomSnapshot";
 import { createBassGameStore } from "./bassGameStore";
 import { BassGameHUD } from "./BassGameHUD";
+import type { BassAudioStatus } from "./bassAudio";
 import type { Direction, RoomDestination, RoomEngine } from "./types";
 import "./room.css";
 
@@ -96,13 +97,14 @@ function ExternalLink() {
   );
 }
 
-function BassOverlay({ store, engine, paused }: {
+function BassOverlay({ store, engine, paused, audioStatus }: {
   store: ReturnType<typeof createBassGameStore>;
   engine: RefObject<RoomEngine | null>;
   paused: boolean;
+  audioStatus: BassAudioStatus;
 }) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  return <BassGameHUD snapshot={snapshot} paused={paused}
+  return <BassGameHUD snapshot={snapshot} paused={paused} audioStatus={audioStatus}
     onStart={() => engine.current?.startBass()}
     onDifficulty={(difficulty) => engine.current?.setBassDifficulty(difficulty)}
     onHold={(string, fret) => engine.current?.holdBass(string, fret)}
@@ -133,6 +135,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const [punching, setPunching] = useState(false);
   const [bassStore] = useState(createBassGameStore);
   const [bassHeld, setBassHeld] = useState(false);
+  const [bassAudioStatus, setBassAudioStatus] = useState<BassAudioStatus>("idle");
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   const [held, setHeld] = useState<Set<Direction>>(new Set());
 
@@ -184,6 +187,11 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             room.current.dataset.bassScore = String(value.score);
           }
           bassStore.publish(value);
+        },
+        onBassAudioStatus: (value) => {
+          if (disposed) return;
+          setBassAudioStatus(value);
+          if (room.current) room.current.dataset.bassAudio = value;
         },
         onSnapshot: (value) => {
           if (!disposed) reportSnapshot(value);
@@ -454,7 +462,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           {links("room-fallback-links")}
         </div>
       )}
-      <BassOverlay store={bassStore} engine={engine} paused={menuOpen || status !== "ready" || Boolean(opening)} />
+      <BassOverlay store={bassStore} engine={engine} audioStatus={bassAudioStatus} paused={menuOpen || status !== "ready" || Boolean(opening)} />
       <div className="room-controls" style={bassHeld ? { display: "none" } : undefined}>
         <div
           ref={joystick}

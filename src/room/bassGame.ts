@@ -1,4 +1,6 @@
-/** Original short songs share one active-time clock for guides, scoring and sound. */
+import { GARDEN_BASS_NOTES, GARDEN_TRACK, gardenTimeToBeat } from "./gardenTrack";
+
+/** Guides, scoring, animation and recorded sound share one active media clock. */
 export const BASS_PROXIMITY_SECONDS = 3;
 export const BASS_PICKUP_SECONDS = 1.1;
 export const BASS_GOOD_WINDOW = 0.18;
@@ -73,6 +75,8 @@ export interface BassGameSnapshot {
   difficulty: BassDifficulty;
   bpm: number;
   beatSeconds: number;
+  /** Fractional position on the recording's measured, gently drifting beat grid. */
+  beat: number;
   proximityProgress: number;
   pickupProgress: number;
   countdown: number;
@@ -95,88 +99,95 @@ export interface BassGameSnapshot {
   leftGuides: readonly BassLeftGuide[];
 }
 
-type PhraseInput = {
-  string: BassString;
-  fret: number;
-  mode: BassPhrase["mode"];
-  beat: number;
-  pattern: readonly (readonly [number, BassTechnique])[];
-};
+type RecordedAttack = { time: number; midi: number; string: BassString; fret: number };
 
-function makeSong(difficulty: BassDifficulty, bpm: number, beats: number, swing: number,
-  inputs: readonly PhraseInput[], chords: BassSong["chords"]): BassSong {
-  const beatSeconds = 60 / bpm;
-  const countdownSeconds = beatSeconds * 3;
+/** Use a real fretted position without silently transposing a recorded note. */
+function frettedAttack(note: Readonly<{ time: number; midi: number }>): RecordedAttack | null {
+  let best: RecordedAttack | null = null;
+  for (let row = 0; row < BASS_STRINGS.length; row++) {
+    const fret = note.midi - BASS_STRINGS[row].openMidi;
+    // Open-string attacks are omitted in this physical-contact prototype.
+    if (fret < 1 || fret > 5) continue;
+    if (!best || Math.abs(fret - 3) < Math.abs(best.fret - 3))
+      best = { ...note, string: row as BassString, fret };
+  }
+  return best;
+}
+
+function selectAttacks(difficulty: BassDifficulty): RecordedAttack[] {
+  const samePositionGap = { easy: 0.52, normal: 0.38, hard: 0.22 }[difficulty];
+  const changedPositionGap = { easy: 0.9, normal: 0.72, hard: 0.6 }[difficulty];
+  const selected: RecordedAttack[] = [];
+  const available = GARDEN_BASS_NOTES.map(frettedAttack).filter((note): note is RecordedAttack =>
+    note !== null && (difficulty !== "easy" || [2, 3, 5].includes(note.fret)));
+  const gap = (left: RecordedAttack, right: RecordedAttack) =>
+    left.midi === right.midi ? samePositionGap : changedPositionGap;
+  for (const note of available) {
+    const previous = selected[selected.length - 1];
+    if (!previous || note.time - previous.time >= gap(previous, note)) selected.push(note);
+  }
+  // Keep the final measured D2 attack, leaving the recorded ending and decay intact.
+  const final = available[available.length - 1];
+  if (selected[selected.length - 1] !== final) {
+    while (selected.length && final.time - selected[selected.length - 1].time < gap(selected[selected.length - 1], final))
+      selected.pop();
+    selected.push(final);
+  }
+  return selected;
+}
+
+function makeSong(difficulty: BassDifficulty): BassSong {
+  const beatSeconds = 60 / GARDEN_TRACK.bpm;
+  const countdownSeconds = beatSeconds * 4;
+  const selected = selectAttacks(difficulty);
+  const runs: RecordedAttack[][] = [];
+  for (const attack of selected) {
+    const run = runs[runs.length - 1];
+    const previous = run?.[run.length - 1];
+    if (previous && previous.midi === attack.midi && attack.time - previous.time < 1.6) run.push(attack);
+    else runs.push([attack]);
+  }
   const notes: BassNote[] = [];
   const phrases: BassPhrase[] = [];
-  for (const input of inputs) {
+  let repeatedRun = 0;
+  function addPhrase(attacks: readonly RecordedAttack[], mode: BassPhrase["mode"], runOffset: number, repeated: boolean) {
+    const first = attacks[0], last = attacks[attacks.length - 1];
     const id = phrases.length;
-    const start = input.beat * beatSeconds;
-    const end = (input.beat + input.pattern[input.pattern.length - 1][0]) * beatSeconds;
-    // The previous note retains its full late window; preparation then opens
-    // before the next attack. Short tap pairs keep the same position.
     const prepareAt = id === 0 ? -countdownSeconds : phrases[id - 1].end + BASS_GOOD_WINDOW + 0.01;
-    const frequency = 440 * 2 ** ((BASS_STRINGS[input.string].openMidi + input.fret - 69) / 12);
-    phrases.push(Object.freeze({ id, string: input.string, fret: input.fret, mode: input.mode,
-      start, end, prepareAt, previewAt: prepareAt - beatSeconds * 2, frequency }));
-    for (const [offset, technique] of input.pattern) notes.push(Object.freeze({
-      id: notes.length, time: (input.beat + offset) * beatSeconds, frequency,
-      string: input.string, fret: input.fret, phraseId: id, technique,
-      travelSeconds: technique === "slap" ? (difficulty === "hard" ? 0.7 : 0.85) : (difficulty === "hard" ? 1.9 : 2.1),
-    }));
+    const frequency = 440 * 2 ** ((first.midi - 69) / 12);
+    phrases.push(Object.freeze({ id, string: first.string, fret: first.fret, mode,
+      start: first.time, end: last.time, prepareAt,
+      previewAt: Math.min(prepareAt - beatSeconds * 2, first.time - 1.25), frequency }));
+    for (const [index, attack] of attacks.entries()) {
+      const next = selected[selected.indexOf(attack) + 1];
+      const canRecover = !next || next.time - attack.time >= 0.26;
+      const accent = difficulty === "normal" ? (runOffset + index) % 2 === 0 : (runOffset + index) % 2 === 1;
+      const technique: BassTechnique = difficulty !== "easy" && repeated && attack.time >= 10 && accent && canRecover ? "slap" : "pick";
+      notes.push(Object.freeze({ id: notes.length, time: attack.time, frequency,
+        string: attack.string, fret: attack.fret, phraseId: id, technique,
+        travelSeconds: technique === "slap" ? (difficulty === "hard" ? 0.7 : 0.85) : (difficulty === "hard" ? 1.9 : 2.1),
+      }));
+    }
   }
-  return Object.freeze({ difficulty, label: difficulty.toUpperCase(), bpm, beatSeconds, countdownSeconds,
-    duration: (beats + 1) * beatSeconds, beats, swing,
+  for (const run of runs) {
+    const repeated = run.length > 1;
+    const repeatIndex = repeated ? repeatedRun++ : -1;
+    const enoughRepressTime = run.every((note, index) => index === 0 || note.time - run[index - 1].time >= 0.38);
+    const tap = difficulty === "normal" ? repeated && repeatIndex % 2 === 1 :
+      difficulty === "hard" && run[0].time >= 13 && enoughRepressTime;
+    if (tap) run.forEach((note, index) => addPhrase([note], "tap", index, repeated));
+    else addPhrase(run, "hold", 0, repeated);
+  }
+  return Object.freeze({ difficulty, label: difficulty.toUpperCase(), bpm: GARDEN_TRACK.bpm,
+    beatSeconds, countdownSeconds, duration: GARDEN_TRACK.duration, beats: GARDEN_TRACK.beats,
     phrases: Object.freeze(phrases), notes: Object.freeze(notes),
-    chords: Object.freeze(chords.map((chord) => Object.freeze(chord))),
+    // Harmony, drums, swing and timbre come from the recording, never a second generated song.
+    chords: Object.freeze([]), swing: 0.5,
   });
 }
 
-const easyPositions: readonly (readonly [BassString, number])[] = [[3, 3], [2, 3], [1, 2], [0, 2], [2, 5], [3, 3]];
-const easyInputs = easyPositions.map(([string, fret], index): PhraseInput => ({ string, fret, mode: "hold", beat: index * 8 + 1,
-  pattern: Array.from({ length: 14 }, (_, note) => [note / 2, "pick"] as const),
-}));
-const normalPositions: readonly (readonly [BassString, number])[] = [[3, 3], [2, 3], [1, 2], [0, 2], [2, 5], [2, 3], [1, 5], [3, 3]];
-const normalInputs: PhraseInput[] = [];
-for (const [block, [string, fret]] of normalPositions.entries()) {
-  if (block === 0 || block === 4) {
-    // Introduce the faster slap while the left thumb stays in one place.
-    normalInputs.push({ string, fret, mode: "hold", beat: block * 8 + 1,
-      pattern: Array.from({ length: 14 }, (_, note) => [Math.floor(note / 2) + (note % 2 ? 0.62 : 0),
-        note > 0 && note % 4 === 0 ? "slap" : "pick"] as const) });
-  } else {
-    for (let pair = 0; pair < 4; pair++) for (let part = 0; part < 2; part++)
-      normalInputs.push({ string, fret, mode: "tap", beat: block * 8 + 1 + pair * 2 + (part ? 0.62 : 0),
-        pattern: [[0, part ? "pick" : "slap"]] });
-  }
-}
-
-const hardPositions: readonly (readonly (readonly [BassString, number])[])[] = [
-  [[3, 3]], [[2, 3], [1, 2], [0, 5], [2, 3]], [[2, 5], [1, 2], [0, 2], [2, 5]],
-  [[1, 2]], [[3, 5], [2, 3], [0, 2], [3, 5]], [[2, 5], [1, 2], [0, 2], [2, 5]],
-  [[1, 5]], [[1, 2], [2, 2], [3, 3], [1, 2]], [[3, 3], [2, 5], [1, 5], [3, 3]],
-];
-const hardInputs: PhraseInput[] = [];
-for (const [block, positions] of hardPositions.entries()) {
-  if (positions.length === 1) {
-    const [string, fret] = positions[0];
-    hardInputs.push({ string, fret, mode: "hold", beat: block * 8 + 1,
-      pattern: [0, 0.5, 1.25, 2, 2.5, 3.25, 4, 4.5, 5.25, 6, 6.5]
-        .map((offset, note) => [offset, note % 3 === 1 ? "slap" : "pick"] as const) });
-  } else {
-    for (const [pair, [string, fret]] of positions.entries()) for (let part = 0; part < 2; part++)
-      hardInputs.push({ string, fret, mode: "tap", beat: block * 8 + 1 + pair * 2 + part * 0.75,
-        pattern: [[0, part ? "slap" : "pick"]] });
-  }
-}
-
-function chordsFor(roots: readonly (readonly [number, boolean])[]) {
-  return roots.map(([midi, minor], index) => ({ beat: index * 8, midi, minor }));
-}
 export const BASS_SONGS: Readonly<Record<BassDifficulty, BassSong>> = Object.freeze({
-  easy: makeSong("easy", 96, 48, 0.5, easyInputs, chordsFor([[55, false], [60, false], [64, true], [57, true], [62, false], [55, false]])),
-  normal: makeSong("normal", 104, 64, 0.62, normalInputs, chordsFor([[55, false], [60, false], [64, true], [57, true], [62, false], [60, false], [55, false], [55, false]])),
-  hard: makeSong("hard", 120, 72, 0.5, hardInputs, chordsFor([[55, false], [60, false], [62, false], [64, true], [57, true], [62, false], [55, false], [64, true], [55, false]])),
+  easy: makeSong("easy"), normal: makeSong("normal"), hard: makeSong("hard"),
 });
 // Existing integrations and EASY fixtures keep their stable aliases.
 export const BASS_BPM = BASS_SONGS.easy.bpm;
@@ -233,9 +244,9 @@ export function createBassGame() {
       const string = row as BassString;
       const available = prepared.filter((phrase) => phrase.string === string);
       const target = available[available.length - 1];
-      const initial = song().phrases.find((phrase) => phrase.string === string)!;
+      const initial = song().phrases.find((phrase) => phrase.string === string);
       return {
-        string, fret: target?.fret ?? initial.fret, phraseId: target?.id ?? null,
+        string, fret: target?.fret ?? initial?.fret ?? 3, phraseId: target?.id ?? null,
         required: currentPhrase?.string === string,
         heldFret: heldFrets[string],
         nextFret: nextPhrase?.string === string ? nextPhrase.fret : null,
@@ -251,6 +262,7 @@ export function createBassGame() {
     const penalizedScore = Math.max(0, score - strayPlucks * 250);
     return {
       phase, difficulty, bpm: song().bpm, beatSeconds: song().beatSeconds,
+      beat: gardenTimeToBeat(phase === "countdown" ? -countdownRemaining : elapsed),
       proximityProgress: Math.min(1, proximityTime / BASS_PROXIMITY_SECONDS),
       pickupProgress: Math.min(1, pickupTime / BASS_PICKUP_SECONDS),
       countdown: phase === "countdown" ? Math.max(1, Math.ceil(countdownRemaining / song().beatSeconds)) : 0,
