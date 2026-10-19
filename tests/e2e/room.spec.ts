@@ -412,6 +412,9 @@ test("遠い物は壊せず、近づいてパンチすると小物だけが壊�
 test("壊した小物の場所に立ったまま復元しても閉じ込められない", { tag: "@movement" }, async ({
   page,
 }) => {
+  // Keep the wandering bird out of this restoration check's walking route.
+  // Bird collisions and normal motion are covered separately in bird.spec.ts.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await savedPosition(page, {
     x: 1.4,
     z: 1.3,
@@ -462,6 +465,9 @@ test("スマートフォン本体をクリックすると図鑑を開く", { tag
 test("隠したメニューから4コレクションへ進み、戻ると位置と視線を保つ", { tag: "@links" }, async ({
   page,
 }) => {
+  // Five software-rendered room mounts share this test; each mount still has
+  // its own 30-second readiness deadline in enterRoom / returnToRoom.
+  test.setTimeout(120_000);
   await enterRoom(page);
   const before = await walk(page);
   for (const section of Object.keys(
