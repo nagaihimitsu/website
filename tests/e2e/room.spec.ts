@@ -9,6 +9,10 @@ import {
   savedPosition,
 } from "./helpers/room";
 
+// CI renders this room on the CPU. Budget the complete sequence separately
+// from the unchanged per-action assertions and 30-second readiness deadlines.
+if (process.env.CI) test.describe.configure({ timeout: 90_000 });
+
 // Room controls use a stable empty archive, independent of personal records.
 test.beforeEach(async ({ page }) => {
   await page.route("**/data/*.txt", (route) =>
