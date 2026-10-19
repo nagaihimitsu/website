@@ -256,24 +256,23 @@ test("360度見回しても旅人の向きは変わらず、ボタンとRで背�
 test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメラの向きを保つ", { tag: "@movement" }, async ({
   page,
 }) => {
-  // Leave a clear runway for the turn: software WebGL may take a full second
-  // to paint a moving frame. Reaching the front wall would test collision
-  // sliding instead of the camera-relative direction asserted below.
-  await savedPosition(page, { x: 0.95, z: -2.4, yaw: 0.4 });
-  await enterRoom(page);
+  // The amount of time the key is held must not depend on how long software
+  // WebGL takes to paint or return a diagnostic query to the test runner.
+  const startTime = new Date("2026-01-01T00:00:00Z");
+  await page.clock.install({ time: startTime });
+  await page.clock.pauseAt(startTime);
+  await savedPosition(page, { x: 0.95, z: -0.9, yaw: 0.4 });
+  await enterRoom(page, { pausedClock: true });
   const start = await position(page);
   await page.keyboard.down("ArrowDown");
   try {
-    await expect
-      .poll(async () =>
-        angleDifference((await position(page)).facing, start.yaw + Math.PI),
-        { intervals: [50, 100] },
-      )
+    await page.clock.fastForward(350);
+    expect(angleDifference((await position(page)).facing, start.yaw + Math.PI))
       .toBeLessThan(0.18);
   } finally {
     await page.keyboard.up("ArrowDown");
   }
-  await renderReleasedInput(page);
+  await page.clock.fastForward(250);
   const end = await position(page);
   const towardViewer =
     (end.x - start.x) * Math.sin(start.yaw) +
@@ -288,14 +287,13 @@ test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメ�
     (end.cameraZ - start.cameraZ) * Math.cos(start.yaw);
   expect(cameraFollow).toBeGreaterThan(0.1);
   expect(angleDifference(end.yaw, start.yaw)).toBeLessThan(0.01);
-  await page.waitForTimeout(250);
+  await page.clock.fastForward(250);
   expect(angleDifference((await position(page)).yaw, start.yaw)).toBeLessThan(
     0.01,
   );
   await page.keyboard.press("KeyR");
-  await expect
-    .poll(async () => angleDifference((await position(page)).yaw, end.facing))
-    .toBeLessThan(0.03);
+  await page.clock.fastForward(1000);
+  expect(angleDifference((await position(page)).yaw, end.facing)).toBeLessThan(0.03);
 });
 
 test("壁の近くでは追従カメラが縮まり、部屋の外へ抜けない", { tag: "@movement" }, async ({ page }) => {

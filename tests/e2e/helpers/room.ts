@@ -22,8 +22,20 @@ export async function savedPosition(page: Page, pose: SavedRoomPosition) {
   );
 }
 
-export async function enterRoom(page: Page) {
+export async function enterRoom(
+  page: Page,
+  { pausedClock = false }: { pausedClock?: boolean } = {},
+) {
   await page.goto("/#/");
+  if (pausedClock) {
+    // Let asynchronous assets mount the engine, then explicitly paint its first
+    // frames. Tests can advance simulation time independently of software GL.
+    await expect.poll(async () => {
+      await page.clock.runFor(32);
+      return page.locator(".room-canvas canvas").isVisible();
+    }, { timeout: 30000, intervals: [100] }).toBe(true);
+    await page.clock.runFor(32);
+  }
   const room = page.locator(".room-home");
   await expect(room).toHaveAttribute("data-room-status", "ready", {
     timeout: 30000,
