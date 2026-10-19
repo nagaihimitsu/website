@@ -141,6 +141,24 @@
   border-radius: 2px;
   color: #6c7b61;
 }
+.room-target-external {
+  text-decoration: none;
+}
+.room-target-copy {
+  display: grid;
+  gap: 3px;
+  white-space: nowrap;
+}
+.room-target-copy small {
+  color: #707d66;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.room-external-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
 .is-opening .room-controls,
 .is-opening .room-target,
 .is-opening .room-crosshair {
@@ -421,6 +439,13 @@
   margin-left: auto;
   color: #78846c;
   font: 9px var(--mono);
+}
+.room-link-external {
+  margin-left: auto;
+  color: #78846c;
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: right;
 }
 .room-menu-links a > span:nth-child(2),
 .room-fallback-links a > span:nth-child(2) {

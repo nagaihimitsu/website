@@ -13,6 +13,7 @@ import { createBird } from "./art/bird";
 import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
+import { INSTAGRAM_URL } from "./destinations";
 import deskPhotoUrl from "../assets/room/rome-travel.jpg";
 import polaroidPhotoUrl from "../assets/room/polaroid-travels.jpg";
 import {
@@ -659,6 +660,14 @@ export function createRoomScene(archive: Archive): RoomScene {
   tablePolaroids.group.name = "coffee-table-polaroids";
   tablePolaroids.group.position.set(0.36, 0.635, 0.09);
   coffee.add(tablePolaroids.group);
+  tablePolaroids.group.userData.section = "instagram";
+  portals.push({
+    section: "instagram",
+    href: INSTAGRAM_URL,
+    object: tablePolaroids.group,
+    anchor: new THREE.Vector3(0.21, 0.65, 1.97),
+    lookAt: new THREE.Vector3(0.21, 0.64, 1.97),
+  });
   obstruction("coffee-table", -0.15, 1.88, 1.7, 1.14, 0.635);
 
   // Leaf geometry, handcrafted with elongated ellipsoids, casts soft botanical shadows.

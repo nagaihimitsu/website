@@ -9,11 +9,17 @@ import { sections } from "../data/catalogs";
 import { createRoomEngine } from "./roomEngine";
 import { stickInput } from "./locomotion";
 import { INITIAL_PLAYER_POSITION } from "./followCamera";
-import type { Direction, RoomEngine, RoomSnapshot } from "./types";
+import { INSTAGRAM_URL } from "./destinations";
+import type {
+  Direction,
+  RoomDestination,
+  RoomEngine,
+  RoomSnapshot,
+} from "./types";
 import "./room.css";
 
 const destinations: Record<
-  Section,
+  RoomDestination,
   { title: string; label: string; total?: number }
 > = {
   world: { title: "World", label: "世界地図を開く" },
@@ -23,6 +29,10 @@ const destinations: Record<
     title: "Pokédex",
     label: "スマートフォンでポケモン図鑑を開く",
     total: 1025,
+  },
+  instagram: {
+    title: "Instagram",
+    label: "Instagramを開く（外部リンク・新しいタブ）",
   },
 };
 const arrows: { direction: Direction; label: string; rotation: number }[] = [
@@ -82,6 +92,24 @@ function Fist() {
     </svg>
   );
 }
+function ExternalLink() {
+  return (
+    <svg
+      className="room-external-icon"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M11 3h6v6m0-6-8 8M8 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function RoomHome({ archive }: { archive: Archive }) {
   const host = useRef<HTMLDivElement>(null);
@@ -95,7 +123,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">(
     "loading",
   );
-  const [hover, setHover] = useState<Section | null>(null);
+  const [hover, setHover] = useState<RoomDestination | null>(null);
   const [opening, setOpening] = useState<Section | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
@@ -260,6 +288,17 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           <span aria-hidden="true">↗</span>
         </a>
       ))}
+      <a
+        href={INSTAGRAM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={destinations.instagram.label}
+      >
+        <span className="room-link-number">05</span>
+        <span>Instagram</span>
+        <span className="room-link-external">外部リンク・新しいタブ</span>
+        <ExternalLink />
+      </a>
     </nav>
   );
 
@@ -362,17 +401,35 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             className={`room-crosshair${hover ? " has-target" : ""}`}
             aria-hidden="true"
           />
-          {hover && !opening && !menuOpen && (
-            <button
-              className="room-target"
-              onClick={() => engine.current?.open(hover)}
-              aria-label={destinations[hover].label}
-            >
-              {destinations[hover].title}
-              <span aria-hidden="true">↗</span>
-              <kbd>E</kbd>
-            </button>
-          )}
+          {hover &&
+            !opening &&
+            !menuOpen &&
+            (hover === "instagram" ? (
+              <a
+                className="room-target room-target-external"
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={destinations.instagram.label}
+              >
+                <span className="room-target-copy">
+                  <span>Instagram</span>
+                  <small>外部リンク・新しいタブ</small>
+                </span>
+                <ExternalLink />
+                <kbd>E</kbd>
+              </a>
+            ) : (
+              <button
+                className="room-target"
+                onClick={() => engine.current?.open(hover)}
+                aria-label={destinations[hover].label}
+              >
+                {destinations[hover].title}
+                <span aria-hidden="true">↗</span>
+                <kbd>E</kbd>
+              </button>
+            ))}
         </>
       )}
       {status === "fallback" && (

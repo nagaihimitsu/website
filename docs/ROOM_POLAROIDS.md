@@ -2,6 +2,8 @@
 
 カメラ右側にあったカップと受け皿を撤去し、白い縁の付いた10枚の旅行写真を置いています。向きの異なる写真が重なる、ユーザー提供の参考図に合わせた配置です。
 
+写真をクリック・タップ、または照準を合わせてEキーを押すと、[Instagram](https://instagram.com/nagaihimitsu/)を新しいタブで開きます。選択時は外部リンクのアイコンと「外部リンク・新しいタブ」を表示。メニューと3D非対応時の一覧からも同じリンクを開けます。部屋のページはそのまま残り、視点操作のドラッグでは開きません。
+
 ## 素材と造形
 
 2026-10-19に提供された参考画像の上面図を、そのまま1枚の共有テクスチャとして使用しています。元ファイルは [polaroid-travels.jpg](../src/assets/room/polaroid-travels.jpg)（1280×960px）。写真の内容を生成・描き直しする処理はありません。
@@ -15,6 +17,7 @@
 - 造形・各写真の位置・画像上の参照範囲：[tablePolaroids.ts](../src/room/art/tablePolaroids.ts)。
 - テーブル上の配置：[roomScene.ts](../src/room/roomScene.ts) の `tablePolaroids.group`。天板の高さは0.635mです。
 - 元画像を差し替える場合は、各写真の参照範囲も新しい画像に合わせて更新します。
+- Instagramのリンク先：[destinations.ts](../src/room/destinations.ts) の `INSTAGRAM_URL`。
 
 テクスチャはシーンが所有し、写真モデル側は紙の形状・材質と独自の影を解放します。新しいパッケージや外部APIは使用していません。
 

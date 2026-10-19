@@ -3,6 +3,7 @@ import type { Archive, Section } from "../data/model";
 import type { BirdAnimationState } from "./art/bird";
 
 export type Direction = "up" | "down" | "left" | "right";
+export type RoomDestination = Section | "instagram";
 export interface RoomObstacle {
   id: string;
   x: number;
@@ -19,12 +20,19 @@ export interface RoomBreakable {
   object: THREE.Object3D;
   broken: boolean;
 }
-export interface RoomPortal {
-  section: Section;
+interface RoomPortalObject {
   object: THREE.Object3D;
   anchor: THREE.Vector3;
   lookAt: THREE.Vector3;
 }
+export interface RoomCollectionPortal extends RoomPortalObject {
+  section: Section;
+}
+export interface RoomExternalPortal extends RoomPortalObject {
+  section: "instagram";
+  href: string;
+}
+export type RoomPortal = RoomCollectionPortal | RoomExternalPortal;
 export interface RoomAvatarAnimation {
   time: number;
   speed: number;
@@ -76,7 +84,7 @@ export interface RoomEngineOptions {
   onError: () => void;
   onOpening: (section: Section) => void;
   onOpen: (section: Section) => void;
-  onHover: (section: Section | null) => void;
+  onHover: (section: RoomDestination | null) => void;
   onBreak: (label: string) => void;
   onSnapshot: (snapshot: RoomSnapshot) => void;
 }
@@ -87,7 +95,7 @@ export interface RoomEngine {
   jump: () => void;
   punch: () => void;
   resetObjects: () => void;
-  open: (section: Section) => void;
+  open: (section: RoomDestination) => void;
   setPaused: (value: boolean) => void;
   setReducedMotion: (value: boolean) => void;
   dispose: () => void;
