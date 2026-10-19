@@ -12,7 +12,9 @@ import { createCharacter } from "./art/character";
 import { createBird } from "./art/bird";
 import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
+import { createTablePolaroids } from "./art/tablePolaroids";
 import deskPhotoUrl from "../assets/room/rome-travel.jpg";
+import polaroidPhotoUrl from "../assets/room/polaroid-travels.jpg";
 import {
   createWorldMapTexture,
   createJapanMapTexture,
@@ -648,17 +650,15 @@ export function createRoomScene(archive: Archive): RoomScene {
     cameraSize.y,
     cameraBounds.min.y,
   );
-  cylinder(0.12, 0.12, 0.025, woodDark, coffee, 0.38, 0.66, 0.17);
-  const coffeeCup = group(0.38, 0.67, 0.17, coffee);
-  cylinder(0.09, 0.07, 0.14, white, coffeeCup, 0, 0.07, 0);
-  cylinder(0.07, 0.07, 0.004, woodDark, coffeeCup, 0, 0.142, 0);
-  registerBreakable(
-    "coffee-cup",
-    "テーブルのカップ",
-    coffeeCup,
-    ["#f4f0df", "#846747"],
-    0.635,
-  );
+  // Thin, overlapping travel prints replace the cup and its coaster.
+  const polaroidPhoto = new THREE.TextureLoader().load(polaroidPhotoUrl);
+  polaroidPhoto.colorSpace = THREE.SRGBColorSpace;
+  polaroidPhoto.anisotropy = 8;
+  textures.push(polaroidPhoto);
+  const tablePolaroids = createTablePolaroids(polaroidPhoto);
+  tablePolaroids.group.name = "coffee-table-polaroids";
+  tablePolaroids.group.position.set(0.36, 0.635, 0.09);
+  coffee.add(tablePolaroids.group);
   obstruction("coffee-table", -0.15, 1.88, 1.7, 1.14, 0.635);
 
   // Leaf geometry, handcrafted with elongated ellipsoids, casts soft botanical shadows.
@@ -825,6 +825,7 @@ export function createRoomScene(archive: Archive): RoomScene {
       bird.dispose();
       photoFrame.dispose();
       tableCamera.dispose();
+      tablePolaroids.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) geometries.add(object.geometry);
