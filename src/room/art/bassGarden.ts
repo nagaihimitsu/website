@@ -9,6 +9,16 @@ export const BASS_GARDEN_LAYOUT = {
   flowerbed: { x: 1.25, z: 7.5, width: 2, depth: 0.76, height: 0.24 },
 } as const;
 
+export type BassGardenPerformance = {
+  playing: boolean;
+  /** Fractional beats elapsed in the current song, independent of render rate. */
+  beat: number;
+  /** Successful-note pulse only; an off-beat pluck must not celebrate. */
+  success: number;
+  /** Last physically plucked HUD row: G=0, D=1, A=2, E=3. */
+  string?: number;
+};
+
 /**
  * Original, unbranded garden instrument. The instrument's origin is its body
  * centre, neck is +Y and face is +Z. It can be reparented to the avatar; the
@@ -65,8 +75,8 @@ function buildBassGarden(scope: DisposalScope) {
     item.position.set(...position);
     return item;
   }
-  function rod(name: string, a: THREE.Vector3, b: THREE.Vector3, radius: number, material: THREE.Material, parent: THREE.Object3D = group, segments = 8) {
-    const item = mesh(name, own(new THREE.CylinderGeometry(radius, radius, a.distanceTo(b), segments)), material, parent);
+  function rod(name: string, a: THREE.Vector3, b: THREE.Vector3, radius: number, material: THREE.Material, parent: THREE.Object3D = group, segments = 8, lengthSegments = 1) {
+    const item = mesh(name, own(new THREE.CylinderGeometry(radius, radius, a.distanceTo(b), segments, lengthSegments)), material, parent);
     item.position.copy(a).add(b).multiplyScalar(0.5);
     item.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
     return item;
@@ -156,10 +166,18 @@ function buildBassGarden(scope: DisposalScope) {
   }
   box("bass-bridge-plate", [0.078, 0.04, 0.006], [0, -0.129, 0.029], silver, instrument, 0.003);
   for (const y of [-0.033, 0.026]) box("bass-magnetic-pickup", [0.075, 0.018, 0.009], [0, y, 0.037], ink, instrument, 0.003);
+  const vibratingStrings: { mesh: THREE.Mesh; rest: Float32Array; length: number; phase: number }[] = [];
   for (let i = 0; i < 4; i++) {
     const x = (i - 1.5) * 0.013;
     box("bass-individual-bridge-saddle", [0.011, 0.014, 0.007], [x, -0.128, 0.035], warmMetal, instrument, 0.002);
-    rod("bass-steel-string", new THREE.Vector3(x, -0.142, 0.042), new THREE.Vector3(x * 0.82, 0.603, 0.033), 0.00055 + (3 - i) * 0.00013, silver, instrument, 5);
+    const bridge = new THREE.Vector3(x, -0.142, 0.042), nut = new THREE.Vector3(x * 0.82, 0.603, 0.033);
+    const string = rod("bass-steel-string", bridge, nut, 0.00055 + (3 - i) * 0.00013, silver, instrument, 5, 16);
+    string.userData.bassVibratingString = true;
+    const positions = string.geometry.getAttribute("position") as THREE.BufferAttribute;
+    positions.setUsage(THREE.DynamicDrawUsage);
+    string.geometry.computeBoundingSphere();
+    if (string.geometry.boundingSphere) string.geometry.boundingSphere.radius += 0.003;
+    vibratingStrings.push({ mesh: string, rest: new Float32Array(positions.array), length: bridge.distanceTo(nut), phase: i * 0.71 });
     rod("bass-headstock-string", new THREE.Vector3(x * 0.82, 0.603, 0.033), new THREE.Vector3(-0.013, 0.637 + i * 0.039, 0.028), 0.00055 + (3 - i) * 0.00013, silver, instrument, 5);
   }
   for (const [x, y] of [[0.095, -0.08], [0.115, -0.116]]) {
@@ -281,9 +299,37 @@ function buildBassGarden(scope: DisposalScope) {
 
   // Individual stems have an irregular planted rhythm. Each petal crown is
   // merged to one mesh, keeping the playful garden modest on mobile GPUs.
-  const flowers: { stem: THREE.Group; crown: THREE.Group; phase: number }[] = [];
+  const flowers: {
+    stem: THREE.Group;
+    crown: THREE.Group;
+    petals: THREE.Mesh;
+    face: THREE.Mesh;
+    leaves: THREE.Mesh[];
+    crownRotation: THREE.Euler;
+    phase: number;
+  }[] = [];
   const petalSource = own(new THREE.SphereGeometry(1, 10, 6));
   const leafSource = own(new THREE.SphereGeometry(1, 10, 6));
+  const faceParts: THREE.BufferGeometry[] = [];
+  for (const x of [-0.115, 0.115]) {
+    const eye = new THREE.SphereGeometry(1, 8, 6);
+    eye.scale(0.04, 0.059, 0.025);
+    eye.translate(x, 0.035, 0.359);
+    faceParts.push(eye.toNonIndexed());
+    eye.dispose();
+  }
+  const smile = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-0.105, -0.067, 0.354),
+    new THREE.Vector3(0, -0.185, 0.374),
+    new THREE.Vector3(0.105, -0.067, 0.354),
+  ), 8, 0.015, 5, false);
+  faceParts.push(smile.toNonIndexed());
+  smile.dispose();
+  const faceGeometry = mergeGeometries(faceParts);
+  faceParts.forEach((geometry) => geometry.dispose());
+  if (!faceGeometry) throw new Error("Could not build garden flower expressions");
+  own(faceGeometry);
+  const faceMaterial = surface("#544733", 0.82);
   for (let i = 0; i < 13; i++) {
     const stem = new THREE.Group();
     stem.name = "garden-flower-stem";
@@ -294,12 +340,14 @@ function buildBassGarden(scope: DisposalScope) {
     const bend = Math.sin(i * 4.1) * 0.048;
     const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(), new THREE.Vector3(-bend, height * 0.66, 0), new THREE.Vector3(bend, height, 0));
     mesh("flower-soft-curved-stem", own(new THREE.TubeGeometry(curve, 8, 0.0075, 5, false)), stemMaterial, stem);
+    const leaves: THREE.Mesh[] = [];
     for (const side of [-1, 1]) {
       const leaf = mesh("flower-pointed-leaf", leafSource, leafMaterial, stem);
       leaf.position.set(side * 0.048, height * (side < 0 ? 0.37 : 0.59), 0);
       leaf.scale.set(0.076, 0.021, 0.031);
       leaf.rotation.z = side * 0.61;
       leaf.rotation.y = side * 0.32;
+      leaves.push(leaf);
     }
     const crown = new THREE.Group();
     crown.name = "garden-flower-bloom";
@@ -320,9 +368,13 @@ function buildBassGarden(scope: DisposalScope) {
     const petalGeometry = mergeGeometries(petals);
     petals.forEach((geometry) => geometry.dispose());
     if (!petalGeometry) throw new Error("Could not build garden flower petals");
-    mesh("flower-rounded-petal-crown", own(petalGeometry), flowerMaterials[i % flowerMaterials.length], crown);
+    const petalMesh = mesh("flower-rounded-petal-crown", own(petalGeometry), flowerMaterials[i % flowerMaterials.length], crown);
     sphere("flower-pollen-centre", [radius * 0.35, radius * 0.35, radius * 0.18], [0, 0, radius * 0.19], pollenMaterial, crown);
-    flowers.push({ stem, crown, phase: i * 1.71 });
+    const face = mesh("flower-little-performance-smile", faceGeometry, faceMaterial, crown);
+    face.scale.setScalar(radius);
+    face.visible = false;
+    face.castShadow = false;
+    flowers.push({ stem, crown, petals: petalMesh, face, leaves, crownRotation: crown.rotation.clone(), phase: i * 1.71 });
   }
 
   // Small hardware is modeled independently above, then batched by material.
@@ -331,7 +383,7 @@ function buildBassGarden(scope: DisposalScope) {
   function batchStaticParts(parent: THREE.Group) {
     const batches = new Map<THREE.Material, THREE.Mesh[]>();
     for (const child of parent.children) {
-      if (!(child instanceof THREE.Mesh) || Array.isArray(child.material)) continue;
+      if (!(child instanceof THREE.Mesh) || Array.isArray(child.material) || child.userData.bassVibratingString) continue;
       const items = batches.get(child.material) ?? [];
       items.push(child);
       batches.set(child.material, items);
@@ -420,14 +472,176 @@ function buildBassGarden(scope: DisposalScope) {
     cableGeometry.getAttribute("position").needsUpdate = true;
     cableGeometry.getAttribute("normal").needsUpdate = true;
   }
-  function animate(timeSeconds: number, hitPulse = 0, bloom = 0, reducedMotion = false) {
+
+  // Success flourishes reuse a small, fixed pool. They are actual little
+  // petals and musical notes in the garden, never a screen-covering overlay.
+  const effects = new THREE.Group();
+  effects.name = "garden-success-petals-and-notes";
+  effects.userData.roomRaycastIgnore = true;
+  group.add(effects);
+  const floatingPetalGeometry = own(new THREE.SphereGeometry(1, 8, 5));
+  floatingPetalGeometry.scale(0.5, 1, 0.22);
+  const floatingPetalMaterial = surface("#ffffff", 0.79);
+  const noteParts: THREE.BufferGeometry[] = [];
+  const noteHead = new THREE.Shape();
+  noteHead.absellipse(-0.18, -0.44, 0.27, 0.19, 0, Math.PI * 2, false, -0.4);
+  noteParts.push(new THREE.ShapeGeometry(noteHead, 12));
+  const noteStem = new THREE.Shape();
+  noteStem.moveTo(-0.005, -0.46);
+  noteStem.lineTo(0.105, -0.46);
+  noteStem.lineTo(0.105, 0.65);
+  noteStem.lineTo(-0.005, 0.65);
+  noteStem.closePath();
+  noteParts.push(new THREE.ShapeGeometry(noteStem));
+  const noteFlag = new THREE.Shape();
+  noteFlag.moveTo(0.08, 0.65);
+  noteFlag.bezierCurveTo(0.36, 0.55, 0.48, 0.27, 0.25, 0.06);
+  noteFlag.bezierCurveTo(0.36, 0.36, 0.15, 0.32, 0.08, 0.37);
+  noteFlag.closePath();
+  noteParts.push(new THREE.ShapeGeometry(noteFlag, 8));
+  const noteGeometry = mergeGeometries(noteParts);
+  noteParts.forEach((geometry) => geometry.dispose());
+  if (!noteGeometry) throw new Error("Could not build garden musical notes");
+  own(noteGeometry);
+  const noteMaterial = own(new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.75, side: THREE.DoubleSide }));
+  type Particle = {
+    active: boolean;
+    start: number;
+    lifetime: number;
+    origin: THREE.Vector3;
+    velocity: THREE.Vector3;
+    spin: number;
+    rotation: number;
+    size: number;
+  };
+  function createPool(capacity: number, geometry: THREE.BufferGeometry, material: THREE.Material, name: string) {
+    const instances = own(new THREE.InstancedMesh(geometry, material, capacity));
+    instances.name = name;
+    instances.frustumCulled = false;
+    instances.castShadow = false;
+    instances.receiveShadow = false;
+    instances.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    effects.add(instances);
+    const particles: Particle[] = [];
+    const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (let index = 0; index < capacity; index++) {
+      instances.setMatrixAt(index, hidden);
+      instances.setColorAt(index, flowerMaterials[index % flowerMaterials.length].color);
+      particles.push({ active: false, start: 0, lifetime: 1, origin: new THREE.Vector3(), velocity: new THREE.Vector3(), spin: 0, rotation: 0, size: 0.03 });
+    }
+    return { instances, particles, cursor: 0 };
+  }
+  const petalPool = createPool(24, floatingPetalGeometry, floatingPetalMaterial, "garden-floating-petal-pool");
+  const notePool = createPool(8, noteGeometry, noteMaterial, "garden-floating-music-note-pool");
+  const particleTransform = new THREE.Object3D();
+  let effectSeed = 38143, flourishCount = 0;
+  const random = () => {
+    effectSeed = (Math.imul(effectSeed, 1664525) + 1013904223) >>> 0;
+    return effectSeed / 0x100000000;
+  };
+  function launchSuccess(time: number) {
+    for (const pool of [petalPool, notePool]) {
+      const isNote = pool === notePool;
+      for (let i = 0; i < (isNote ? 2 : 5); i++) {
+        const particle = pool.particles[pool.cursor];
+        pool.cursor = (pool.cursor + 1) % pool.particles.length;
+        const flower = flowers[(flourishCount * 3 + i * 3 + (isNote ? 2 : 0)) % flowers.length];
+        flower.crown.getWorldPosition(particle.origin);
+        group.worldToLocal(particle.origin);
+        particle.origin.z -= 0.035;
+        particle.active = true;
+        particle.start = time;
+        particle.lifetime = isNote ? 1.1 + random() * 0.25 : 0.8 + random() * 0.35;
+        particle.velocity.set((random() - 0.5) * 0.27, 0.3 + random() * 0.25, -0.08 - random() * 0.14);
+        particle.rotation = (random() - 0.5) * 0.8;
+        particle.spin = (random() - 0.5) * (isNote ? 0.8 : 3.5);
+        particle.size = isNote ? 0.076 + random() * 0.014 : 0.021 + random() * 0.015;
+      }
+    }
+    flourishCount++;
+  }
+  function animateParticles(time: number, reducedMotion: boolean) {
+    for (const pool of [petalPool, notePool]) {
+      let changed = false;
+      for (let index = 0; index < pool.particles.length; index++) {
+        const particle = pool.particles[index];
+        if (!particle.active) continue;
+        const age = Math.max(0, time - particle.start), progress = age / particle.lifetime;
+        if (progress >= 1 || reducedMotion) {
+          particle.active = false;
+          particleTransform.scale.setScalar(0);
+        } else {
+          const envelope = Math.sin(Math.PI * progress) ** 0.6;
+          particleTransform.position.copy(particle.origin).addScaledVector(particle.velocity, age);
+          particleTransform.position.y -= (pool === petalPool ? 0.12 : 0.04) * age * age;
+          particleTransform.rotation.set(
+            pool === petalPool ? progress * 1.4 : 0,
+            Math.PI + Math.sin(progress * 3 + particle.rotation) * 0.25,
+            particle.rotation + age * particle.spin,
+          );
+          particleTransform.scale.setScalar(particle.size * envelope);
+        }
+        particleTransform.updateMatrix();
+        pool.instances.setMatrixAt(index, particleTransform.matrix);
+        changed = true;
+      }
+      if (changed) pool.instances.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  let previousTime = 0, performanceAmount = 0, previousSuccess = 0;
+  pollenMaterial.emissive.set("#6b4b20");
+  pollenMaterial.emissiveIntensity = 0;
+  function animate(timeSeconds: number, hitPulse = 0, bloom = 0, reducedMotion = false, performance?: BassGardenPerformance) {
     const pulse = THREE.MathUtils.clamp(hitPulse, 0, 1);
     const growth = THREE.MathUtils.clamp(bloom, 0, 1);
-    for (const flower of flowers) {
-      flower.stem.rotation.z = reducedMotion ? 0 : Math.sin(timeSeconds * 1.25 + flower.phase) * 0.016 + Math.sin(flower.phase) * pulse * 0.1;
-      flower.crown.scale.setScalar(0.87 + growth * 0.13 + (reducedMotion ? 0 : pulse * 0.07));
+    const success = THREE.MathUtils.clamp(performance?.success ?? 0, 0, 1);
+    const delta = Math.max(0, Math.min(0.1, timeSeconds - previousTime));
+    previousTime = timeSeconds;
+    performanceAmount = THREE.MathUtils.damp(performanceAmount, performance?.playing ? 1 : 0, 7, delta);
+    const beat = performance?.beat ?? 0;
+    if (!reducedMotion && performance?.playing && success > 0.35 && success > previousSuccess + 0.2) launchSuccess(timeSeconds);
+    previousSuccess = success;
+    for (let i = 0; i < flowers.length; i++) {
+      const flower = flowers[i];
+      const sway = Math.sin(beat * Math.PI + i * 0.21);
+      const nod = Math.sin(beat * Math.PI * 2 + i * 0.34);
+      flower.stem.rotation.z = reducedMotion ? 0 :
+        Math.sin(timeSeconds * 1.25 + flower.phase) * 0.016 * (1 - performanceAmount)
+        + sway * 0.13 * performanceAmount + Math.sin(flower.phase) * success * 0.09;
+      flower.stem.rotation.x = reducedMotion ? 0 : (nod * 0.045 * performanceAmount + success * 0.035);
+      flower.crown.rotation.copy(flower.crownRotation);
+      if (!reducedMotion) {
+        flower.crown.rotation.x += nod * 0.13 * performanceAmount;
+        flower.crown.rotation.z += sway * 0.075 * performanceAmount;
+      }
+      flower.crown.scale.setScalar(0.87 + growth * 0.13 + (reducedMotion ? 0 : success * 0.055));
+      const opening = reducedMotion ? growth * 0.035 : performanceAmount * 0.09 + success * 0.08 + growth * 0.035;
+      flower.petals.scale.set(1 + opening, 1 + opening, 1 - opening * 0.7);
+      flower.face.visible = performanceAmount > 0.08;
+      for (let leafIndex = 0; leafIndex < flower.leaves.length; leafIndex++) {
+        const side = leafIndex === 0 ? -1 : 1;
+        const leaf = flower.leaves[leafIndex];
+        leaf.rotation.z = side * 0.61 + (reducedMotion ? 0 : Math.sin(beat * Math.PI + i * 0.31 + side * 0.8) * 0.18 * performanceAmount);
+        leaf.rotation.y = side * 0.32 + (reducedMotion ? 0 : nod * 0.1 * performanceAmount);
+      }
     }
-    emissive.emissiveIntensity = 0.35 + pulse * 0.55;
+    for (const [geometryIndex, string] of vibratingStrings.entries()) {
+      const positions = string.mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+      // Geometry is built from negative X (thick E) to positive X (G),
+      // matching bassStringX's reverse mapping from the HUD's G/D/A/E rows.
+      const selected = performance?.string === undefined || performance.string === 3 - geometryIndex;
+      const amplitude = reducedMotion || !selected ? 0 : pulse * Math.sin(timeSeconds * 145 + string.phase) * 0.0018;
+      for (let vertex = 0; vertex < positions.count; vertex++) {
+        const index = vertex * 3;
+        const along = string.rest[index + 1] / string.length + 0.5;
+        positions.setX(vertex, string.rest[index] + Math.sin(along * Math.PI) * amplitude);
+      }
+      positions.needsUpdate = true;
+    }
+    emissive.emissiveIntensity = 0.35 + pulse * (reducedMotion ? 0.08 : 0.35);
+    pollenMaterial.emissiveIntensity = success * (reducedMotion ? 0.08 : 0.14);
+    animateParticles(timeSeconds, reducedMotion);
     updateCable();
   }
   animate(0);

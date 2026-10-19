@@ -14,6 +14,7 @@ import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
 import { createBassGarden, BASS_GARDEN_LAYOUT } from "./art/bassGarden";
+import { BASS_HELD_POSITION, BASS_HELD_ROTATION, BASS_HELD_SCALE } from "./art/bassPose";
 import type { RoomDestinationId } from "./destinations";
 import { withDisposalScope, type DisposalScope } from "./disposal";
 import { overlapsObstacle } from "./collision";
@@ -1058,10 +1059,12 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const character = scope.own(createCharacter());
   const avatar = character.group;
   scene.add(avatar);
-  const heldBassPosition = new THREE.Vector3(0, 0.55, -0.24);
-  const heldBassRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 50 * Math.PI / 180));
+  const heldBassPosition = BASS_HELD_POSITION;
+  const heldBassRotation = BASS_HELD_ROTATION;
   const bassTarget = new THREE.Vector3();
   const bassRotation = new THREE.Quaternion();
+  const bassTargetScale = new THREE.Vector3();
+  const bassRestScale = new THREE.Vector3(1, 1, 1);
   // The bird is a living, solid room occupant, never a destructible prop.
   const bird = scope.own(createBird());
   scene.add(bird.group);
@@ -1081,7 +1084,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     bass: {
       anchor: BASS_GARDEN_LAYOUT.interaction,
       radius: BASS_GARDEN_LAYOUT.interaction.radius,
-      animate(time, lift, pluck, bloom, reducedMotion) {
+      animate(time, lift, pluck, bloom, reducedMotion, performance) {
         const amount = THREE.MathUtils.smoothstep(lift, 0, 1);
         character.bassAnchor.updateWorldMatrix(true, false);
         bassTarget.copy(heldBassPosition).applyMatrix4(character.bassAnchor.matrixWorld);
@@ -1089,10 +1092,11 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
         bassGarden.instrument.position.lerpVectors(bassGarden.restPosition, bassTarget, amount);
         bassGarden.instrument.position.y += Math.sin(amount * Math.PI) * 0.13;
         bassGarden.instrument.quaternion.slerpQuaternions(bassGarden.restQuaternion, bassRotation, amount);
-        bassGarden.instrument.scale.setScalar(THREE.MathUtils.lerp(1, 0.98, amount));
+        character.bassAnchor.getWorldScale(bassTargetScale).multiplyScalar(BASS_HELD_SCALE);
+        bassGarden.instrument.scale.lerpVectors(bassRestScale, bassTargetScale, amount);
         bassGarden.instrument.userData.roomRaycastIgnore = amount > 0;
         bassObstacle.enabled = amount < 0.05;
-        bassGarden.animate(time, pluck, bloom, reducedMotion);
+        bassGarden.animate(time, pluck, bloom, reducedMotion, performance);
       },
     },
     animateAvatar: character.animate,

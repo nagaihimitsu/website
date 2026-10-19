@@ -5,6 +5,10 @@ import { createCharacterMaterials } from "./characterMaterials";
 import { buildCharacterHead } from "./characterHead";
 import { buildCharacterBody } from "./characterBody";
 import type { CharacterBuilder } from "./characterBuilder";
+import {
+  BASS_HELD_POSITION, BASS_HELD_ROTATION, BASS_HELD_SCALE,
+  bassFretY, bassStringX, bassStringZ, bassPosePoint,
+} from "./bassPose";
 
 /**
  * Original, fully volumetric little traveller, modelled from the supplied
@@ -312,6 +316,146 @@ function buildCharacter(scope: DisposalScope) {
     root.add(strands);
   }
 
+  // The forearms bend around the instrument instead of pointing a whole sleeve
+  // through its face. Rest vertices are retained exactly for walking/punching.
+  const armSkins = arms.map((arm, index) => {
+    const meshes = arm.children.filter((child): child is THREE.Mesh =>
+      child instanceof THREE.Mesh && !(child instanceof THREE.InstancedMesh));
+    const sections = new Map<number, {
+      t: number; clamped: number; width: number; centre: THREE.Vector3; rotation: THREE.Quaternion;
+    }>();
+    for (const item of meshes) {
+      if (item.name === "sculpted-soft-mitt") continue;
+      const vertices = item.geometry.getAttribute("position");
+      for (let vertex = 0; vertex < vertices.count; vertex++) {
+        const y = vertices.getY(vertex);
+        if (sections.has(y)) continue;
+        const t = -y / 0.3, clamped = THREE.MathUtils.clamp(t, 0, 1);
+        sections.set(y, { t, clamped,
+          width: 1 - 0.23 * THREE.MathUtils.smoothstep(clamped, 0.3, 1),
+          centre: new THREE.Vector3(), rotation: new THREE.Quaternion() });
+      }
+    }
+    return {
+      arm,
+      sections,
+      side: index === 0 ? -1 : 1,
+      restPosition: arm.position.clone(),
+      pile: arm.children.filter((child) => child instanceof THREE.InstancedMesh),
+      surfaces: meshes.map((item) => {
+        item.frustumCulled = false;
+        return { item, positions: new Float32Array(item.geometry.getAttribute("position").array),
+          normals: new Float32Array(item.geometry.getAttribute("normal").array),
+          paw: item.name === "sculpted-soft-mitt" };
+      }),
+    };
+  });
+  scope.defer(() => { armSkins.length = 0; });
+  const playingFingers = new THREE.Group();
+  playingFingers.name = "bass-articulated-fingers";
+  playingFingers.position.copy(BASS_HELD_POSITION);
+  playingFingers.quaternion.copy(BASS_HELD_ROTATION);
+  playingFingers.scale.setScalar(BASS_HELD_SCALE);
+  playingFingers.visible = false;
+  body.add(playingFingers);
+  function liveFinger(name: string, radius: number) {
+    const rings = 16, sides = 8;
+    const geometry = remember(new THREE.BufferGeometry());
+    const positions = new Float32Array((rings + 1) * (sides + 1) * 3);
+    const normals = new Float32Array(positions.length);
+    const uvs: number[] = [];
+    const indices: number[] = [];
+    for (let ring = 0; ring < rings; ring++) for (let side = 0; side < sides; side++) {
+      const a = ring * (sides + 1) + side, b = a + sides + 1;
+      indices.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+    for (let ring = 0; ring <= rings; ring++) for (let side = 0; side <= sides; side++)
+      uvs.push(side / sides, ring / rings);
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    const finger = mesh(geometry, surfaces.pawFur, playingFingers);
+    finger.name = name;
+    finger.frustumCulled = false;
+    const end = new THREE.Object3D();
+    end.name = `${name}-tip`;
+    playingFingers.add(end);
+    const points = Array.from({ length: 4 }, () => new THREE.Vector3());
+    const curve = new THREE.CatmullRomCurve3(points);
+    const centre = new THREE.Vector3(), tangent = new THREE.Vector3();
+    const across = new THREE.Vector3(), around = new THREE.Vector3();
+    const direction = new THREE.Vector3(), reference = new THREE.Vector3(0, 0, 1);
+    return (shape: number[][]) => {
+      points.forEach((point, i) => point.set(...shape[i] as [number, number, number]));
+      end.position.copy(points[3]);
+      for (let ring = 0; ring <= rings; ring++) {
+        const t = ring / rings;
+        curve.getPoint(t, centre);
+        curve.getTangent(t, tangent).normalize();
+        across.crossVectors(tangent, reference).normalize();
+        if (across.lengthSq() < 0.01) across.set(1, 0, 0);
+        around.crossVectors(tangent, across).normalize();
+        const r = radius * Math.sin(Math.PI * t) ** 0.24;
+        for (let side = 0; side <= sides; side++) {
+          const angle = side / sides * Math.PI * 2;
+          direction.copy(across).multiplyScalar(Math.cos(angle)).addScaledVector(around, Math.sin(angle));
+          const i = (ring * (sides + 1) + side) * 3;
+          positions[i] = centre.x + direction.x * r;
+          positions[i + 1] = centre.y + direction.y * r;
+          positions[i + 2] = centre.z + direction.z * r;
+          normals[i] = direction.x; normals[i + 1] = direction.y; normals[i + 2] = direction.z;
+        }
+      }
+      geometry.getAttribute("position").needsUpdate = true;
+      geometry.getAttribute("normal").needsUpdate = true;
+      geometry.boundingBox = null;
+    };
+  }
+  const pluckingIndex = liveFinger("bass-plucking-index", 0.009);
+  const pluckingMiddle = liveFinger("bass-plucking-middle", 0.009);
+  const pluckingThumb = liveFinger("bass-plucking-thumb", 0.011);
+  const frettingIndex = liveFinger("bass-fretting-index", 0.0095);
+  const frettingMiddle = liveFinger("bass-fretting-middle", 0.009);
+  const frettingThumb = liveFinger("bass-fretting-thumb", 0.011);
+
+  // A narrow cloth strap bears the instrument over the shoulder, with its back
+  // section naturally hidden underneath the traveller's existing backpack.
+  const strapSurface = remember(new THREE.MeshStandardMaterial({ color: "#665341", roughness: 0.93,
+    side: THREE.DoubleSide, transparent: true, opacity: 0 }));
+  const strapPoints = [
+    bassPosePoint(-0.086, 0.23, 0), new THREE.Vector3(0.135, 0.70, -0.145),
+    new THREE.Vector3(0.135, 0.735, -0.025), new THREE.Vector3(0.12, 0.70, 0.11),
+    new THREE.Vector3(-0.075, 0.61, 0.145), new THREE.Vector3(-0.16, 0.57, 0.1),
+    new THREE.Vector3(-0.2, 0.51, -0.07), bassPosePoint(0.13, -0.13, 0),
+  ];
+  const strapCurve = new THREE.CatmullRomCurve3(strapPoints);
+  const strapPositions: number[] = [], strapIndices: number[] = [];
+  const strapAcross = new THREE.Vector3(), strapOut = new THREE.Vector3();
+  const strapSides = 8;
+  for (let row = 0; row <= 96; row++) {
+    const point = strapCurve.getPoint(row / 96), tangent = strapCurve.getTangent(row / 96);
+    strapOut.set(point.x, 0, point.z).normalize();
+    strapAcross.crossVectors(tangent, strapOut).normalize();
+    strapOut.crossVectors(strapAcross, tangent).normalize();
+    for (let side = 0; side <= strapSides; side++) {
+      const angle = side / strapSides * Math.PI * 2;
+      const w = Math.cos(angle) * 0.019, thickness = Math.sin(angle) * 0.0022;
+      strapPositions.push(point.x + strapAcross.x * w + strapOut.x * thickness,
+        point.y + strapAcross.y * w + strapOut.y * thickness,
+        point.z + strapAcross.z * w + strapOut.z * thickness);
+      if (row < 96 && side < strapSides) { const a = row * (strapSides + 1) + side, b = a + strapSides + 1;
+        strapIndices.push(a, a + 1, b, b, a + 1, b + 1); }
+    }
+  }
+  const strapGeometry = remember(new THREE.BufferGeometry());
+  strapGeometry.setAttribute("position", new THREE.Float32BufferAttribute(strapPositions, 3));
+  strapGeometry.setIndex(strapIndices);
+  strapGeometry.computeVertexNormals();
+  const bassStrap = mesh(strapGeometry, strapSurface, body);
+  bassStrap.name = "bass-shoulder-support-strap";
+  bassStrap.visible = false;
+
   group.traverse((object) => {
     object.userData.roomRaycastIgnore = true;
     // Picking and the camera test room objects only. Filtering avatar hits after
@@ -326,14 +470,16 @@ function buildCharacter(scope: DisposalScope) {
   let easedSpeed = 0;
   let airBlend = 0;
   let airRise = 0;
-  // Pose the existing soft sleeves around the instrument without replacing the
-  // character or altering its normal locomotion. The local palm centre is the
-  // same point used by the sculpted mitt mesh in characterExtremities.
-  const palmDirections = [-1, 1].map((side) =>
-    new THREE.Vector3(side * 0.025, -0.319, -0.02).normalize(),
-  );
-  const handTarget = new THREE.Vector3();
-  const heldArmRotation = new THREE.Quaternion();
+  let previousBassLift = 0;
+  let fingerboardY = bassFretY(3);
+  let frettingX = bassStringX(0);
+  const handTarget = new THREE.Vector3(), wrist = new THREE.Vector3();
+  const skinPoint = new THREE.Vector3(), skinNormal = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const frameRotation = new THREE.Quaternion(), palmRotation = new THREE.Quaternion();
+  const identity = new THREE.Quaternion(), down = new THREE.Vector3(0, -1, 0);
+  const sleeveCurve = new THREE.CubicBezierCurve3(new THREE.Vector3(), new THREE.Vector3(),
+    new THREE.Vector3(), new THREE.Vector3());
   const ease = (current: number, target: number, rate: number, dt: number) =>
     THREE.MathUtils.lerp(current, target, 1 - Math.exp(-rate * dt));
   return {
@@ -370,6 +516,7 @@ function buildCharacter(scope: DisposalScope) {
         ? 0
         : Math.sin(state.time * 2.1) * 0.0015 * (1 - walking);
       const bounce = (1 - Math.cos(stridePhase * 2)) * 0.5;
+      body.position.x = 0;
       body.position.y = state.reducedMotion
         ? 0
         : breath + bounce * walking * 0.009;
@@ -394,6 +541,11 @@ function buildCharacter(scope: DisposalScope) {
         0,
         0.07 + airBlend * 0.16,
       );
+      armSkins.forEach(({ arm, restPosition }) => arm.position.copy(restPosition));
+      legs.forEach((leg, index) => {
+        leg.position.set((index === 0 ? -1 : 1) * 0.073, 0.325, 0.006);
+        leg.rotation.z = 0;
+      });
       legs[0].rotation.x = THREE.MathUtils.lerp(
         -swing,
         THREE.MathUtils.lerp(-0.1, 0.32, airRise),
@@ -439,35 +591,134 @@ function buildCharacter(scope: DisposalScope) {
       if (state.bass && state.bass.lift > 0) {
         const lift = THREE.MathUtils.clamp(state.bass.lift, 0, 1);
         const pluck = THREE.MathUtils.clamp(state.bass.pluck, 0, 1);
-        const beat = state.time * (96 / 60) * Math.PI * 2;
+        const beat = state.bass.beat * Math.PI * 2;
         const groove = state.bass.playing && !state.reducedMotion;
         // A brief forward reach and settling bend makes picking up the bass an
         // action, while the sustained pose keeps the face readable above it.
         const reach = Math.sin(Math.PI * lift);
         body.rotation.x -= reach * 0.085;
         body.position.y -= reach * 0.012;
-        body.rotation.z += groove ? Math.sin(beat * 0.5) * 0.018 * lift : 0;
+        body.rotation.z += groove ? Math.sin(beat * 0.5) * 0.028 * lift : 0;
+        body.position.x = groove ? Math.sin(beat * 0.5) * 0.008 * lift : 0;
+        body.position.y -= groove ? (1 - Math.cos(beat)) * 0.0045 * lift : 0;
         head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, -0.065, lift);
-        head.rotation.x = groove ? Math.sin(beat) * 0.014 * lift : 0;
-        for (let index = 0; index < arms.length; index++) {
-          const arm = arms[index];
-          if (index === 0) {
-            // A compact downstroke across the strings remains visible with
-            // reduced motion: it is direct feedback for the player's input.
-            handTarget.set(-0.06 + pluck * 0.008, 0.55 - pluck * 0.023, -0.28);
-          } else {
-            // The neck rises towards local +X; the fretting hand rests around
-            // it instead of hovering at an unrelated symmetrical arm pose.
-            handTarget.set(0.25, 0.76, -0.28);
-          }
-          handTarget.sub(arm.position).normalize();
-          heldArmRotation.setFromUnitVectors(palmDirections[index], handTarget);
-          arm.quaternion.slerp(heldArmRotation, lift);
+        head.rotation.x = groove ? Math.sin(beat) * 0.027 * lift : 0;
+        head.rotation.z += groove ? Math.cos(beat * 0.5) * 0.019 * lift : 0;
+        tailRoot.rotation.y += groove ? Math.sin(beat * 0.5 - 0.6) * 0.075 * lift : 0;
+        legs.forEach((leg, index) => {
+          // Keep the shoes on the ground as the knees and weight settle into
+          // the pulse; the performer does not float up and down as one block.
+          leg.position.y -= body.position.y * lift;
+          leg.position.x -= body.position.x * lift;
+          leg.rotation.z -= body.rotation.z * 0.5 * lift;
+          leg.rotation.x += groove ? Math.sin(beat + index * Math.PI) * 0.022 * lift : 0;
+        });
+        fingerboardY = ease(fingerboardY, bassFretY(state.bass.fret), 35, dt);
+        frettingX = ease(frettingX, bassStringX(state.bass.string, fingerboardY), 45, dt);
+        if (previousBassLift === 0) {
+          fingerboardY = bassFretY(state.bass.fret);
+          frettingX = bassStringX(state.bass.string, fingerboardY);
         }
+        const pickX = bassStringX(state.bass.pluckString ?? state.bass.string);
+        const touchZ = bassStringZ(fingerboardY) + (state.bass.fretting ? 0 : 0.014);
+        playingFingers.visible = lift > 0.65;
+        playingFingers.scale.setScalar(BASS_HELD_SCALE * THREE.MathUtils.smoothstep(lift, 0.65, 1));
+        pluckingIndex([[0.065, 0.011, 0.101], [0.043, 0.02, 0.097],
+          [pickX + 0.01, 0.02, 0.068], [pickX - pluck * 0.007, 0.015, bassStringZ(0.015) + 0.002 + pluck * 0.003]]);
+        pluckingMiddle([[0.065, -0.011, 0.101], [0.043, -0.006, 0.097],
+          [pickX + 0.013, -0.008, 0.064], [pickX + 0.003, -0.009, 0.049]]);
+        pluckingThumb([[0.068, 0.033, 0.093], [0.055, 0.062, 0.088],
+          [0.032, 0.07, 0.063], [0.025, 0.067, 0.046]]);
+        frettingIndex([[-0.057, fingerboardY - 0.02, 0.079], [-0.036, fingerboardY + 0.005, 0.084],
+          [frettingX - 0.006, fingerboardY + 0.006, touchZ + 0.023], [frettingX, fingerboardY, touchZ + 0.0008]]);
+        frettingMiddle([[-0.058, fingerboardY - 0.041, 0.076], [-0.035, fingerboardY - 0.02, 0.078],
+          [-0.01, fingerboardY - 0.02, 0.061], [0.006, fingerboardY - 0.023, 0.046]]);
+        frettingThumb([[-0.061, fingerboardY - 0.022, 0.053], [-0.043, fingerboardY - 0.025, 0.006],
+          [-0.009, fingerboardY - 0.024, -0.027], [0.017, fingerboardY - 0.02, -0.013]]);
+        bassStrap.visible = lift > 0.55;
+        strapSurface.opacity = THREE.MathUtils.smoothstep(lift, 0.55, 1);
+        for (let index = 0; index < armSkins.length; index++) {
+          const rig = armSkins[index], { arm, side } = rig;
+          arm.position.z -= 0.045 * lift;
+          arm.quaternion.slerp(identity, lift);
+          rig.pile.forEach((item) => { item.visible = lift < 0.01; });
+          // Palm position is expressed in instrument space, separate from the
+          // string-contacting fingertips. Only the wrist shifts on a pluck.
+          if (index === 0) bassPosePoint(0.07 - pluck * 0.003, 0.007, 0.105 + pluck * 0.001, handTarget);
+          else bassPosePoint(-0.055, fingerboardY - 0.022, 0.079, handTarget);
+          sleeveCurve.v0.set(0, 0.012, 0);
+          sleeveCurve.v1.set(side * 0.04, -0.11, -0.04);
+          sleeveCurve.v2.set(side * 0.085, -0.17, -0.15);
+          wrist.copy(handTarget).sub(arm.position);
+          direction.copy(sleeveCurve.v2).sub(wrist).normalize();
+          sleeveCurve.v3.copy(wrist).addScaledVector(direction, 0.032);
+          if (index === 0) {
+            // The plucking sleeve goes around the bass's outside edge before
+            // coming in over its face. A straight shoulder-to-hand chord cuts
+            // through the body even when the torso itself has ample clearance.
+            sleeveCurve.v1.set(-0.13, 0.025, -0.06);
+            sleeveCurve.v2.set(-0.2, 0.075, -0.34);
+            sleeveCurve.v3.copy(wrist).add(new THREE.Vector3(-0.025, 0.012, 0.002));
+          }
+          palmRotation.copy(BASS_HELD_ROTATION).multiply(frameRotation.setFromAxisAngle(
+            new THREE.Vector3(0, 0, 1), (index === 0 ? -Math.PI / 2 : Math.PI / 2) + (index === 0 ? -pluck * 0.09 : 0)));
+          // Every ring shares a centre and tangent. Evaluate each section once,
+          // rather than repeating curve sampling for its 49 surface vertices.
+          for (const section of rig.sections.values()) {
+            sleeveCurve.getPoint(section.clamped, section.centre);
+            sleeveCurve.getTangent(section.clamped, direction).normalize();
+            section.centre.addScaledVector(direction, (section.t - section.clamped) * 0.3);
+            section.rotation.setFromUnitVectors(down, direction);
+          }
+          for (const skin of rig.surfaces) {
+            const positions = skin.item.geometry.getAttribute("position");
+            const normals = skin.item.geometry.getAttribute("normal");
+            for (let vertex = 0; vertex < positions.count; vertex++) {
+              const i = vertex * 3;
+              const x = skin.positions[i], y = skin.positions[i + 1], z = skin.positions[i + 2];
+              skinNormal.set(skin.normals[i], skin.normals[i + 1], skin.normals[i + 2]);
+              if (skin.paw) {
+                skinPoint.set((x - side * 0.025) * 0.72, (y + 0.319) * 0.83, (z + 0.02) * 0.7)
+                  .applyQuaternion(palmRotation).add(handTarget).sub(arm.position);
+                skinNormal.applyQuaternion(palmRotation);
+              } else {
+                const section = rig.sections.get(y)!;
+                skinPoint.set((x - side * 0.024 * section.clamped) * section.width, 0,
+                  (z + 0.02 * section.clamped) * section.width)
+                  .applyQuaternion(section.rotation).add(section.centre);
+                skinNormal.applyQuaternion(section.rotation);
+              }
+              positions.setXYZ(vertex, THREE.MathUtils.lerp(x, skinPoint.x, lift),
+                THREE.MathUtils.lerp(y, skinPoint.y, lift), THREE.MathUtils.lerp(z, skinPoint.z, lift));
+              skinNormal.set(THREE.MathUtils.lerp(skin.normals[i], skinNormal.x, lift),
+                THREE.MathUtils.lerp(skin.normals[i + 1], skinNormal.y, lift),
+                THREE.MathUtils.lerp(skin.normals[i + 2], skinNormal.z, lift)).normalize();
+              normals.setXYZ(vertex, skinNormal.x, skinNormal.y, skinNormal.z);
+            }
+            positions.needsUpdate = normals.needsUpdate = true;
+            skin.item.geometry.boundingBox = null;
+          }
+        }
+        previousBassLift = lift;
       } else {
         // Head pitch belongs only to this interaction; explicitly release it
         // when returning the instrument so later walking stays unchanged.
         head.rotation.x = 0;
+        playingFingers.visible = bassStrap.visible = false;
+        if (previousBassLift > 0) {
+          for (const rig of armSkins) {
+            rig.pile.forEach((item) => { item.visible = true; });
+            for (const skin of rig.surfaces) {
+              const positions = skin.item.geometry.getAttribute("position");
+              const normals = skin.item.geometry.getAttribute("normal");
+              (positions.array as Float32Array).set(skin.positions);
+              (normals.array as Float32Array).set(skin.normals);
+              positions.needsUpdate = normals.needsUpdate = true;
+              skin.item.geometry.boundingBox = null;
+            }
+          }
+          previousBassLift = 0;
+        }
       }
     },
     dispose: scope.dispose,

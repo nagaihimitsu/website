@@ -103,7 +103,11 @@ function BassOverlay({ store, engine, paused }: {
 }) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return <BassGameHUD snapshot={snapshot} paused={paused}
-    onStart={() => engine.current?.startBass()} onPluck={() => engine.current?.pluckBass()}
+    onStart={() => engine.current?.startBass()}
+    onHold={(string, fret) => engine.current?.holdBass(string, fret)}
+    onRelease={(string) => engine.current?.releaseBass(string)}
+    onPluck={(string) => engine.current?.pluckBass(string)}
+    onLayout={(height) => engine.current?.setBassOverlayHeight(height)}
     onPutDown={() => engine.current?.putDownBass()} />;
 }
 

@@ -7,7 +7,7 @@ import { createRoomScene } from "./roomScene";
 import { createBirdMotion } from "./birdMotion";
 import { worldRecovery } from "./roomArchitecture";
 import { findRecoveryPosition } from "./worldRecovery";
-import { createBassGame } from "./bassGame";
+import { createBassGame, BASS_BEAT_SECONDS, type BassString } from "./bassGame";
 import { createBassAudio } from "./bassAudio";
 import {
   createPlayer,
@@ -44,6 +44,8 @@ const PUNCH_DURATION = 420;
 const PUNCH_IMPACT = 125;
 const BIRD_FLOOR_OFFSET = 0.012;
 const BASS_VIEW_YAW = Math.PI;
+const BASS_HOLD_KEYS: Record<string, BassString> = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 };
+const BASS_PLUCK_KEYS: Record<string, BassString> = { Digit7: 0, Digit8: 1, Digit9: 2, Digit0: 3 };
 const KEY_DIRECTIONS: Record<string, Direction> = {
   ArrowUp: "up",
   KeyW: "up",
@@ -188,6 +190,10 @@ function initializeRoomEngine(
   let bassReportedTime = -Infinity;
   let bassVisualLift = 0;
   let bassPluckPulse = 0;
+  let bassSuccessPulse = 0;
+  let bassPluckString: BassString = 3;
+  let bassOverlayHeight = 0;
+  let bassViewOffset = 0;
   let bassNeedsExit = false;
   let bassPickupStart = { x: 0, z: 0 };
   const bassHeld = () => !["idle", "approaching"].includes(bassState.phase);
@@ -301,6 +307,8 @@ function initializeRoomEngine(
     analog.z = 0;
     moveVelocity = { x: 0, z: 0 };
     jumpRequested = false;
+    bassGame.releaseAll();
+    bassState = bassGame.snapshot();
     releaseViewPointer();
   }
 
@@ -343,14 +351,32 @@ function initializeRoomEngine(
     reportBass(bassPreviousTime, true);
   }
 
-  function pluckBass() {
+  function holdBass(string: BassString, fret: number) {
+    if (disposed || failed || paused || document.hidden || !bassHeld()) return;
+    advanceBass(performance.now());
+    bassGame.hold(string, fret);
+    bassState = bassGame.snapshot();
+    reportBass(performance.now(), true);
+  }
+
+  function releaseBass(string: BassString) {
+    if (disposed || failed || !bassHeld()) return;
+    if (!paused && !document.hidden) advanceBass(performance.now());
+    bassGame.release(string);
+    bassState = bassGame.snapshot();
+    reportBass(performance.now(), true);
+  }
+
+  function pluckBass(string: BassString) {
     if (disposed || failed || paused || document.hidden || bassState.phase !== "playing") return;
     advanceBass(performance.now()); // Judge at input time, independently of render FPS.
-    const judgement = bassGame.pluck();
+    const judgement = bassGame.pluck(string);
     if (!judgement) return;
     bassAudio.unlock();
     bassAudio.pluck(judgement.frequency);
     bassPluckPulse = 1;
+    bassPluckString = string;
+    if (judgement.kind !== "miss") bassSuccessPulse = 1;
     bassState = bassGame.snapshot();
     reportBass(performance.now(), true);
   }
@@ -363,6 +389,7 @@ function initializeRoomEngine(
     bassPreviousTime = performance.now();
     bassNeedsExit = true;
     bassPluckPulse = 0;
+    bassSuccessPulse = 0;
     clearInputs();
     reportBass(bassPreviousTime, true);
     savePosition();
@@ -611,12 +638,21 @@ function initializeRoomEngine(
       if (event.code === "Escape") {
         event.preventDefault();
         if (!event.repeat) putDownBass();
-      } else if (["Space", "Enter", "KeyF", "KeyJ"].includes(event.code)) {
+      } else if (Object.hasOwn(BASS_HOLD_KEYS, event.code)) {
+        event.preventDefault();
+        if (!event.repeat) {
+          advanceBass(performance.now());
+          const string = BASS_HOLD_KEYS[event.code];
+          holdBass(string, bassState.leftGuides[string].fret);
+        }
+      } else if (Object.hasOwn(BASS_PLUCK_KEYS, event.code)) {
+        event.preventDefault();
+        if (!event.repeat) pluckBass(BASS_PLUCK_KEYS[event.code]);
+      } else if (["Space", "Enter"].includes(event.code)) {
         if (["Space", "Enter"].includes(event.code) && event.target instanceof HTMLElement && event.target.closest("button, a")) return;
         event.preventDefault();
         if (!event.repeat) {
           if (bassState.phase === "ready" || bassState.phase === "result") startBass();
-          else pluckBass();
         }
       } else if (event.code === "KeyR") {
         event.preventDefault();
@@ -655,6 +691,7 @@ function initializeRoomEngine(
 
   function keyUp(event: KeyboardEvent) {
     keyboard.delete(event.code);
+    if (Object.hasOwn(BASS_HOLD_KEYS, event.code)) releaseBass(BASS_HOLD_KEYS[event.code]);
   }
 
   function pointerDown(event: PointerEvent) {
@@ -753,6 +790,7 @@ function initializeRoomEngine(
 
   function syncSuspension() {
     clearInputs();
+    reportBass(performance.now(), true);
     bassAudio.stop();
     bassPreviousTime = performance.now();
     if (paused || document.hidden) {
@@ -788,12 +826,13 @@ function initializeRoomEngine(
       }
     }
     // Frame the performer above the compact play bar, with the garden behind.
-    const targetHeight = THREE.MathUtils.lerp(FOLLOW_TARGET_HEIGHT, 0.44, bassVisualLift);
+    const targetHeight = THREE.MathUtils.lerp(FOLLOW_TARGET_HEIGHT, 0.6, bassVisualLift);
     cameraTarget.set(player.x, player.y + targetHeight, player.z);
     const direction = orbitDirection(yaw, pitch);
     boomDirection.set(direction.x, direction.y, direction.z);
     const wantedDistance = THREE.MathUtils.lerp(
-      FOLLOW_DISTANCE + (camera.aspect < 0.8 ? 0.1 : 0), 2.2, bassVisualLift,
+      FOLLOW_DISTANCE + (camera.aspect < 0.8 ? 0.1 : 0),
+      height < 500 && camera.aspect > 1.2 ? 2.85 : 2.2, bassVisualLift,
     );
     let safeDistance = cameraBoomLimit(
       cameraTarget,
@@ -822,6 +861,12 @@ function initializeRoomEngine(
       .addScaledVector(boomDirection, cameraDistance);
     camera.lookAt(cameraTarget);
     camera.fov = baseFov();
+    // Keep the live room full-screen while framing the performer in the space
+    // above the actual control deck, including phone rotation and safe areas.
+    const wantedOffset = Math.min(bassOverlayHeight, height * 0.76) * 0.5 * bassVisualLift;
+    bassViewOffset = THREE.MathUtils.damp(bassViewOffset, wantedOffset, 9, elapsed);
+    if (bassViewOffset > 0.1) camera.setViewOffset(width, height, 0, bassViewOffset, width, height);
+    else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     // In an unavoidable wall corner, keep the room visible instead of putting
     // the camera inside an opaque head. The normal following view is fully solid.
@@ -920,6 +965,7 @@ function initializeRoomEngine(
     const liftTarget = bassHeld() ? (bassState.phase === "pickup" ? bassState.pickupProgress : 1) : 0;
     bassVisualLift = bassHeld() ? liftTarget : Math.max(0, bassVisualLift - elapsed * 2.5);
     bassPluckPulse *= Math.exp(-12 * elapsed);
+    bassSuccessPulse *= Math.exp(-5 * elapsed);
     const moving =
       Math.hypot(player.x - oldPosition.x, player.z - oldPosition.z) > 0.0001;
     room.avatar.position.set(player.x, player.y, player.z);
@@ -966,6 +1012,11 @@ function initializeRoomEngine(
         reducedMotion,
       });
       const punchProgress = updatePunch(time);
+      const heldString = bassState.heldFrets.findIndex((fret) => fret !== null);
+      const bassLeft = heldString >= 0
+        ? { string: heldString, fret: bassState.heldFrets[heldString]! }
+        : bassState.currentPhrase ?? bassState.nextPhrase ?? { string: 3, fret: 3 };
+      const bassBeat = bassState.elapsed / BASS_BEAT_SECONDS;
       room.animateAvatar({
         time: animationTime,
         speed:
@@ -981,10 +1032,15 @@ function initializeRoomEngine(
         velocityY: player.velocityY,
         punchProgress,
         reducedMotion,
-        bass: { lift: bassVisualLift, pluck: bassPluckPulse, playing: bassState.phase === "playing" },
+        bass: {
+          lift: bassVisualLift, pluck: bassPluckPulse, playing: bassState.phase === "playing",
+          beat: bassBeat, string: bassLeft.string, fret: bassLeft.fret,
+          fretting: heldString >= 0, pluckString: bassPluckString,
+        },
       });
       room.bass.animate(animationTime, bassVisualLift, bassPluckPulse,
-        bassState.notes.length ? bassState.hits / bassState.notes.length : 0, reducedMotion);
+        bassState.notes.length ? bassState.hits / bassState.notes.length : 0, reducedMotion,
+        { playing: bassState.phase === "playing", beat: bassBeat, success: bassSuccessPulse, string: bassPluckString });
       room.scene.updateMatrixWorld();
       if (time - aimTime >= 100 && !opening && !opened && !bassHeld()) {
         aimTime = time;
@@ -1075,8 +1131,11 @@ function initializeRoomEngine(
     jump,
     punch,
     startBass,
+    holdBass,
+    releaseBass,
     pluckBass,
     putDownBass,
+    setBassOverlayHeight(value) { bassOverlayHeight = Number.isFinite(value) ? Math.max(0, value) : 0; },
     open,
     resetView,
     setTargetHovered(value) {

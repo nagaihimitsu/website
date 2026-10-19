@@ -1,11 +1,11 @@
-import { BASS_BEAT_SECONDS, BASS_COUNTDOWN_SECONDS, BASS_DURATION, type BassGameSnapshot } from "./bassGame";
+import { BASS_BEAT_SECONDS, BASS_COUNTDOWN_SECONDS, BASS_DURATION, BASS_PHRASES, type BassGameSnapshot } from "./bassGame";
 
 type Sound = "count" | "kick" | "snare" | "hat" | "chord";
 interface Event { time: number; sound: Sound; bar?: number }
 const events: Event[] = [];
 for (let beat = 0; beat < 3; beat++)
   events.push({ time: -BASS_COUNTDOWN_SECONDS + beat * BASS_BEAT_SECONDS, sound: "count" });
-for (let beat = 0; beat < 32; beat++) {
+for (let beat = 0; beat < 48; beat++) {
   const time = beat * BASS_BEAT_SECONDS;
   events.push({ time, sound: beat % 2 === 0 ? "kick" : "snare" });
   events.push({ time, sound: "hat" }, { time: time + BASS_BEAT_SECONDS / 2, sound: "hat" });
@@ -73,10 +73,13 @@ export function createBassAudio() {
         break;
       case "hat": hiss(time, 0.035, 0.035, 6800); break;
       case "chord": {
-        const roots = [52, 52, 48, 48, 55, 50, 52, 52];
-        const root = roots[event.bar ?? 0];
-        for (const interval of [0, root === 52 ? 3 : 4, 7])
-          tone(440 * 2 ** ((root + interval - 69) / 12), time, 1.15, 0.016, "triangle");
+        // G / C / Em / Am / D / G, each sustained for two bars. The playable
+        // bass line is deliberately absent from this soft upper-register bed.
+        const phrase = Math.floor((event.bar ?? 0) / 2);
+        let root = BASS_PHRASES[phrase].frequency;
+        while (root < 180) root *= 2;
+        for (const interval of [0, phrase === 2 || phrase === 3 ? 3 : 4, 7])
+          tone(root * 2 ** (interval / 12), time, 1.15, 0.014, "triangle");
         break;
       }
     }
@@ -102,7 +105,10 @@ export function createBassAudio() {
           samples[index] = seed / 2147483648 - 1;
         }
       }
-      if (context.state === "suspended") void context.resume().catch(() => undefined);
+      // Safari can report "interrupted" after a device/app interruption. Resume
+      // from either inactive state on this explicit gesture, never from sync().
+      if (context.state !== "running" && context.state !== "closed")
+        void context.resume().catch(() => undefined);
     } catch {
       // Visual play remains available on browsers/devices without usable Web Audio.
       stop();
@@ -149,8 +155,8 @@ export function createBassAudio() {
       tone(85, time, 0.045, 0.12, "triangle", 55);
       return;
     }
-    tone(frequency, time, 0.43, 0.32, "triangle");
-    tone(frequency * 2, time, 0.18, 0.065, "sine");
+    tone(frequency, time, 0.34, 0.32, "triangle");
+    tone(frequency * 2, time, 0.15, 0.065, "sine");
     hiss(time, 0.018, 0.025, 2400);
   }
 
