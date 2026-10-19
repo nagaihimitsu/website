@@ -1,9 +1,10 @@
 import type * as THREE from "three";
 import type { Archive, Section } from "../data/model";
 import type { BirdAnimationState } from "./art/bird";
+import type { RoomDestinationId } from "./destinations";
 
 export type Direction = "up" | "down" | "left" | "right";
-export type RoomDestination = Section | "instagram";
+export type RoomDestination = RoomDestinationId;
 export interface RoomObstacle {
   id: string;
   x: number;
@@ -20,19 +21,12 @@ export interface RoomBreakable {
   object: THREE.Object3D;
   broken: boolean;
 }
-interface RoomPortalObject {
+export interface RoomPortal {
+  destination: RoomDestination;
   object: THREE.Object3D;
   anchor: THREE.Vector3;
   lookAt: THREE.Vector3;
 }
-export interface RoomCollectionPortal extends RoomPortalObject {
-  section: Section;
-}
-export interface RoomExternalPortal extends RoomPortalObject {
-  section: "instagram";
-  href: string;
-}
-export type RoomPortal = RoomCollectionPortal | RoomExternalPortal;
 export interface RoomAvatarAnimation {
   time: number;
   speed: number;
@@ -96,6 +90,7 @@ export interface RoomEngine {
   punch: () => void;
   resetObjects: () => void;
   open: (section: RoomDestination) => void;
+  setTargetHovered: (value: boolean) => void;
   setPaused: (value: boolean) => void;
   setReducedMotion: (value: boolean) => void;
   dispose: () => void;

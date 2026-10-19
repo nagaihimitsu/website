@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { collectPageErrors, enterRoom, savedPosition } from "./helpers/room";
 
 async function birdPose(page: Page) {
   return page.locator(".room-home").evaluate((element) => ({
@@ -8,18 +9,9 @@ async function birdPose(page: Page) {
   }));
 }
 
-async function enter(page: Page) {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/#/");
-  await expect(page.locator(".room-home")).toHaveAttribute(
-    "data-room-status", "ready", { timeout: 30000 },
-  );
-  return errors;
-}
-
-test("小鳥が短く跳ねて移動し、メニュー中は止まる", async ({ page }) => {
-  const errors = await enter(page);
+test("小鳥が短く跳ねて移動し、メニュー中は止まる", { tag: "@npc" }, async ({ page }) => {
+  const errors = collectPageErrors(page);
+  await enterRoom(page);
   const start = await birdPose(page);
   await expect.poll(async () => (await birdPose(page)).y, { timeout: 15000 })
     .toBeGreaterThan(0.025);
@@ -40,14 +32,11 @@ test("小鳥が短く跳ねて移動し、メニュー中は止まる", async ({
   expect(errors).toEqual([]);
 });
 
-test("小鳥をすり抜けず、パンチで壊れない", async ({ page }) => {
+test("小鳥をすり抜けず、パンチで壊れない", { tag: "@npc" }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.addInitScript(() => {
-    sessionStorage.setItem("personal-atlas-room-position-v3", JSON.stringify({
-      x: 0.05, y: 0, z: -0.7, yaw: 0, pitch: 0.16, facing: 0, brokenIds: [],
-    }));
-  });
-  const errors = await enter(page);
+  await savedPosition(page, { x: 0.05, z: -0.7, yaw: 0 });
+  const errors = collectPageErrors(page);
+  await enterRoom(page);
   const room = page.locator(".room-home");
   const bird = await birdPose(page);
   await page.keyboard.down("ArrowUp");

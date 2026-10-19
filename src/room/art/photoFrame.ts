@@ -1,23 +1,20 @@
 import * as THREE from "three";
+import { withDisposalScope, type DisposalScope } from "../disposal";
 
 /** A tabletop oak frame. The supplied photograph remains owned by the caller. */
 export function createPhotoFrame(photo: THREE.Texture) {
+  return withDisposalScope((scope) => buildPhotoFrame(photo, scope));
+}
+
+function buildPhotoFrame(photo: THREE.Texture, scope: DisposalScope) {
   const group = new THREE.Group();
   group.name = "desk-travel-photo-frame";
   const frame = new THREE.Group();
   frame.name = "photo-frame-leaning-assembly";
   group.add(frame);
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  const ownGeometry = <T extends THREE.BufferGeometry>(value: T): T => {
-    geometries.add(value);
-    return value;
-  };
-  const ownMaterial = <T extends THREE.Material>(value: T): T => {
-    materials.add(value);
-    return value;
-  };
+  scope.defer(() => group.clear());
+  const ownGeometry = scope.own;
+  const ownMaterial = scope.own;
 
   // Long oak fibres with wandering latewood lines and subtle pores. Each of
   // the four rails has its own lengthwise UV direction, including the mitres.
@@ -44,7 +41,7 @@ export function createPhotoFrame(photo: THREE.Texture) {
       woodPixels[offset + 3] = 255;
     }
   }
-  const woodTexture = new THREE.DataTexture(woodPixels, woodWidth, woodHeight);
+  const woodTexture = scope.own(new THREE.DataTexture(woodPixels, woodWidth, woodHeight));
   woodTexture.colorSpace = THREE.SRGBColorSpace;
   woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
   woodTexture.magFilter = THREE.LinearFilter;
@@ -52,7 +49,6 @@ export function createPhotoFrame(photo: THREE.Texture) {
   woodTexture.generateMipmaps = true;
   woodTexture.anisotropy = 4;
   woodTexture.needsUpdate = true;
-  textures.add(woodTexture);
   const wood = ownMaterial(new THREE.MeshStandardMaterial({
     map: woodTexture, color: "#ffffff", roughness: 0.57, metalness: 0,
     vertexColors: true,
@@ -287,17 +283,6 @@ export function createPhotoFrame(photo: THREE.Texture) {
   for (const child of group.children) child.position.y -= bounds.min.y;
   group.updateMatrixWorld(true);
   group.userData.photoFrame = { imageAspect: 1102 / 1280, front: "+Z", leanDegrees: 9 };
-  let disposed = false;
-  return {
-    group,
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      group.removeFromParent();
-      geometries.forEach((geometry) => geometry.dispose());
-      materials.forEach((material) => material.dispose());
-      textures.forEach((texture) => texture.dispose());
-      group.clear();
-    },
-  };
+  scope.defer(() => group.removeFromParent());
+  return { group, dispose: scope.dispose };
 }

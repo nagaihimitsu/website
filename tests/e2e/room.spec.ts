@@ -1,6 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 import sharp from "sharp";
-import { PerspectiveCamera, Vector3 } from "three";
+import {
+  collectPageErrors,
+  enterRoom,
+  position,
+  projectRoomPoint,
+  renderReleasedInput,
+  savedPosition,
+} from "./helpers/room";
 
 // Room controls use a stable empty archive, independent of personal records.
 test.beforeEach(async ({ page }) => {
@@ -19,74 +26,6 @@ const destinations = {
   pokemon: "スマートフォンでポケモン図鑑を開く",
 };
 
-async function savedPosition(
-  page: Page,
-  pose: {
-    x: number;
-    y?: number;
-    z: number;
-    yaw: number;
-    pitch?: number;
-    facing?: number;
-    brokenIds?: string[];
-  },
-) {
-  // Restore a legitimate saved visitor position; all actions still use real input.
-  await page.addInitScript(
-    ({ key, value }) => sessionStorage.setItem(key, JSON.stringify(value)),
-    {
-      key: "personal-atlas-room-position-v3",
-      value: { y: 0, pitch: 0.16, facing: pose.yaw, brokenIds: [], ...pose },
-    },
-  );
-}
-async function enterRoom(page: Page) {
-  await page.goto("/#/");
-  const room = page.locator(".room-home");
-  await expect(room).toHaveAttribute("data-room-status", "ready", {
-    timeout: 30000,
-  });
-  await expect(page.locator(".room-canvas canvas")).toBeVisible();
-  for (const coordinate of [
-    "player-x",
-    "player-z",
-    "player-height",
-    "yaw",
-    "pitch",
-    "facing",
-    "camera-distance",
-    "camera-x",
-    "camera-y",
-    "camera-z",
-  ])
-    await expect(room).toHaveAttribute(
-      `data-${coordinate}`,
-      /^-?\d+(?:\.\d+)?$/,
-    );
-  return room;
-}
-async function position(page: Page) {
-  return page.locator(".room-home").evaluate((element) => ({
-    x: Number(element.getAttribute("data-player-x")),
-    z: Number(element.getAttribute("data-player-z")),
-    height: Number(element.getAttribute("data-player-height")),
-    yaw: Number(element.getAttribute("data-yaw")),
-    pitch: Number(element.getAttribute("data-pitch")),
-    facing: Number(element.getAttribute("data-facing")),
-    cameraDistance: Number(element.getAttribute("data-camera-distance")),
-    cameraX: Number(element.getAttribute("data-camera-x")),
-    cameraY: Number(element.getAttribute("data-camera-y")),
-    cameraZ: Number(element.getAttribute("data-camera-z")),
-  }));
-}
-async function renderReleasedInput(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
-  );
-}
 function angleDifference(a: number, b: number) {
   return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 }
@@ -163,17 +102,16 @@ async function returnToRoom(page: Page) {
   );
 }
 
-test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆わない", async ({
+test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆わない", { tag: "@visual" }, async ({
   page,
 }) => {
-  const external: string[] = [],
-    errors: string[] = [];
+  const external: string[] = [];
+  const errors = collectPageErrors(page);
   page.on("request", (request) => {
     const url = request.url();
     if (!url.startsWith("http://127.0.0.1") && !/^(data|blob):/.test(url))
       external.push(url);
   });
-  page.on("pageerror", (error) => errors.push(error.message));
   const room = await enterRoom(page);
   await expect(room).toHaveAttribute("data-view", "third-person");
   await expect(room).toHaveAttribute("data-character", "traveler");
@@ -219,7 +157,7 @@ test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆
   expect(external).toEqual([]);
 });
 
-test("カメラの向きに歩いて旅人が振り向き、Spaceで床へ着地する", async ({
+test("カメラの向きに歩いて旅人が振り向き、Spaceで床へ着地する", { tag: "@movement" }, async ({
   page,
 }) => {
   // Keep this floor-landing case clear of furniture, independently of the
@@ -273,7 +211,7 @@ test("カメラの向きに歩いて旅人が振り向き、Spaceで床へ着地
   expect(later.z).toBeCloseTo(stopped.z, 2);
 });
 
-test("360度見回しても旅人の向きは変わらず、ボタンとRで背後へ戻せる", async ({
+test("360度見回しても旅人の向きは変わらず、ボタンとRで背後へ戻せる", { tag: "@movement" }, async ({
   page,
 }) => {
   await savedPosition(page, { x: -0.6, z: 0.5, yaw: 0, facing: 0 });
@@ -315,10 +253,13 @@ test("360度見回しても旅人の向きは変わらず、ボタンとRで背�
     .toBeLessThan(0.03);
 });
 
-test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメラの向きを保つ", async ({
+test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメラの向きを保つ", { tag: "@movement" }, async ({
   page,
 }) => {
-  await savedPosition(page, { x: 0.95, z: -0.9, yaw: 0.4 });
+  // Leave a clear runway for the turn: software WebGL may take a full second
+  // to paint a moving frame. Reaching the front wall would test collision
+  // sliding instead of the camera-relative direction asserted below.
+  await savedPosition(page, { x: 0.95, z: -2.4, yaw: 0.4 });
   await enterRoom(page);
   const start = await position(page);
   await page.keyboard.down("ArrowDown");
@@ -326,6 +267,7 @@ test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメ�
     await expect
       .poll(async () =>
         angleDifference((await position(page)).facing, start.yaw + Math.PI),
+        { intervals: [50, 100] },
       )
       .toBeLessThan(0.18);
   } finally {
@@ -356,7 +298,7 @@ test("後ろ入力では手前へ振り向いて歩き、Rを押すまでカメ�
     .toBeLessThan(0.03);
 });
 
-test("壁の近くでは追従カメラが縮まり、部屋の外へ抜けない", async ({ page }) => {
+test("壁の近くでは追従カメラが縮まり、部屋の外へ抜けない", { tag: "@movement" }, async ({ page }) => {
   await savedPosition(page, { x: 0.95, z: 3.1, yaw: 0, facing: 0 });
   await enterRoom(page);
   await expect
@@ -396,7 +338,7 @@ for (const furniture of [
     direction: -1,
   },
 ]) {
-  test(`${furniture.name}へ実際にジャンプし、家具の上で着地する`, async ({
+  test(`${furniture.name}へ実際にジャンプし、家具の上で着地する`, { tag: "@movement" }, async ({
     page,
   }) => {
     await savedPosition(page, furniture.start);
@@ -432,7 +374,7 @@ for (const furniture of [
   });
 }
 
-test("遠い物は壊せず、近づいてパンチすると小物だけが壊れ、元に戻せる", async ({
+test("遠い物は壊せず、近づいてパンチすると小物だけが壊れ、元に戻せる", { tag: "@movement" }, async ({
   page,
 }) => {
   // The sculpture starts beyond the character's reach. Walking up to it,
@@ -468,7 +410,7 @@ test("遠い物は壊せず、近づいてパンチすると小物だけが壊�
   await expect(room).toHaveAttribute("data-broken-count", "0");
 });
 
-test("壊した小物の場所に立ったまま復元しても閉じ込められない", async ({
+test("壊した小物の場所に立ったまま復元しても閉じ込められない", { tag: "@movement" }, async ({
   page,
 }) => {
   await savedPosition(page, {
@@ -500,7 +442,7 @@ test("壊した小物の場所に立ったまま復元しても閉じ込めら�
   await walk(page);
 });
 
-test("スマートフォン本体をクリックすると図鑑を開く", async ({ page }) => {
+test("スマートフォン本体をクリックすると図鑑を開く", { tag: "@links" }, async ({ page }) => {
   // Project the actual glass center into the follow camera's visible image.
   // This clicks the Three.js phone mesh, not a replacement HTML link.
   await savedPosition(page, {
@@ -510,29 +452,15 @@ test("スマートフォン本体をクリックすると図鑑を開く", async
     facing: -0.3085,
   });
   await enterRoom(page);
-  const pose = await position(page);
-  const box = await page.locator(".room-canvas canvas").boundingBox();
-  const camera = new PerspectiveCamera(68, box!.width / box!.height, 0.035, 60);
-  const target = new Vector3(pose.x, pose.height + 1.02, pose.z);
-  camera.position.set(
-    target.x + Math.sin(pose.yaw) * Math.cos(pose.pitch) * pose.cameraDistance,
-    target.y + Math.sin(pose.pitch) * pose.cameraDistance,
-    target.z + Math.cos(pose.yaw) * Math.cos(pose.pitch) * pose.cameraDistance,
-  );
-  camera.lookAt(target);
-  camera.updateMatrixWorld();
-  const glass = new Vector3(2.72, 1.96, -2.41).project(camera);
-  expect(Math.abs(glass.x)).toBeLessThan(1);
-  expect(Math.abs(glass.y)).toBeLessThan(1);
-  await page.mouse.click(
-    box!.x + ((glass.x + 1) / 2) * box!.width,
-    box!.y + ((1 - glass.y) / 2) * box!.height,
-  );
+  const glass = await projectRoomPoint(page, [2.72, 1.96, -2.41]);
+  expect(Math.abs(glass.normalized.x)).toBeLessThan(1);
+  expect(Math.abs(glass.normalized.y)).toBeLessThan(1);
+  await page.mouse.click(glass.x, glass.y);
   await expect(page).toHaveURL(/#\/pokemon$/);
   await expect(page.locator(".page-count strong")).toHaveText("0");
 });
 
-test("隠したメニューから4コレクションへ進み、戻ると位置と視線を保つ", async ({
+test("隠したメニューから4コレクションへ進み、戻ると位置と視線を保つ", { tag: "@links" }, async ({
   page,
 }) => {
   await enterRoom(page);
@@ -552,7 +480,7 @@ test("隠したメニューから4コレクションへ進み、戻ると位置�
   }
 });
 
-test("WebGL非対応時も全コレクションへ進める", async ({ page }) => {
+test("WebGL非対応時も全コレクションへ進める", { tag: "@links" }, async ({ page }) => {
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (
@@ -640,7 +568,7 @@ test.describe("タッチ操作", () => {
     isMobile: true,
   });
 
-  test("狭い縦画面でも下へ引くと手前へ歩き、見回した後も画面の下方向へ進む", async ({
+  test("狭い縦画面でも下へ引くと手前へ歩き、見回した後も画面の下方向へ進む", { tag: "@movement" }, async ({
     page,
     context,
   }) => {
@@ -732,7 +660,7 @@ test.describe("タッチ操作", () => {
     ).toBe(true);
   });
 
-  test("アナログスティックで移動中も別の指で見回し、ジャンプとパンチを操作できる", async ({
+  test("アナログスティックで移動中も別の指で見回し、ジャンプとパンチを操作できる", { tag: "@movement" }, async ({
     page,
     context,
   }) => {
@@ -858,7 +786,7 @@ test.describe("タッチ操作", () => {
     });
   });
 
-  test("横向きでも操作部が画面に収まり、メニューから記録を開ける", async ({
+  test("横向きでも操作部が画面に収まり、メニューから記録を開ける", { tag: "@links" }, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 844, height: 390 });

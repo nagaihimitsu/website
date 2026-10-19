@@ -82,7 +82,28 @@ GitHub Pagesの場合：
 
 ワークフローは `main` へのpushまたは手動実行で起動し、検証・テスト後に `dist/` を配信します。GitHub PagesのSourceは事前に **GitHub Actions** へ設定してください。公開完了はActionsの成功と、deployジョブが出力するURLで確認します。他の静的ホスティングでも `dist/` をアップロードすれば利用できます。
 
-通常のpushと手動実行の既定値 `validation: full` は全テストを実行します。キャラクターの外観だけの変更は、差分と比較画像を確認したうえで `validation: visual` を選ぶと、部屋の描画テスト1件と本番ビルドに絞れます。TXTの実績・写真の追加だけなら `validation: records` で、記録の解析テスト・公開TXTと画面の件数／地図の照合・本番ビルドを行います。どちらの本番ビルドにもデータ・ライセンス・TypeScriptの検査を含みます。コミットメッセージに `[skip ci]` を付けてpushし、その後に手動実行すると重複実行を避けられます。小鳥NPCの変更は `validation: npc` で小鳥とプレイヤーの衝突テスト、小鳥のブラウザテスト2件、部屋描画テスト1件、本番ビルドを実行します。それ以外の操作・解析処理・マスターデータ・依存関係を変更した場合は `full` を使います。
+通常のpushと手動実行の既定値 `validation: full` は全テストを実行します。手動公開の `validation` とローカルの `npm run test:scope -- <範囲>` は、同じ [範囲定義](scripts/test-scope.mjs) を参照します。すべての公開で本番ビルド（データ・ライセンス・TypeScriptの検査を含む）を行います。
+
+| 範囲 | 使用場面と検証対象 |
+|---|---|
+| `visual` | 造形・素材だけの変更。比較画像を別途確認し、部屋描画を検証 |
+| `links` | 部屋の入口・外部リンク。スマホ本体、メニュー、代替表示、Instagram、部屋描画 |
+| `movement` | 移動・カメラ・ジャンプ・破壊。対応する単体テストと実入力のブラウザテスト |
+| `npc` | 小鳥。移動・衝突の単体テスト、小鳥のブラウザテスト、部屋描画 |
+| `records` | TXT・写真のみ。解析・写真処理、公開TXTと画面の照合 |
+| `room` / `refactor` | 部屋をまたぐ変更。`room-*.test.ts` と部屋・小鳥・Instagramのブラウザテスト |
+| `full` | サイト共通処理・マスター・依存関係など。全単体・全ブラウザ・サブパス配信テスト |
+
+`npm run test:scope -- links --list` で対象一覧、`--dry-run` で実行コマンドを確認できます。コミットメッセージに `[skip ci]` を付けてpushし、その後に必要な範囲で手動実行すると重複実行を避けられます。
+
+## 部屋のコード構成
+
+- [destinations.ts](src/room/destinations.ts)：入口のID・表示名・内部画面・外部URL。3Dオブジェクト、メニュー、WebGL非対応時のリンクで共用。
+- [targeting.ts](src/room/targeting.ts)：遮蔽を考慮した対象選択、画面中央／マウスの照準、外部リンクまでの選択保持。UIは `setTargetHovered` でポインター・フォーカス状態を伝えます。
+- [furnitureLayout.ts](src/room/furnitureLayout.ts)：家具の位置・寸法。描画、天板上の小物、当たり判定、リンクの注視位置を同じ親座標から導出。ソファなどの段差は別々の当たり判定を維持します。
+- [disposal.ts](src/room/disposal.ts)：取得順の逆順で、所有リソースを一度ずつ解放。途中の初期化失敗でも回収し、借りた写真テクスチャは所有者側で解放します。
+- [roomSnapshot.ts](src/room/roomSnapshot.ts)：座標などの診断用属性を直接更新。Reactには画面表示に必要なパンチ状態の変化だけを通知。
+- [ブラウザテスト共通ヘルパー](tests/e2e/helpers/room.ts)：保存位置、入室待機、カメラからの投影、描画待機を共用。
 
 ## 検証と残る範囲
 

@@ -14,7 +14,8 @@
     "test:subpath": "vite build --base /website/ --outDir .test-build && playwright test --config playwright.subpath.config.ts",
     "verify:sources": "python3 scripts/verify-sources.py",
     "catalogs:world": "node scripts/build-world.mjs",
-    "licenses": "node scripts/licenses.mjs"
+    "licenses": "node scripts/licenses.mjs",
+    "test:scope": "node scripts/test-scope.mjs"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",

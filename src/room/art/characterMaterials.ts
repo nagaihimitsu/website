@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { withDisposalScope, type DisposalScope } from "../disposal";
 
 /**
  * Small, deterministic textile tiles. RGB is a neutral yarn colour; the second
@@ -39,6 +40,7 @@ function noise(x: number, y: number, cells: number, seed: number) {
 }
 
 function tile(
+  scope: DisposalScope,
   width: number,
   height: number,
   repeatX: number,
@@ -63,7 +65,7 @@ function tile(
     }
   }
   const create = (data: Uint8Array, colour: boolean) => {
-    const texture = new THREE.DataTexture(data, width, height);
+    const texture = scope.own(new THREE.DataTexture(data, width, height));
     texture.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(repeatX, repeatY);
@@ -80,7 +82,7 @@ function tile(
   };
 }
 
-function plushTile(): Textile {
+function plushTile(scope: DisposalScope): Textile {
   const size = 512;
   const pile = new Float32Array(size * size);
   // Individual short, curved, anti-aliased fibres have a gently varying nap.
@@ -116,7 +118,7 @@ function plushTile(): Textile {
       }
     }
   }
-  const result = tile(size, size, 2, 2, (x, y) => {
+  const result = tile(scope, size, size, 2, 2, (x, y) => {
     const u = x / size;
     const v = y / size;
     const fibre = pile[y * size + x];
@@ -133,9 +135,9 @@ function plushTile(): Textile {
   return result;
 }
 
-function cottonTile(): Textile {
+function cottonTile(scope: DisposalScope): Textile {
   const size = 512;
-  const result = tile(size, size, 3, 3, (x, y) => {
+  const result = tile(scope, size, size, 3, 3, (x, y) => {
     const u = x / size;
     const v = y / size;
     // Fine jersey loops, broken up by heathered fibres. At room scale mipmaps
@@ -159,9 +161,9 @@ function cottonTile(): Textile {
   return result;
 }
 
-function canvasTile(): Textile {
+function canvasTile(scope: DisposalScope): Textile {
   const size = 512;
-  const result = tile(size, size, 3, 3, (x, y) => {
+  const result = tile(scope, size, size, 3, 3, (x, y) => {
     const u = x / size;
     const v = y / size;
     const warp = Math.pow(0.5 + 0.5 * Math.cos((TAU * x) / 8), 1.8);
@@ -181,8 +183,8 @@ function canvasTile(): Textile {
   return result;
 }
 
-function ribTile(): Textile {
-  const result = tile(256, 128, 3, 2, (x, y) => {
+function ribTile(scope: DisposalScope): Textile {
+  const result = tile(scope, 256, 128, 3, 2, (x, y) => {
     const rib = Math.pow(0.5 + 0.5 * Math.cos((x * TAU) / 16), 0.65);
     const loop = Math.cos((y * TAU) / 4 + Math.sin((x * TAU) / 16)) * 0.5;
     const fine = hash(x, y, 251) - 0.5;
@@ -197,10 +199,10 @@ function ribTile(): Textile {
   return result;
 }
 
-function cordTile(): Textile {
+function cordTile(scope: DisposalScope): Textile {
   // A small tubular braid: UV.x follows the cord, UV.y wraps around it.
   // Keep the relief shallow so the cord reads as soft cotton, not a screw.
-  const result = tile(128, 128, 1, 1, (x, y) => {
+  const result = tile(scope, 128, 128, 1, 1, (x, y) => {
     const u = x / 128;
     const v = y / 128;
     const clockwise = (0.5 + 0.5 * Math.cos(TAU * (u * 2 + v * 4))) ** 3;
@@ -220,7 +222,7 @@ function cordTile(): Textile {
 }
 
 /** A tiny neutral studio reflection gives the toy's eyes a curved, glassy read. */
-function eyeReflection(): THREE.DataTexture {
+function eyeReflection(scope: DisposalScope): THREE.DataTexture {
   const width = 256;
   const height = 128;
   const data = new Float32Array(width * height * 4);
@@ -247,7 +249,7 @@ function eyeReflection(): THREE.DataTexture {
       data[offset + 3] = 1;
     }
   }
-  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType);
+  const texture = scope.own(new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType));
   texture.mapping = THREE.EquirectangularReflectionMapping;
   texture.minFilter = texture.magFilter = THREE.LinearFilter;
   texture.name = "traveller-eye-softbox-reflection";
@@ -256,21 +258,21 @@ function eyeReflection(): THREE.DataTexture {
 }
 
 export function createCharacterMaterials() {
-  const plush = plushTile();
-  const cotton = cottonTile();
-  const canvas = canvasTile();
-  const ribs = ribTile();
-  const braid = cordTile();
-  const eyeEnvironment = eyeReflection();
+  return withDisposalScope(buildCharacterMaterials);
+}
+
+function buildCharacterMaterials(scope: DisposalScope) {
+  const plush = plushTile(scope);
+  const cotton = cottonTile(scope);
+  const canvas = canvasTile(scope);
+  const ribs = ribTile(scope);
+  const braid = cordTile(scope);
+  const eyeEnvironment = eyeReflection(scope);
   const textures = [plush, cotton, canvas, ribs, braid].flatMap(
     ({ colour, detail }) => [colour, detail],
   );
   textures.push(eyeEnvironment);
-  const owned: THREE.Material[] = [];
-  function own<T extends THREE.Material>(material: T): T {
-    owned.push(material);
-    return material;
-  }
+  const own = scope.own;
   function textile(
     colour: string,
     maps: Textile,
@@ -355,7 +357,6 @@ export function createCharacterMaterials() {
       metalness: 0,
     }),
   );
-  let disposed = false;
   return {
     fur,
     pawFur,
@@ -379,11 +380,6 @@ export function createCharacterMaterials() {
     eyeLight,
     fibers,
     textures: textures as readonly THREE.DataTexture[],
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      for (const material of owned) material.dispose();
-      for (const texture of textures) texture.dispose();
-    },
+    dispose: scope.dispose,
   };
 }

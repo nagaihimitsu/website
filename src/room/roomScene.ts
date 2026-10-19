@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import type { Archive, Section } from "../data/model";
+import type { Archive } from "../data/model";
 import type {
   RoomScene,
   RoomObstacle,
@@ -13,7 +13,17 @@ import { createBird } from "./art/bird";
 import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
-import { INSTAGRAM_URL } from "./destinations";
+import type { RoomDestinationId } from "./destinations";
+import { withDisposalScope, type DisposalScope } from "./disposal";
+import {
+  createFurnitureGroup,
+  furnitureLayout,
+  furnitureObstacle,
+  furniturePoint,
+  partTop,
+  sofaObstacles,
+  type FurniturePart,
+} from "./furnitureLayout";
 import deskPhotoUrl from "../assets/room/rome-travel.jpg";
 import polaroidPhotoUrl from "../assets/room/polaroid-travels.jpg";
 import {
@@ -24,10 +34,15 @@ import {
 
 /** All furniture and decorative objects are original geometry. Maps use the local atlas. */
 export function createRoomScene(archive: Archive): RoomScene {
+  return withDisposalScope((scope) => buildRoomScene(archive, scope));
+}
+
+function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const scene = new THREE.Scene();
+  scope.defer(() => scene.clear());
   const portals: RoomPortal[] = [];
   const obstacles: RoomObstacle[] = [];
-  const fractureSystem = createBreakables(scene);
+  const fractureSystem = scope.own(createBreakables(scene));
   const breakables: RoomBreakable[] = [];
   const registerBreakable = (
     id: string,
@@ -40,15 +55,13 @@ export function createRoomScene(archive: Archive): RoomScene {
     breakables.push({ id, label, object, broken: false });
   };
   let lastAnimationTime = 0;
-  const materials: THREE.Material[] = [];
-  const textures: THREE.Texture[] = [];
   const mat = (color: string, roughness = 0.75, metalness = 0) => {
     const value = new THREE.MeshStandardMaterial({
       color,
       roughness,
       metalness,
     });
-    materials.push(value);
+    scope.own(value);
     return value;
   };
   const cream = mat("#eee9dc");
@@ -85,7 +98,15 @@ export function createRoomScene(archive: Archive): RoomScene {
     z = 0,
   ) => {
     const mesh = new THREE.Mesh(
-      new RoundedBoxGeometry(w, h, d, 2, Math.min(radius, w / 2, h / 2, d / 2)),
+      scope.own(
+        new RoundedBoxGeometry(
+          w,
+          h,
+          d,
+          2,
+          Math.min(radius, w / 2, h / 2, d / 2),
+        ),
+      ),
       material,
     );
     mesh.position.set(x, y, z);
@@ -104,7 +125,10 @@ export function createRoomScene(archive: Archive): RoomScene {
     y = 0,
     z = 0,
   ) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    const mesh = new THREE.Mesh(
+      scope.own(new THREE.BoxGeometry(w, h, d)),
+      material,
+    );
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -123,7 +147,7 @@ export function createRoomScene(archive: Archive): RoomScene {
     segments = 24,
   ) => {
     const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(top, bottom, height, segments),
+      scope.own(new THREE.CylinderGeometry(top, bottom, height, segments)),
       material,
     );
     mesh.position.set(x, y, z);
@@ -140,7 +164,10 @@ export function createRoomScene(archive: Archive): RoomScene {
     y: number,
     z: number,
   ) => {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), material);
+    const mesh = new THREE.Mesh(
+      scope.own(new THREE.SphereGeometry(r, 20, 14)),
+      material,
+    );
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -159,14 +186,28 @@ export function createRoomScene(archive: Archive): RoomScene {
     return g;
   };
   const portal = (
-    section: Section,
+    destination: RoomDestinationId,
     object: THREE.Object3D,
     anchor: THREE.Vector3,
     lookAt: THREE.Vector3,
   ) => {
-    object.userData.section = section;
-    portals.push({ section, object, anchor, lookAt });
+    portals.push({ destination, object, anchor, lookAt });
   };
+  const furniturePart = (
+    part: FurniturePart,
+    material: THREE.Material,
+    radius: number,
+    parent: THREE.Object3D,
+  ) =>
+    rounded(
+      part.width,
+      part.height,
+      part.depth,
+      material,
+      radius,
+      parent,
+      ...part.position,
+    );
   const obstruction = (
     id: string,
     x: number,
@@ -191,6 +232,7 @@ export function createRoomScene(archive: Archive): RoomScene {
   // Lighting belongs to the room; the renderer enables real shadow maps.
   scene.add(new THREE.HemisphereLight("#fff9e8", "#b0a28e", 2.05));
   const sun = new THREE.DirectionalLight("#fff0cc", 3.5);
+  scope.defer(() => sun.shadow.map?.dispose());
   sun.position.set(-4, 9, 4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -312,13 +354,16 @@ export function createRoomScene(archive: Archive): RoomScene {
   skyCtx.fillRect(0, 0, 16, 256);
   const skyTexture = new THREE.CanvasTexture(skyCanvas);
   skyTexture.colorSpace = THREE.SRGBColorSpace;
-  textures.push(skyTexture);
+  scope.own(skyTexture);
   const skyMaterial = new THREE.MeshBasicMaterial({
     map: skyTexture,
     side: THREE.DoubleSide,
   });
-  materials.push(skyMaterial);
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(4.1, 2.95), skyMaterial);
+  scope.own(skyMaterial);
+  const sky = new THREE.Mesh(
+    scope.own(new THREE.PlaneGeometry(4.1, 2.95)),
+    skyMaterial,
+  );
   sky.rotation.y = Math.PI / 2;
   sky.position.set(-5.02, 2.32, -0.82);
   scene.add(sky);
@@ -357,9 +402,12 @@ export function createRoomScene(archive: Archive): RoomScene {
     opacity: 0.14,
     depthWrite: false,
   });
-  materials.push(sunlight);
+  scope.own(sunlight);
   for (const z of [-1.5, 0.1]) {
-    const patch = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.37), sunlight);
+    const patch = new THREE.Mesh(
+      scope.own(new THREE.PlaneGeometry(3.1, 1.37)),
+      sunlight,
+    );
     patch.rotation.x = -Math.PI / 2;
     patch.rotation.z = -0.15;
     patch.position.set(-2.4, 0.014, z);
@@ -367,17 +415,19 @@ export function createRoomScene(archive: Archive): RoomScene {
   }
 
   // Low ash bed, layered linen, gently rumpled duvet represented with soft solids.
-  const bed = group(-3.35, 0, -1.85);
+  const bedLayout = furnitureLayout.bed;
+  const bed = createFurnitureGroup(scene, bedLayout);
   for (const x of [-0.88, 0.88])
     for (const z of [-1.52, 1.52])
       cylinder(0.065, 0.05, 0.42, woodDark, bed, x, 0.2, z, 12);
-  rounded(2.25, 0.22, 3.6, woodLight, 0.07, bed, 0, 0.4, 0);
-  rounded(2.12, 0.3, 3.43, white, 0.13, bed, 0, 0.63, 0);
-  rounded(2.18, 1.1, 0.12, woodLight, 0.06, bed, 0, 0.96, -1.8);
-  rounded(2.11, 0.2, 2.58, blueLight, 0.09, bed, 0, 0.85, 0.37);
-  rounded(2.13, 0.12, 0.38, linen, 0.04, bed, 0, 0.94, -0.83);
+  furniturePart(bedLayout.frame, woodLight, 0.07, bed);
+  furniturePart(bedLayout.mattress, white, 0.13, bed);
+  furniturePart(bedLayout.headboard, woodLight, 0.06, bed);
+  furniturePart(bedLayout.duvet, blueLight, 0.09, bed);
+  furniturePart(bedLayout.fold, linen, 0.04, bed);
   for (const x of [-0.53, 0.53]) {
-    const pillow = rounded(0.89, 0.23, 0.59, linen, 0.11, bed, x, 0.91, -1.29);
+    const pillow = furniturePart(bedLayout.pillow, linen, 0.11, bed);
+    pillow.position.x = x;
     pillow.rotation.y = x * 0.08;
   }
   const throwBlanket = rounded(
@@ -394,8 +444,15 @@ export function createRoomScene(archive: Archive): RoomScene {
   throwBlanket.rotation.y = 0.025;
   for (let i = 0; i < 12; i++)
     box(0.011, 0.006, 0.74, blueLight, bed, -0.99 + i * 0.18, 1.004, 0.94);
-  obstruction("bed", -3.35, -1.85, 2.25, 3.6, 1.03);
-  obstruction("bed-headboard", -3.35, -3.65, 2.18, 0.12, 1.51);
+  obstacles.push(
+    furnitureObstacle(
+      "bed",
+      bed,
+      bedLayout.frame,
+      partTop(bedLayout.pillow) + bedLayout.supportMargin,
+    ),
+    furnitureObstacle("bed-headboard", bed, bedLayout.headboard),
+  );
 
   // Atlas prints, real geography and achieved state, sit inside thin oak frames.
   const print = (
@@ -412,39 +469,65 @@ export function createRoomScene(archive: Archive): RoomScene {
       section === "world"
         ? createWorldMapTexture(archive.achieved.world)
         : createJapanMapTexture(archive.achieved.japan);
-    textures.push(texture);
+    scope.own(texture);
     const paper = new THREE.MeshStandardMaterial({
       map: texture,
       roughness: 0.96,
     });
-    materials.push(paper);
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), paper);
+    scope.own(paper);
+    const mesh = new THREE.Mesh(
+      scope.own(new THREE.PlaneGeometry(w, h)),
+      paper,
+    );
     mesh.position.z = 0.087;
     g.add(mesh);
     portal(
       section,
       g,
-      new THREE.Vector3(
-        x,
-        section === "world" ? y + h / 2 + 0.12 : y - h / 2 - 0.2,
-        -3.65,
-      ),
-      new THREE.Vector3(x, y, -3.7),
+      furniturePoint(g, [
+        0,
+        section === "world" ? h / 2 + 0.12 : -h / 2 - 0.2,
+        0.21,
+      ]),
+      furniturePoint(g, [0, 0, 0.16]),
     );
   };
   print("world", 0.35, 3.05, 4.0, 2.34);
   print("japan", -3.35, 3.16, 1.12, 1.6);
 
   // Slim work desk and a clearly legible, original phone screen.
-  const desk = group(3.18, 0, -2.67);
-  rounded(2.92, 0.14, 1.42, woodLight, 0.06, desk, 0, 1.29, 0);
-  for (const x of [-1.2, 1.2])
-    for (const z of [-0.52, 0.52])
-      rounded(0.09, 1.25, 0.09, woodDark, 0.02, desk, x, 0.63, z);
-  rounded(0.85, 0.4, 1.1, wood, 0.03, desk, 0.78, 1.01, 0);
-  rounded(0.17, 0.035, 0.035, brass, 0.015, desk, 0.78, 1.03, 0.56);
+  const deskLayout = furnitureLayout.desk;
+  const desk = createFurnitureGroup(scene, deskLayout);
+  const deskSurface = partTop(deskLayout.tabletop);
+  furniturePart(deskLayout.tabletop, woodLight, 0.06, desk);
+  const deskLegHeight = deskSurface - 0.11;
+  for (const sideX of [-1, 1])
+    for (const sideZ of [-1, 1])
+      rounded(
+        0.09,
+        deskLegHeight,
+        0.09,
+        woodDark,
+        0.02,
+        desk,
+        sideX * (deskLayout.tabletop.width / 2 - 0.26),
+        deskLegHeight / 2 + 0.005,
+        sideZ * (deskLayout.tabletop.depth / 2 - 0.19),
+      );
+  rounded(0.85, 0.4, 1.1, wood, 0.03, desk, 0.78, deskSurface - 0.35, 0);
+  rounded(
+    0.17,
+    0.035,
+    0.035,
+    brass,
+    0.015,
+    desk,
+    0.78,
+    deskSurface - 0.33,
+    0.56,
+  );
   // Phone on a fine angled stand: flat metal sides, pill camera cutout, no brand mark.
-  const phone = group(-0.45, 1.95, 0.2, desk);
+  const phone = group(-0.45, deskSurface + 0.59, 0.2, desk);
   phone.rotation.x = -0.2;
   phone.rotation.y = -0.18;
   const titanium = mat("#9a9b91", 0.31, 0.8);
@@ -454,12 +537,12 @@ export function createRoomScene(archive: Archive): RoomScene {
     archive.normal.size,
     archive.shiny.size,
   );
-  textures.push(phoneTexture);
+  scope.own(phoneTexture);
   const phoneScreenMaterial = new THREE.MeshBasicMaterial({
     map: phoneTexture,
     color: new THREE.Color().setRGB(0.65, 0.65, 0.65),
   });
-  materials.push(phoneScreenMaterial);
+  scope.own(phoneScreenMaterial);
   const screen = rounded(
     0.657,
     1.275,
@@ -476,14 +559,42 @@ export function createRoomScene(archive: Archive): RoomScene {
   rounded(0.24, 0.012, 0.008, charcoal, 0.006, phone, 0, -0.586, 0.07);
   rounded(0.014, 0.14, 0.027, titanium, 0.006, phone, -0.38, 0.18, 0);
   rounded(0.014, 0.2, 0.027, titanium, 0.006, phone, 0.38, 0.12, 0);
-  rounded(0.5, 0.045, 0.36, titanium, 0.02, desk, -0.45, 1.39, 0.07);
-  rounded(0.25, 0.3, 0.045, titanium, 0.02, desk, -0.45, 1.53, -0.01);
+  rounded(
+    0.5,
+    0.045,
+    0.36,
+    titanium,
+    0.02,
+    desk,
+    -0.45,
+    deskSurface + 0.03,
+    0.07,
+  );
+  rounded(
+    0.25,
+    0.3,
+    0.045,
+    titanium,
+    0.02,
+    desk,
+    -0.45,
+    deskSurface + 0.17,
+    -0.01,
+  );
   desk.updateMatrixWorld(true);
   portal(
     "pokemon",
     phone,
-    new THREE.Vector3(2.7, 2.82, -2.4),
-    new THREE.Vector3(2.7, 1.96, -2.45),
+    furniturePoint(desk, [
+      phone.position.x - 0.03,
+      phone.position.y + 0.87,
+      phone.position.z + 0.07,
+    ]),
+    furniturePoint(desk, [
+      phone.position.x - 0.03,
+      phone.position.y + 0.01,
+      phone.position.z + 0.02,
+    ]),
   );
   // Invisible hit volume belongs to the phone, comfortably wider than the physical glass.
   const hitMaterial = new THREE.MeshBasicMaterial({
@@ -491,7 +602,7 @@ export function createRoomScene(archive: Archive): RoomScene {
     opacity: 0,
     depthWrite: false,
   });
-  materials.push(hitMaterial);
+  scope.own(hitMaterial);
   const phoneHitTarget = box(1.1, 1.64, 0.18, hitMaterial, phone, 0, 0, 0.02);
   phoneHitTarget.userData.roomHitTarget = true;
   phoneHitTarget.castShadow = false;
@@ -499,10 +610,10 @@ export function createRoomScene(archive: Archive): RoomScene {
   const deskPhoto = new THREE.TextureLoader().load(deskPhotoUrl);
   deskPhoto.colorSpace = THREE.SRGBColorSpace;
   deskPhoto.anisotropy = 4;
-  textures.push(deskPhoto);
-  const photoFrame = createPhotoFrame(deskPhoto);
+  scope.own(deskPhoto);
+  const photoFrame = scope.own(createPhotoFrame(deskPhoto));
   photoFrame.group.name = "desk-photo-frame";
-  photoFrame.group.position.set(0.65, 1.36, 0.24);
+  photoFrame.group.position.set(0.65, deskSurface, 0.24);
   photoFrame.group.rotation.y = -0.18;
   desk.add(photoFrame.group);
   desk.updateMatrixWorld(true);
@@ -520,27 +631,69 @@ export function createRoomScene(archive: Archive): RoomScene {
   );
 
   // Existing desk lamp, next to the phone and the photograph.
-  cylinder(0.21, 0.21, 0.035, dark, desk, -1.06, 1.39, -0.31);
-  cylinder(0.025, 0.025, 0.78, dark, desk, -1.06, 1.8, -0.31, 12);
-  const lampShade = cylinder(0.12, 0.23, 0.21, cream, desk, -1.06, 2.22, -0.31);
+  cylinder(0.21, 0.21, 0.035, dark, desk, -1.06, deskSurface + 0.03, -0.31);
+  cylinder(
+    0.025,
+    0.025,
+    0.78,
+    dark,
+    desk,
+    -1.06,
+    deskSurface + 0.44,
+    -0.31,
+    12,
+  );
+  const lampShade = cylinder(
+    0.12,
+    0.23,
+    0.21,
+    cream,
+    desk,
+    -1.06,
+    deskSurface + 0.86,
+    -0.31,
+  );
   lampShade.rotation.z = -0.16;
-  obstruction("desk", 3.18, -2.67, 2.92, 1.42, 1.36);
+  obstacles.push(furnitureObstacle("desk", desk, deskLayout.tabletop));
 
-  const chair = group(2.9, 0, -1.27);
+  const chairLayout = furnitureLayout.chair;
+  const chair = createFurnitureGroup(scene, chairLayout);
   for (const x of [-0.32, 0.32])
     for (const z of [-0.28, 0.28])
       cylinder(0.03, 0.025, 0.72, woodDark, chair, x, 0.36, z, 12);
-  rounded(0.82, 0.13, 0.75, blueLight, 0.06, chair, 0, 0.78, 0);
-  rounded(0.85, 0.59, 0.1, woodLight, 0.06, chair, 0, 1.14, 0.32);
-  obstruction("chair-seat", 2.9, -1.27, 0.82, 0.75, 0.845);
-  obstruction("chair-back", 2.9, -0.95, 0.85, 0.1, 0.59, 0.845);
+  furniturePart(chairLayout.seat, blueLight, 0.06, chair);
+  furniturePart(chairLayout.back, woodLight, 0.06, chair);
+  obstacles.push(
+    furnitureObstacle("chair-seat", chair, chairLayout.seat),
+    furnitureObstacle(
+      "chair-back",
+      chair,
+      chairLayout.back,
+      partTop(chairLayout.back),
+      partTop(chairLayout.seat),
+    ),
+  );
 
   // A mountain model and field books in a low, open console.
-  const console = group(4.15, 0, 0.05);
-  for (const y of [0.25, 0.92, 1.59])
-    rounded(1.22, 0.08, 1.3, woodLight, 0.025, console, 0, y, 0);
+  const consoleLayout = furnitureLayout.console;
+  const console = createFurnitureGroup(scene, consoleLayout);
+  for (const y of consoleLayout.shelfHeights)
+    furniturePart(
+      { ...consoleLayout.shelf, position: [0, y, 0] },
+      woodLight,
+      0.025,
+      console,
+    );
   for (const x of [-0.57, 0.57])
-    rounded(0.08, 1.64, 1.3, wood, 0.025, console, x, 0.85, 0);
+    furniturePart(
+      {
+        ...consoleLayout.side,
+        position: [x, consoleLayout.side.position[1], 0],
+      },
+      wood,
+      0.025,
+      console,
+    );
   for (let i = 0; i < 6; i++) {
     const b = rounded(
       0.11 + (i % 2) * 0.035,
@@ -557,7 +710,12 @@ export function createRoomScene(archive: Archive): RoomScene {
   }
   rounded(0.69, 0.14, 0.72, linen, 0.015, console, 0, 1.03, 0.05);
   rounded(0.76, 0.09, 0.78, blue, 0.015, console, 0.02, 1.16, 0.02);
-  const mountain = group(0, 1.65, 0, console);
+  const mountain = group(
+    0,
+    consoleLayout.shelfHeights[2] + consoleLayout.shelf.height / 2 + 0.02,
+    0,
+    console,
+  );
   cylinder(0.53, 0.53, 0.055, woodDark, mountain, 0, 0, 0, 48);
   const mountainMat = mat("#8e9d8a");
   for (const [x, z, r, h] of [
@@ -565,12 +723,15 @@ export function createRoomScene(archive: Archive): RoomScene {
     [0.15, -0.12, 0.32, 0.84],
     [0.27, 0.2, 0.24, 0.43],
   ]) {
-    const peak = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), mountainMat);
+    const peak = new THREE.Mesh(
+      scope.own(new THREE.ConeGeometry(r, h, 5)),
+      mountainMat,
+    );
     peak.position.set(x, h / 2 + 0.025, z);
     peak.castShadow = true;
     mountain.add(peak);
     const snow = new THREE.Mesh(
-      new THREE.ConeGeometry(r * 0.28, h * 0.28, 5),
+      scope.own(new THREE.ConeGeometry(r * 0.28, h * 0.28, 5)),
       white,
     );
     snow.position.set(x, h * 0.86 + 0.025, z);
@@ -579,10 +740,17 @@ export function createRoomScene(archive: Archive): RoomScene {
   portal(
     "mountains",
     console,
-    new THREE.Vector3(4.15, 2.72, 0.05),
-    new THREE.Vector3(4.15, 1.85, 0.05),
+    furniturePoint(console, [0, mountain.position.y + 1.07, 0]),
+    furniturePoint(console, [0, mountain.position.y + 0.2, 0]),
   );
-  obstruction("mountain-console", 4.15, 0.05, 1.22, 1.3, 1.67);
+  obstacles.push(
+    furnitureObstacle(
+      "mountain-console",
+      console,
+      consoleLayout.shelf,
+      partTop(consoleLayout.side),
+    ),
+  );
 
   // Woven rug, with a restrained stitched border, and a softly upholstered sofa.
   // A thin woven surface rests on the planks instead of swallowing the avatar's shoes.
@@ -592,17 +760,34 @@ export function createRoomScene(archive: Archive): RoomScene {
     box(4.25, 0.001, 0.007, rugThread, scene, -0.05, 0.0165, -0.05 + i * 0.11);
   for (const z of [-0.13, 3.23])
     box(4.35, 0.002, 0.025, clay, scene, -0.05, 0.017, z);
-  const sofa = group(-2.9, 0, 2.16);
-  sofa.rotation.y = Math.PI / 2;
+  const sofaLayout = furnitureLayout.sofa;
+  const sofa = createFurnitureGroup(scene, sofaLayout);
   for (const x of [-1.15, 1.15])
     for (const z of [-0.42, 0.42])
       cylinder(0.055, 0.045, 0.26, woodDark, sofa, x, 0.14, z, 12);
-  rounded(2.85, 0.33, 1.32, linen, 0.13, sofa, 0, 0.43, 0);
-  rounded(2.8, 0.91, 0.28, linen, 0.12, sofa, 0, 0.96, -0.53);
-  for (const x of [-1.3, 1.3])
-    rounded(0.26, 0.53, 1.3, linen, 0.12, sofa, x, 0.78, 0);
+  furniturePart(sofaLayout.base, linen, 0.13, sofa);
+  furniturePart(sofaLayout.back, linen, 0.12, sofa);
+  for (const x of sofaLayout.armOffsets)
+    furniturePart(
+      { ...sofaLayout.arm, position: [x, sofaLayout.arm.position[1], 0] },
+      linen,
+      0.12,
+      sofa,
+    );
   for (const x of [-0.62, 0.62]) {
-    rounded(1.13, 0.22, 1.02, cream, 0.1, sofa, x, 0.69, 0.08);
+    furniturePart(
+      {
+        ...sofaLayout.cushion,
+        position: [
+          x,
+          sofaLayout.cushion.position[1],
+          sofaLayout.cushion.position[2],
+        ],
+      },
+      cream,
+      0.1,
+      sofa,
+    );
     const pillow = rounded(1.08, 0.59, 0.23, cream, 0.11, sofa, x, 1.04, -0.31);
     pillow.rotation.x = -0.12;
   }
@@ -621,21 +806,31 @@ export function createRoomScene(archive: Archive): RoomScene {
     0.03,
   );
   accent2.rotation.z = 0.22;
-  obstruction("sofa-seat", -2.9, 2.16, 1.32, 2.85, 0.8);
-  obstruction("sofa-back", -3.43, 2.16, 0.28, 2.8, 0.615, 0.8);
-  obstruction("sofa-arm-left", -2.9, 3.46, 1.3, 0.26, 0.245, 0.8);
-  obstruction("sofa-arm-right", -2.9, 0.86, 1.3, 0.26, 0.245, 0.8);
+  obstacles.push(...sofaObstacles(sofa));
 
-  const coffee = group(-0.15, 0, 1.88);
-  for (const x of [-0.62, 0.62])
-    for (const z of [-0.4, 0.4])
-      cylinder(0.045, 0.035, 0.5, woodDark, coffee, x, 0.28, z, 12);
-  rounded(1.7, 0.11, 1.14, woodLight, 0.2, coffee, 0, 0.58, 0);
+  const coffeeLayout = furnitureLayout.coffee;
+  const coffee = createFurnitureGroup(scene, coffeeLayout);
+  const coffeeSurface = partTop(coffeeLayout.tabletop);
+  const coffeeLegHeight = coffeeSurface - 0.135;
+  for (const sideX of [-1, 1])
+    for (const sideZ of [-1, 1])
+      cylinder(
+        0.045,
+        0.035,
+        coffeeLegHeight,
+        woodDark,
+        coffee,
+        sideX * (coffeeLayout.tabletop.width / 2 - 0.23),
+        coffeeLegHeight / 2 + 0.03,
+        sideZ * (coffeeLayout.tabletop.depth / 2 - 0.17),
+        12,
+      );
+  furniturePart(coffeeLayout.tabletop, woodLight, 0.2, coffee);
   // A silver-and-leather camera replaces the magazine on the low table.
-  const tableCamera = createTableCamera();
+  const tableCamera = scope.own(createTableCamera());
   tableCamera.group.name = "coffee-table-camera";
   tableCamera.group.scale.setScalar(0.82);
-  tableCamera.group.position.set(-0.34, 0.635, -0.12);
+  tableCamera.group.position.set(-0.34, coffeeSurface, -0.12);
   tableCamera.group.rotation.y = 0.3;
   coffee.add(tableCamera.group);
   coffee.updateMatrixWorld(true);
@@ -655,20 +850,20 @@ export function createRoomScene(archive: Archive): RoomScene {
   const polaroidPhoto = new THREE.TextureLoader().load(polaroidPhotoUrl);
   polaroidPhoto.colorSpace = THREE.SRGBColorSpace;
   polaroidPhoto.anisotropy = 8;
-  textures.push(polaroidPhoto);
-  const tablePolaroids = createTablePolaroids(polaroidPhoto);
+  scope.own(polaroidPhoto);
+  const tablePolaroids = scope.own(createTablePolaroids(polaroidPhoto));
   tablePolaroids.group.name = "coffee-table-polaroids";
-  tablePolaroids.group.position.set(0.36, 0.635, 0.09);
+  tablePolaroids.group.position.set(0.36, coffeeSurface, 0.09);
   coffee.add(tablePolaroids.group);
-  tablePolaroids.group.userData.section = "instagram";
-  portals.push({
-    section: "instagram",
-    href: INSTAGRAM_URL,
-    object: tablePolaroids.group,
-    anchor: new THREE.Vector3(0.21, 0.65, 1.97),
-    lookAt: new THREE.Vector3(0.21, 0.64, 1.97),
-  });
-  obstruction("coffee-table", -0.15, 1.88, 1.7, 1.14, 0.635);
+  portal(
+    "instagram",
+    tablePolaroids.group,
+    furniturePoint(tablePolaroids.group, [0, 0.015, 0]),
+    furniturePoint(tablePolaroids.group, [0, 0.005, 0]),
+  );
+  obstacles.push(
+    furnitureObstacle("coffee-table", coffee, coffeeLayout.tabletop),
+  );
 
   // Leaf geometry, handcrafted with elongated ellipsoids, casts soft botanical shadows.
   const plant = (
@@ -725,18 +920,22 @@ export function createRoomScene(archive: Archive): RoomScene {
     "#57755b",
   ]);
   obstruction("floor-planter", 4.15, 2.44, 0.65, 0.65, 0.68);
-  const bedside = group(-1.65, 0, -2.9);
-  rounded(0.7, 0.7, 0.65, woodLight, 0.035, bedside, 0, 0.48, 0);
-  rounded(0.6, 0.05, 0.64, wood, 0.018, bedside, 0, 0.87, 0);
-  const bedsidePlant = plant(0, 0.9, 0, 0.58, bedside);
+  const bedsideLayout = furnitureLayout.bedside;
+  const bedside = createFurnitureGroup(scene, bedsideLayout);
+  const bedsideSurface = partTop(bedsideLayout.tabletop);
+  furniturePart(bedsideLayout.body, woodLight, 0.035, bedside);
+  furniturePart(bedsideLayout.tabletop, wood, 0.018, bedside);
+  const bedsidePlant = plant(0, bedsideSurface + 0.005, 0, 0.58, bedside);
   registerBreakable(
     "bedside-planter",
     "ベッドサイドの鉢",
     bedsidePlant,
     ["#d7c1a3", "#57755b"],
-    0.895,
+    furniturePoint(bedside, [0, bedsideSurface, 0]).y,
   );
-  obstruction("bedside", -1.65, -2.9, 0.7, 0.65, 0.895);
+  obstacles.push(
+    furnitureObstacle("bedside", bedside, bedsideLayout.body, bedsideSurface),
+  );
 
   // A freestanding ceramic sculpture is deliberately reachable from the entry.
   const entrySculpture = group(1.4, 0.121, 1.3);
@@ -776,11 +975,11 @@ export function createRoomScene(archive: Archive): RoomScene {
   ]);
   obstruction("wood-blocks", -0.8, -1, 0.5, 0.45, 0.6);
 
-  const character = createCharacter();
+  const character = scope.own(createCharacter());
   const avatar = character.group;
   scene.add(avatar);
   // The bird is a living, solid room occupant, never a destructible prop.
-  const bird = createBird();
+  const bird = scope.own(createBird());
   scene.add(bird.group);
 
   return {
@@ -828,22 +1027,6 @@ export function createRoomScene(archive: Archive): RoomScene {
       phoneScreenMaterial.color.setRGB(brightness, brightness, brightness);
       if (!reducedMotion) curtain.rotation.z = Math.sin(time * 0.55) * 0.007;
     },
-    dispose() {
-      fractureSystem.dispose();
-      character.dispose();
-      bird.dispose();
-      photoFrame.dispose();
-      tableCamera.dispose();
-      tablePolaroids.dispose();
-      const geometries = new Set<THREE.BufferGeometry>();
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) geometries.add(object.geometry);
-      });
-      geometries.forEach((g) => g.dispose());
-      materials.forEach((m) => m.dispose());
-      textures.forEach((t) => t.dispose());
-      sun.shadow.map?.dispose();
-      scene.clear();
-    },
+    dispose: scope.dispose,
   };
 }

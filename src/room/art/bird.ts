@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createDisposalScope, withDisposalScope, type DisposalScope } from "../disposal";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 
 export interface BirdAnimationState {
@@ -16,30 +17,31 @@ export interface BirdAnimationState {
  * Root position / rotation belongs to the NPC controller, never the animation.
  */
 export function createBird() {
+  return withDisposalScope(buildBird);
+}
+
+function buildBird(scope: DisposalScope) {
   const group = new THREE.Group();
   group.name = "bird-npc";
   group.userData.damageable = false;
   const sculpture = new THREE.Group();
   sculpture.name = "bird-soft-body";
   group.add(sculpture);
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const remember = <T extends THREE.BufferGeometry>(geometry: T): T => {
-    geometries.add(geometry);
-    return geometry;
-  };
+  scope.defer(() => group.clear());
+  const remember = scope.own;
+  // Pre-weld meshes and merged toe pieces are construction-only resources.
+  const scratch = scope.own(createDisposalScope());
   function smoothSculpt(geometry: THREE.BufferGeometry) {
     // Weld the UV seam and pole vertices after sculpting. Otherwise smooth
     // normals on a deformed sphere leave a visible stripe down the silhouette.
     geometry.deleteAttribute("normal");
     geometry.deleteAttribute("uv");
-    const welded = mergeVertices(geometry, 0.000001);
+    const welded = remember(mergeVertices(geometry, 0.000001));
     welded.computeVertexNormals();
-    geometry.dispose();
-    return remember(welded);
+    return welded;
   }
   const satin = (color: string, roughness: number) => {
-    const result = new THREE.MeshPhysicalMaterial({
+    const result = scope.own(new THREE.MeshPhysicalMaterial({
       color,
       roughness,
       metalness: 0,
@@ -48,7 +50,7 @@ export function createBird() {
       sheen: 0.16,
       sheenRoughness: 0.8,
       sheenColor: new THREE.Color(color),
-    });
+    }));
     if (roughness > 0.5) {
       // A broad-light diffuse response keeps the little satin sculpture soft
       // under the room's directional sun. Leave glossy eyes and bill unchanged.
@@ -67,7 +69,6 @@ export function createBird() {
       };
       result.customProgramCacheKey = () => "bird-satin-broad-light-v1";
     }
-    materials.add(result);
     return result;
   };
   const white = satin("#f4f1ee", 0.66);
@@ -80,11 +81,10 @@ export function createBird() {
   const eyeMaterial = satin("#211a16", 0.14);
   eyeMaterial.clearcoat = 0.8;
   eyeMaterial.clearcoatRoughness = 0.1;
-  const glintMaterial = new THREE.MeshBasicMaterial({
+  const glintMaterial = scope.own(new THREE.MeshBasicMaterial({
     color: "#fffaf0",
     toneMapped: false,
-  });
-  materials.add(glintMaterial);
+  }));
   const sphere = remember(new THREE.SphereGeometry(1, 24, 16));
 
   function mesh(
@@ -132,7 +132,7 @@ export function createBird() {
     const headForward = 0.006 * THREE.MathUtils.smoothstep(height, 0.265, 0.365);
     return depth * 0.94 + rear * rear * rump - headForward;
   };
-  const bodyGeometry = new THREE.LatheGeometry(bodyProfile, 64);
+  const bodyGeometry = scratch.own(new THREE.LatheGeometry(bodyProfile, 64));
   const bodyPositions = bodyGeometry.getAttribute("position");
   for (let i = 0; i < bodyPositions.count; i++) {
     const radius = Math.hypot(bodyPositions.getX(i), bodyPositions.getZ(i));
@@ -148,7 +148,7 @@ export function createBird() {
 
   // A folded wing wraps around the pear, rather than sitting beside it as an
   // ellipsoid. The wide forward shoulder sweeps toward the central rear tail.
-  const wingGeometry = new THREE.SphereGeometry(1, 64, 48);
+  const wingGeometry = scratch.own(new THREE.SphereGeometry(1, 64, 48));
   const wingPositions = wingGeometry.getAttribute("position");
   const wingColors: number[] = [];
   const shoulderColor = new THREE.Color("#787b87");
@@ -188,7 +188,7 @@ export function createBird() {
   sculpture.add(tail);
   // A single flattened feather: broad at the rump, thin and gently pointed
   // behind. Its downward sweep also makes a rounded point in the back view.
-  const tailGeometry = new THREE.SphereGeometry(1, 40, 28);
+  const tailGeometry = scratch.own(new THREE.SphereGeometry(1, 40, 28));
   const tailPositions = tailGeometry.getAttribute("position");
   for (let i = 0; i < tailPositions.count; i++) {
     const x = tailPositions.getX(i), y = tailPositions.getY(i), z = tailPositions.getZ(i);
@@ -221,7 +221,7 @@ export function createBird() {
 
   // A short broad-rooted bill, with its root sunk into the face and a rounded
   // tip. Its lower half is warmer and darker, like the reference's soft bill.
-  const beakGeometry = new THREE.SphereGeometry(1, 48, 32);
+  const beakGeometry = scratch.own(new THREE.SphereGeometry(1, 48, 32));
   const beakPositions = beakGeometry.getAttribute("position");
   const beakColors: number[] = [];
   const upperBeak = new THREE.Color("#e7b219");
@@ -251,24 +251,26 @@ export function createBird() {
     const pieces: THREE.BufferGeometry[] = [];
     const tube = (points: number[][], radius: number) => {
       const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-      pieces.push(new THREE.TubeGeometry(curve, 12, radius, 12, false));
+      pieces.push(scratch.own(new THREE.TubeGeometry(curve, 12, radius, 12, false)));
     };
     tube([[0, 0.089, 0.002], [0, 0.054, 0.001], [0, 0.018, 0], [0, 0.01, -0.01]], 0.0087);
     for (const splay of [-1, 0, 1]) {
       const toeX = splay * 0.023;
       const toeZ = splay === 0 ? -0.037 : -0.026;
       tube([[0, 0.012, -0.005], [toeX * 0.5, 0.009, toeZ * 0.65], [toeX, 0.008, toeZ]], 0.0074);
-      pieces.push(sphere.clone().scale(0.0074, 0.0074, 0.0074).translate(toeX, 0.008, toeZ));
+      pieces.push(scratch.own(sphere.clone()).scale(0.0074, 0.0074, 0.0074).translate(toeX, 0.008, toeZ));
     }
     tube([[0, 0.011, 0], [side * 0.003, 0.008, 0.016], [side * 0.006, 0.008, 0.021]], 0.006);
-    pieces.push(sphere.clone().scale(0.006, 0.006, 0.006).translate(side * 0.006, 0.008, 0.021));
+    pieces.push(scratch.own(sphere.clone()).scale(0.006, 0.006, 0.006).translate(side * 0.006, 0.008, 0.021));
     const geometry = remember(mergeGeometries(pieces)!);
-    for (const piece of pieces) piece.dispose();
     mesh("bird-brown-three-toed-foot", geometry, feetMaterial, root);
     return root;
   });
 
+  scratch.dispose();
   let disposed = false;
+  scope.defer(() => group.removeFromParent());
+  scope.defer(() => { disposed = true; });
   return {
     group,
     animate({ time, hopPhase, moving, reducedMotion }: BirdAnimationState) {
@@ -300,13 +302,6 @@ export function createBird() {
       const blink = blinkClock < 0.15 ? Math.sin((blinkClock / 0.15) * Math.PI) : 0;
       for (const eye of eyes) eye.scale.y = 1 - blink * 0.93 * decoration;
     },
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      group.removeFromParent();
-      for (const geometry of geometries) geometry.dispose();
-      for (const material of materials) material.dispose();
-      group.clear();
-    },
+    dispose: scope.dispose,
   };
 }

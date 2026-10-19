@@ -1,10 +1,10 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { PerspectiveCamera, Vector3 } from "three";
+import { enterRoom, projectRoomPoint, savedPosition } from "./helpers/room";
 
 const instagram = "https://instagram.com/nagaihimitsu/";
 const linkName = "Instagramを開く（外部リンク・新しいタブ）";
 
-async function enterRoom(page: Page, context: BrowserContext) {
+async function enterPhotoRoom(page: Page, context: BrowserContext) {
   // Only the external destination is stubbed. The real room, prints and
   // raycasting are exercised without sending requests to Instagram.
   await context.route("https://instagram.com/**", (route) =>
@@ -13,49 +13,17 @@ async function enterRoom(page: Page, context: BrowserContext) {
       body: "<title>Instagram destination</title>",
     }),
   );
-  await page.addInitScript(() =>
-    sessionStorage.setItem(
-      "personal-atlas-room-position-v3",
-      JSON.stringify({ x: 0.9, y: 0, z: 2.9, yaw: 0.5, pitch: 0.45, facing: 0.5 }),
-    ),
-  );
-  await page.goto("/#/");
-  await expect(page.locator(".room-home")).toHaveAttribute(
-    "data-room-status", "ready", { timeout: 30000 },
-  );
-  await expect(page.locator(".room-home")).toHaveAttribute(
-    "data-camera-z", /^-?\d+\.\d+$/,
-  );
+  await savedPosition(page, { x: 0.9, z: 2.9, yaw: 0.5, pitch: 0.45 });
+  await enterRoom(page);
 }
 
 async function photoPoint(page: Page) {
-  const state = await page.locator(".room-home").evaluate((element) => {
-    const data = (element as HTMLElement).dataset;
-    return {
-      x: Number(data.playerX),
-      y: Number(data.playerHeight),
-      z: Number(data.playerZ),
-      cameraX: Number(data.cameraX),
-      cameraY: Number(data.cameraY),
-      cameraZ: Number(data.cameraZ),
-    };
-  });
-  const box = (await page.locator(".room-canvas canvas").boundingBox())!;
-  const camera = new PerspectiveCamera(
-    box.width / box.height < 0.8 ? 76 : 68, box.width / box.height, 0.035, 60,
-  );
-  camera.position.set(state.cameraX, state.cameraY, state.cameraZ);
-  camera.lookAt(state.x, state.y + 1.02, state.z);
-  camera.updateMatrixWorld();
   // A point on the actual Mont-Saint-Michel print, away from the camera prop
   // and visible above the avatar even in the narrow portrait viewport.
-  const point = new Vector3(0.15, 0.64, 1.72).project(camera);
-  expect(Math.abs(point.x)).toBeLessThan(0.95);
-  expect(Math.abs(point.y)).toBeLessThan(0.95);
-  return {
-    x: box.x + ((point.x + 1) / 2) * box.width,
-    y: box.y + ((1 - point.y) / 2) * box.height,
-  };
+  const point = await projectRoomPoint(page, [0.15, 0.64, 1.72]);
+  expect(Math.abs(point.normalized.x)).toBeLessThan(0.95);
+  expect(Math.abs(point.normalized.y)).toBeLessThan(0.95);
+  return point;
 }
 
 async function opensSeparatePage(
@@ -76,9 +44,9 @@ async function opensSeparatePage(
   await page.bringToFront();
 }
 
-test("写真本体・外部リンク表示・EキーでInstagramを別タブに開き、部屋を操作し続けられる", async ({ page, context }) => {
+test("写真本体・外部リンク表示・EキーでInstagramを別タブに開き、部屋を操作し続けられる", { tag: "@links" }, async ({ page, context }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await enterRoom(page, context);
+  await enterPhotoRoom(page, context);
   const point = await photoPoint(page);
   await page.mouse.move(point.x, point.y);
   const link = page.getByRole("link", { name: linkName, exact: true });
@@ -112,8 +80,8 @@ test("写真本体・外部リンク表示・EキーでInstagramを別タブに�
 test.describe("タッチ操作", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("写真のタップは別タブを開き、写真からの視点ドラッグでは開かない", async ({ page, context }) => {
-    await enterRoom(page, context);
+  test("写真のタップは別タブを開き、写真からの視点ドラッグでは開かない", { tag: "@links" }, async ({ page, context }) => {
+    await enterPhotoRoom(page, context);
     const point = await photoPoint(page);
     await opensSeparatePage(page, context, () =>
       page.touchscreen.tap(point.x, point.y),

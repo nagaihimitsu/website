@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { withDisposalScope, type DisposalScope } from "../disposal";
 
 type Point = readonly [number, number];
 type Print = {
@@ -29,11 +30,13 @@ const prints: readonly Print[] = [
  * this object owns only its paper geometries, materials and contact texture.
  */
 export function createTablePolaroids(reference: THREE.Texture) {
+  return withDisposalScope((scope) => buildTablePolaroids(reference, scope));
+}
+
+function buildTablePolaroids(reference: THREE.Texture, scope: DisposalScope) {
   const group = new THREE.Group();
   group.name = "scattered-travel-polaroids";
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
+  scope.defer(() => group.clear());
   const unitsPerPixel = 0.68 / (1261 - 664);
   const centreX = (1261 + 664) / 2;
   const centreY = (563 + 43) / 2;
@@ -43,10 +46,8 @@ export function createTablePolaroids(reference: THREE.Texture) {
   // Original image colors are retained, as with the photograph on the desk.
   // Lighting is supplied by the physical edges and soft contact underneath;
   // the bright room key light must not wash out these small printed pictures.
-  const face = new THREE.MeshBasicMaterial({ map: reference, toneMapped: false });
-  const paper = new THREE.MeshStandardMaterial({ color: "#eae3d6", roughness: 0.96, metalness: 0 });
-  materials.add(face);
-  materials.add(paper);
+  const face = scope.own(new THREE.MeshBasicMaterial({ map: reference, toneMapped: false }));
+  const paper = scope.own(new THREE.MeshStandardMaterial({ color: "#eae3d6", roughness: 0.96, metalness: 0 }));
 
   // The room's shadow bias is larger than a sheet of paper. A tiny feathered
   // contact below each card retains the layered edges without dark outlines.
@@ -62,17 +63,15 @@ export function createTablePolaroids(reference: THREE.Texture) {
     shadowPixels[index + 2] = 34;
     shadowPixels[index + 3] = Math.round(alpha * 255);
   }
-  const shadowTexture = new THREE.DataTexture(shadowPixels, shadowSize, shadowSize);
+  const shadowTexture = scope.own(new THREE.DataTexture(shadowPixels, shadowSize, shadowSize));
   shadowTexture.colorSpace = THREE.SRGBColorSpace;
   shadowTexture.magFilter = THREE.LinearFilter;
   shadowTexture.minFilter = THREE.LinearFilter;
   shadowTexture.needsUpdate = true;
-  textures.add(shadowTexture);
-  const shadowMaterial = new THREE.MeshBasicMaterial({
+  const shadowMaterial = scope.own(new THREE.MeshBasicMaterial({
     map: shadowTexture, transparent: true, opacity: 0.16,
     depthWrite: false, toneMapped: false,
-  });
-  materials.add(shadowMaterial);
+  }));
 
   function sourcePoint(corners: Print["corners"], u: number, v: number): Point {
     const topX = THREE.MathUtils.lerp(corners[0][0], corners[1][0], u);
@@ -128,14 +127,13 @@ export function createTablePolaroids(reference: THREE.Texture) {
       addVertex(nextU, nextV, false);
       indices.push(start, start + 1, start + 2, start + 1, start + 3, start + 2);
     });
-    const geometry = new THREE.BufferGeometry();
+    const geometry = scope.own(new THREE.BufferGeometry());
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
     geometry.addGroup(0, topIndexCount, 0);
     geometry.addGroup(topIndexCount, indices.length - topIndexCount, 1);
     geometry.computeVertexNormals();
-    geometries.add(geometry);
     const sheet = new THREE.Mesh(geometry, [face, paper]);
     sheet.name = `polaroid-${print.name}`;
     // Submillimetre sheets are below the room's shadow-map bias. Casting
@@ -145,7 +143,7 @@ export function createTablePolaroids(reference: THREE.Texture) {
     sheet.receiveShadow = true;
     group.add(sheet);
 
-    const shadowGeometry = new THREE.BufferGeometry();
+    const shadowGeometry = scope.own(new THREE.BufferGeometry());
     const shadowPositions: number[] = [];
     const cardCentreX = print.corners.reduce((sum, point) => sum + point[0], 0) / 4;
     const cardCentreY = print.corners.reduce((sum, point) => sum + point[1], 0) / 4;
@@ -160,23 +158,11 @@ export function createTablePolaroids(reference: THREE.Texture) {
     shadowGeometry.setAttribute("uv", new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
     shadowGeometry.setIndex([0, 2, 1, 0, 3, 2]);
     shadowGeometry.computeVertexNormals();
-    geometries.add(shadowGeometry);
     const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
     shadow.name = `polaroid-${print.name}-contact`;
     group.add(shadow);
   });
 
-  let disposed = false;
-  return {
-    group,
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      group.removeFromParent();
-      geometries.forEach((geometry) => geometry.dispose());
-      materials.forEach((material) => material.dispose());
-      textures.forEach((texture) => texture.dispose());
-      group.clear();
-    },
-  };
+  scope.defer(() => group.removeFromParent());
+  return { group, dispose: scope.dispose };
 }

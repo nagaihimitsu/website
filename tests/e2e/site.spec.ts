@@ -34,7 +34,7 @@ async function fixture(page: Page) {
     route.fulfill({ contentType: "image/webp", body: image }),
   );
 }
-test("公開TXTの件数が4コレクションのカードと詳細に一致", async ({ page }) => {
+test("公開TXTの件数が4コレクションのカードと詳細に一致", { tag: "@records" }, async ({ page }) => {
   // Match the Vite/tsx JSON loader used by the app and data validation scripts.
   const { catalogs, sections }: typeof import("../../src/data/catalogs") =
     await tsImport("../../src/data/catalogs.ts", import.meta.url);

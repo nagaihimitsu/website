@@ -1,4 +1,8 @@
 import * as THREE from "three";
+import type { Section } from "../data/model";
+import { roomDestinations } from "./destinations";
+import { createRoomTargeting, firstVisibleHit } from "./targeting";
+import { withDisposalScope, type DisposalScope } from "./disposal";
 import { createRoomScene } from "./roomScene";
 import { createBirdMotion } from "./birdMotion";
 import {
@@ -12,7 +16,6 @@ import type {
   Direction,
   RoomEngine,
   RoomEngineOptions,
-  RoomCollectionPortal,
   RoomDestination,
 } from "./types";
 import { cameraRelativeInput, smoothLocomotion } from "./locomotion";
@@ -55,20 +58,23 @@ function capturesKeyboard(target: EventTarget | null) {
 }
 
 export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
+  return withDisposalScope((scope) => initializeRoomEngine(options, scope));
+}
+
+function initializeRoomEngine(
+  options: RoomEngineOptions,
+  scope: DisposalScope,
+): RoomEngine {
   const { host } = options;
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: false,
     powerPreference: "high-performance",
   });
-  let room: ReturnType<typeof createRoomScene>;
-  try {
-    room = createRoomScene(options.archive);
-  } catch (error) {
-    renderer.dispose();
-    renderer.forceContextLoss();
-    throw error;
-  }
+  // Register before each subsequent initialization step can fail.
+  scope.defer(() => renderer.forceContextLoss());
+  scope.own(renderer);
+  const room = scope.own(createRoomScene(options.archive));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;
@@ -89,6 +95,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     "部屋の3D表示。ドラッグで360度見回す、矢印キーで移動、Rで視点を戻す。",
   );
   canvas.style.touchAction = "none";
+  scope.defer(() => canvas.remove());
   host.append(canvas);
 
   const camera = new THREE.PerspectiveCamera(
@@ -99,6 +106,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   );
   camera.rotation.order = "YXZ";
   room.scene.add(camera);
+  scope.defer(() => room.scene.remove(camera));
   room.avatar.visible = true;
   room.avatar.userData.roomRaycastIgnore = true;
   const avatarMaterials = new Map<
@@ -130,9 +138,13 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   let returningView: { yaw: number } | null = null;
 
   const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2();
-  const centerPointer = new THREE.Vector2();
-  let mouseAim: THREE.Vector2 | null = null;
+  const targeting = createRoomTargeting({
+    scene: room.scene,
+    camera,
+    ignoredRoots: [room.avatar, camera],
+    canvas,
+    portals: room.portals,
+  });
   const keyboard = new Set<string>();
   const pad = new Set<Direction>();
   const analog = { x: 0, z: 0 };
@@ -173,7 +185,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     moved: boolean;
   } | null = null;
   let opening: {
-    portal: RoomCollectionPortal;
+    section: Section;
     started: number;
     from: THREE.Vector3;
     to: THREE.Vector3;
@@ -279,7 +291,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     hovered = section;
     shadowDynamicUntil = performance.now() + 800;
     for (const portal of room.portals)
-      portal.object.userData.active = portal.section === section;
+      portal.object.userData.active = portal.destination === section;
     options.onHover(section);
   }
 
@@ -334,110 +346,32 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     renderer.shadowMap.needsUpdate = true;
   }
 
-  function raycastRoots() {
-    // Exclude the complete avatar hierarchy before traversal: its instanced
-    // fibers never block interactions and must not each be raycast every frame.
-    // Keep every room/prop root so walls and furniture still occlude targets.
-    return room.scene.children.filter(
-      (object) =>
-        object !== room.avatar &&
-        object !== camera &&
-        !object.userData.roomRaycastIgnore,
-    );
-  }
-
-  function visibleHit(
-    ndc: THREE.Vector2,
-    reach = 60,
-    includeHitAreas = true,
-  ): THREE.Intersection | undefined {
-    raycaster.setFromCamera(ndc, camera);
-    raycaster.far = reach;
-    return firstVisibleHit(
-      raycaster.intersectObjects(raycastRoots(), true),
-      includeHitAreas,
-    );
-  }
-
-  function firstVisibleHit(
-    hits: THREE.Intersection[],
-    includeHitAreas = false,
-  ) {
-    for (const hit of hits) {
-      let visible = true;
-      for (
-        let ancestor: THREE.Object3D | null = hit.object;
-        ancestor;
-        ancestor = ancestor.parent
-      ) {
-        if (!ancestor.visible || ancestor.userData.roomRaycastIgnore) {
-          visible = false;
-          break;
-        }
-      }
-      if (!visible) continue;
-      if (hit.object instanceof THREE.Mesh) {
-        const material = Array.isArray(hit.object.material)
-          ? hit.object.material[hit.face?.materialIndex ?? 0]
-          : hit.object.material;
-        if (
-          material &&
-          (!material.visible ||
-            (material.transparent &&
-              material.opacity === 0 &&
-              !(includeHitAreas && hit.object.userData.roomHitTarget)))
-        )
-          continue;
-      }
-      return hit;
-    }
-  }
-
-  function portalAt(hit: THREE.Intersection | undefined) {
-    for (
-      let object: THREE.Object3D | null = hit?.object ?? null;
-      object;
-      object = object.parent
-    ) {
-      const portal = room.portals.find(
-        (candidate) =>
-          candidate.object === object ||
-          candidate.section === object?.userData.section,
-      );
-      if (portal) return portal;
-    }
-  }
-
-  function pointerHit(event: PointerEvent) {
-    const bounds = canvas.getBoundingClientRect();
-    pointer.set(
-      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
-      1 - ((event.clientY - bounds.top) / bounds.height) * 2,
-    );
-    return visibleHit(pointer);
-  }
-
   function open(section: RoomDestination) {
     if (disposed || failed || opening || opened) return;
     const portal = room.portals.find(
-      (candidate) => candidate.section === section,
+      (candidate) => candidate.destination === section,
     );
     if (!portal) return;
-    if (portal.section === "instagram") {
+    const destinationDefinition = roomDestinations[portal.destination];
+    if (destinationDefinition.kind === "external") {
       clearInputs();
       savePosition();
       // Keep this synchronous with click/tap/keydown so browsers allow the
       // new tab. External destinations never enter the in-room transition.
-      window.open(portal.href, "_blank", "noopener,noreferrer");
+      window.open(
+        destinationDefinition.href,
+        destinationDefinition.target,
+        "noopener,noreferrer",
+      );
       return;
     }
-    options.onOpening(portal.section);
+    options.onOpening(destinationDefinition.section);
     clearInputs();
     savePosition();
     setHovered(section);
     if (reducedMotion) {
       opened = true;
-      options.onOpen(portal.section);
+      options.onOpen(destinationDefinition.section);
       return;
     }
     const direction = portal.lookAt.clone().sub(camera.position);
@@ -449,7 +383,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       new THREE.Matrix4().lookAt(destination, portal.lookAt, camera.up),
     );
     opening = {
-      portal,
+      section: destinationDefinition.section,
       started: performance.now(),
       from: camera.position.clone(),
       to: destination,
@@ -515,7 +449,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       raycaster.set(origin, direction.clone().normalize());
       raycaster.far = direction.length() + 0.03;
       const hit = firstVisibleHit(
-        raycaster.intersectObjects(raycastRoots(), true),
+        raycaster.intersectObjects(targeting.roots(), true),
       );
       let hitId: unknown;
       for (
@@ -568,7 +502,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       return;
     if (KEY_DIRECTIONS[event.code]) {
       event.preventDefault();
-      mouseAim = null;
+      targeting.clear();
       keyboard.add(event.code);
     } else if (event.code === "Space") {
       // HUD buttons keep native Space activation; locomotion and other game keys
@@ -589,8 +523,8 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     } else if (event.code === "KeyE") {
       event.preventDefault();
       if (!event.repeat) {
-        const portal = portalAt(visibleHit(mouseAim ?? centerPointer));
-        if (portal) open(portal.section);
+        const portal = targeting.current();
+        if (portal) open(portal.destination);
       }
     }
   }
@@ -625,7 +559,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       )
         viewPointer.moved = true;
       if (viewPointer.moved) {
-        mouseAim = null;
+        targeting.clear();
         returningView = null;
         yaw -= (event.clientX - viewPointer.x) * 0.0042;
         pitch = THREE.MathUtils.clamp(
@@ -639,13 +573,9 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       viewPointer.x = event.clientX;
       viewPointer.y = event.clientY;
     } else if (event.pointerType === "mouse") {
-      const portal = portalAt(pointerHit(event));
-      if (portal?.section === "instagram") {
-        mouseAim = pointer.clone();
-        setHovered("instagram");
-      } else if (portal) {
-        mouseAim = null;
-      }
+      const portal = targeting.hoverPointer(event);
+      if (portal && roomDestinations[portal.destination].kind === "external")
+        setHovered(portal.destination);
       // Retain the photo selection over the gap to its accessible link.
       // A drag, blank click, another portal or leaving the room clears it.
       canvas.style.cursor = portal ? "pointer" : "grab";
@@ -662,10 +592,10 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       ) <= 8;
     releaseViewPointer();
     if (clicked && !paused) {
-      const portal = portalAt(pointerHit(event));
-      if (portal) open(portal.section);
+      const portal = targeting.atPointer(event);
+      if (portal) open(portal.destination);
       else {
-        mouseAim = null;
+        targeting.clear();
         aimTime = -Infinity;
       }
     }
@@ -675,23 +605,20 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     if (viewPointer?.id === event.pointerId) releaseViewPointer();
   }
 
-  function pointerLeave(event: PointerEvent) {
+  function pointerLeave() {
     canvas.style.cursor = "";
-    // The hover link must remain available while moving from the photo to it.
-    if (
-      !(
-        event.relatedTarget instanceof Element &&
-        event.relatedTarget.closest(".room-target")
-      )
-    )
-      mouseAim = null;
+    targeting.leaveCanvas();
   }
 
   function fail() {
     if (disposed || failed) return;
     failed = true;
-    clearInputs();
-    cancelAnimationFrame(frame);
+    savePosition();
+    try {
+      scope.dispose();
+    } catch (error) {
+      console.error("Room cleanup after rendering failed", error);
+    }
     options.onError();
   }
 
@@ -749,7 +676,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     cameraRay.set(cameraTarget, boomDirection);
     cameraRay.far = safeDistance + CAMERA_RADIUS;
     const hit = firstVisibleHit(
-      cameraRay.intersectObjects(raycastRoots(), true),
+      cameraRay.intersectObjects(targeting.roots(), true),
     );
     if (hit)
       safeDistance = Math.max(
@@ -851,13 +778,13 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       );
       camera.fov = THREE.MathUtils.lerp(
         opening.fov,
-        opening.portal.section === "pokemon" ? 40 : 52,
+        opening.section === "pokemon" ? 40 : 52,
         eased,
       );
       camera.updateProjectionMatrix();
       if (progress === 1 && !opened) {
         opened = true;
-        options.onOpen(opening.portal.section);
+        options.onOpen(opening.section);
         if (disposed) return;
       }
     } else setCameraFromPlayer(elapsed);
@@ -892,7 +819,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       if (time - aimTime >= 100 && !opening && !opened) {
         aimTime = time;
         setHovered(
-          portalAt(visibleHit(mouseAim ?? centerPointer))?.section ?? null,
+          targeting.current()?.destination ?? null,
         );
       }
       if (
@@ -921,19 +848,34 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     frame = requestAnimationFrame(render);
   }
 
+  // A single lifetime owns listeners, observer, animation frame and GPU state.
+  // This same stack runs if resize, snapshot or any later setup step throws.
+  scope.defer(() => { disposed = true; });
+  scope.defer(() => clearInputs());
+  scope.defer(() => cancelAnimationFrame(frame));
   const resizeObserver = new ResizeObserver(resize);
+  scope.defer(() => resizeObserver.disconnect());
   resizeObserver.observe(host);
-  window.addEventListener("keydown", keyDown);
-  window.addEventListener("keyup", keyUp);
-  window.addEventListener("blur", clearInputs);
-  document.addEventListener("visibilitychange", syncSuspension);
-  canvas.addEventListener("pointerdown", pointerDown);
-  canvas.addEventListener("pointermove", pointerMove);
-  canvas.addEventListener("pointerup", pointerUp);
-  canvas.addEventListener("pointercancel", pointerCancel);
-  canvas.addEventListener("lostpointercapture", pointerCancel);
-  canvas.addEventListener("pointerleave", pointerLeave);
-  canvas.addEventListener("webglcontextlost", contextLost);
+  function listen<T extends Event>(
+    target: EventTarget,
+    type: string,
+    listener: (event: T) => void,
+  ) {
+    const handler = listener as EventListener;
+    scope.defer(() => target.removeEventListener(type, handler));
+    target.addEventListener(type, handler);
+  }
+  listen(window, "keydown", keyDown);
+  listen(window, "keyup", keyUp);
+  listen(window, "blur", clearInputs);
+  listen(document, "visibilitychange", syncSuspension);
+  listen(canvas, "pointerdown", pointerDown);
+  listen(canvas, "pointermove", pointerMove);
+  listen(canvas, "pointerup", pointerUp);
+  listen(canvas, "pointercancel", pointerCancel);
+  listen(canvas, "lostpointercapture", pointerCancel);
+  listen(canvas, "pointerleave", pointerLeave);
+  listen(canvas, "webglcontextlost", contextLost);
   resize();
   room.avatar.position.set(player.x, player.y, player.z);
   room.avatar.rotation.y = facing;
@@ -946,7 +888,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
   return {
     direction(direction, pressed) {
       if (disposed || failed || paused || opening || opened) return;
-      if (pressed) mouseAim = null;
+      if (pressed) targeting.clear();
       if (pressed) pad.add(direction);
       else pad.delete(direction);
     },
@@ -954,7 +896,7 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       if (disposed || failed || paused || opening || opened) return;
       const length = Math.hypot(x, z);
       if (!Number.isFinite(length)) return;
-      if (length > 0) mouseAim = null;
+      if (length > 0) targeting.clear();
       analog.x = x / Math.max(1, length);
       analog.z = z / Math.max(1, length);
     },
@@ -962,6 +904,9 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
     punch,
     open,
     resetView,
+    setTargetHovered(value) {
+      if (!disposed) targeting.setTargetHovered(value);
+    },
     resetObjects() {
       if (disposed || failed) return;
       clearInputs();
@@ -1011,35 +956,18 @@ export function createRoomEngine(options: RoomEngineOptions): RoomEngine {
       syncSuspension();
     },
     setReducedMotion(value) {
+      if (disposed || failed) return;
       reducedMotion = value;
       if (value && opening && !opened) {
         opened = true;
-        options.onOpen(opening.portal.section);
+        options.onOpen(opening.section);
       }
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       savePosition();
-      clearInputs();
-      cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
-      window.removeEventListener("keydown", keyDown);
-      window.removeEventListener("keyup", keyUp);
-      window.removeEventListener("blur", clearInputs);
-      document.removeEventListener("visibilitychange", syncSuspension);
-      canvas.removeEventListener("pointerdown", pointerDown);
-      canvas.removeEventListener("pointermove", pointerMove);
-      canvas.removeEventListener("pointerup", pointerUp);
-      canvas.removeEventListener("pointercancel", pointerCancel);
-      canvas.removeEventListener("lostpointercapture", pointerCancel);
-      canvas.removeEventListener("pointerleave", pointerLeave);
-      canvas.removeEventListener("webglcontextlost", contextLost);
-      room.scene.remove(camera);
-      room.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();
-      canvas.remove();
+      scope.dispose();
     },
   };
 }

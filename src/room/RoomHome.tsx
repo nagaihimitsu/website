@@ -5,36 +5,17 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { Archive, Section } from "../data/model";
-import { sections } from "../data/catalogs";
 import { createRoomEngine } from "./roomEngine";
 import { stickInput } from "./locomotion";
-import { INITIAL_PLAYER_POSITION } from "./followCamera";
-import { INSTAGRAM_URL } from "./destinations";
-import type {
-  Direction,
-  RoomDestination,
-  RoomEngine,
-  RoomSnapshot,
-} from "./types";
+import {
+  roomDestinations,
+  roomDestinationIds,
+  type RoomDestinationDefinition,
+} from "./destinations";
+import { createRoomSnapshotReporter } from "./roomSnapshot";
+import type { Direction, RoomDestination, RoomEngine } from "./types";
 import "./room.css";
 
-const destinations: Record<
-  RoomDestination,
-  { title: string; label: string; total?: number }
-> = {
-  world: { title: "World", label: "世界地図を開く" },
-  japan: { title: "Japan", label: "日本地図を開く", total: 47 },
-  mountains: { title: "Mountains", label: "百名山を開く", total: 100 },
-  pokemon: {
-    title: "Pokédex",
-    label: "スマートフォンでポケモン図鑑を開く",
-    total: 1025,
-  },
-  instagram: {
-    title: "Instagram",
-    label: "Instagramを開く（外部リンク・新しいタブ）",
-  },
-};
 const arrows: { direction: Direction; label: string; rotation: number }[] = [
   { direction: "up", label: "前へ", rotation: 0 },
   { direction: "left", label: "左へ", rotation: -90 },
@@ -112,7 +93,9 @@ function ExternalLink() {
 }
 
 export default function RoomHome({ archive }: { archive: Archive }) {
+  const room = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
+  const targetInteraction = useRef({ hovered: false, focused: false });
   const engine = useRef<RoomEngine | null>(null);
   const menu = useRef<HTMLDialogElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -127,33 +110,14 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const [opening, setOpening] = useState<Section | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [snapshot, setSnapshot] = useState<RoomSnapshot>({
-    x: INITIAL_PLAYER_POSITION.x,
-    z: INITIAL_PLAYER_POSITION.z,
-    height: 0,
-    moving: false,
-    grounded: true,
-    supportId: null,
-    yaw: 0,
-    pitch: 0,
-    facing: 0,
-    cameraDistance: 2.75,
-    cameraX: 0,
-    cameraY: 0,
-    cameraZ: 0,
-    punching: false,
-    brokenCount: 0,
-    birdX: 0,
-    birdZ: 0,
-    birdHeight: 0,
-    birdMoving: false,
-  });
+  const [punching, setPunching] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   const [held, setHeld] = useState<Set<Direction>>(new Set());
 
   useEffect(() => {
-    if (!host.current) return;
+    if (!host.current || !room.current) return;
     let disposed = false;
+    const reportSnapshot = createRoomSnapshotReporter(room.current, setPunching);
     const failed = () => {
       if (disposed) return;
       setStatus("fallback");
@@ -182,7 +146,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           if (!disposed) setNotice(`${label}を壊しました`);
         },
         onSnapshot: (value) => {
-          if (!disposed) setSnapshot(value);
+          if (!disposed) reportSnapshot(value);
         },
       });
     } catch {
@@ -269,64 +233,70 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     engine.current?.move(next.x, next.z);
   }
   const unavailable = status !== "ready" || Boolean(opening) || menuOpen;
+  const target = hover ? roomDestinations[hover] : null;
+  const targetVisible =
+    status === "ready" && target !== null && !opening && !menuOpen;
+  const updateTargetInteraction = (
+    kind: "hovered" | "focused",
+    value: boolean,
+  ) => {
+    targetInteraction.current[kind] = value;
+    const { hovered, focused } = targetInteraction.current;
+    engine.current?.setTargetHovered(hovered || focused);
+  };
+  const targetEvents = {
+    onPointerEnter: () => updateTargetInteraction("hovered", true),
+    onPointerLeave: () => updateTargetInteraction("hovered", false),
+    onFocus: () => updateTargetInteraction("focused", true),
+    onBlur: () => updateTargetInteraction("focused", false),
+  };
+  useEffect(() => {
+    return () => {
+      targetInteraction.current = { hovered: false, focused: false };
+      engine.current?.setTargetHovered(false);
+    };
+  }, [hover, targetVisible]);
+
   const links = (className: string) => (
     <nav className={className} aria-label="コレクションの記録">
-      {sections.map((section, index) => (
-        <a
-          key={section}
-          href={`#/${section}`}
-          aria-label={destinations[section].label}
-        >
-          <span className="room-link-number">0{index + 1}</span>
-          <span>{destinations[section].title}</span>
-          <span className="room-link-count">
-            {archive.achieved[section].size}
-            {destinations[section].total
-              ? ` / ${destinations[section].total}`
-              : ""}
-          </span>
-          <span aria-hidden="true">↗</span>
-        </a>
-      ))}
-      <a
-        href={INSTAGRAM_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={destinations.instagram.label}
-      >
-        <span className="room-link-number">05</span>
-        <span>Instagram</span>
-        <span className="room-link-external">外部リンク・新しいタブ</span>
-        <ExternalLink />
-      </a>
+      {roomDestinationIds.map((id, index) => {
+        const destination: RoomDestinationDefinition = roomDestinations[id];
+        const external = destination.kind === "external";
+        return (
+          <a
+            key={id}
+            href={external ? destination.href : `#/${destination.section}`}
+            target={external ? destination.target : undefined}
+            rel={external ? destination.rel : undefined}
+            aria-label={destination.label}
+          >
+            <span className="room-link-number">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span>{destination.title}</span>
+            {external ? (
+              <span className="room-link-external">{destination.hint}</span>
+            ) : (
+              <span className="room-link-count">
+                {archive.achieved[destination.section].size}
+                {destination.total ? ` / ${destination.total}` : ""}
+              </span>
+            )}
+            {external ? <ExternalLink /> : <span aria-hidden="true">↗</span>}
+          </a>
+        );
+      })}
     </nav>
   );
 
   return (
     <section
+      ref={room}
       className={`room-home room-third-person${reducedMotion ? " is-still" : ""}${opening ? " is-opening" : ""}`}
       aria-label="コレクションルーム"
       data-view="third-person"
       data-character="traveler"
       data-room-status={status}
-      data-player-x={snapshot.x.toFixed(3)}
-      data-player-z={snapshot.z.toFixed(3)}
-      data-player-height={snapshot.height.toFixed(3)}
-      data-grounded={snapshot.grounded}
-      data-support-id={snapshot.supportId ?? ""}
-      data-yaw={snapshot.yaw.toFixed(3)}
-      data-pitch={snapshot.pitch.toFixed(3)}
-      data-facing={snapshot.facing.toFixed(3)}
-      data-camera-distance={snapshot.cameraDistance.toFixed(3)}
-      data-camera-x={snapshot.cameraX.toFixed(3)}
-      data-camera-y={snapshot.cameraY.toFixed(3)}
-      data-camera-z={snapshot.cameraZ.toFixed(3)}
-      data-punching={snapshot.punching}
-      data-broken-count={snapshot.brokenCount}
-      data-bird-x={snapshot.birdX.toFixed(3)}
-      data-bird-z={snapshot.birdZ.toFixed(3)}
-      data-bird-height={snapshot.birdHeight.toFixed(3)}
-      data-bird-moving={snapshot.birdMoving}
     >
       <h1 className="room-sr-only">コレクションルーム</h1>
       <div
@@ -401,20 +371,21 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             className={`room-crosshair${hover ? " has-target" : ""}`}
             aria-hidden="true"
           />
-          {hover &&
-            !opening &&
-            !menuOpen &&
-            (hover === "instagram" ? (
+          {targetVisible &&
+            target &&
+            hover &&
+            (target.kind === "external" ? (
               <a
                 className="room-target room-target-external"
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={destinations.instagram.label}
+                href={target.href}
+                target={target.target}
+                rel={target.rel}
+                aria-label={target.label}
+                {...targetEvents}
               >
                 <span className="room-target-copy">
-                  <span>Instagram</span>
-                  <small>外部リンク・新しいタブ</small>
+                  <span>{target.title}</span>
+                  <small>{target.hint}</small>
                 </span>
                 <ExternalLink />
                 <kbd>E</kbd>
@@ -423,9 +394,10 @@ export default function RoomHome({ archive }: { archive: Archive }) {
               <button
                 className="room-target"
                 onClick={() => engine.current?.open(hover)}
-                aria-label={destinations[hover].label}
+                aria-label={target.label}
+                {...targetEvents}
               >
-                {destinations[hover].title}
+                {target.title}
                 <span aria-hidden="true">↗</span>
                 <kbd>E</kbd>
               </button>
@@ -523,7 +495,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
         </div>
         <div className="room-actions">
           <button
-            className={`room-punch${snapshot.punching ? " is-active" : ""}`}
+            className={`room-punch${punching ? " is-active" : ""}`}
             aria-label="パンチ"
             title="パンチ（F / J）"
             disabled={unavailable}
@@ -552,7 +524,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
       </div>
       <p className="room-sr-only" role="status" aria-live="polite">
         {notice ||
-          (opening ? `${destinations[opening].title}を開いています` : "")}
+          (opening ? `${roomDestinations[opening].title}を開いています` : "")}
       </p>
       <dialog
         ref={menu}

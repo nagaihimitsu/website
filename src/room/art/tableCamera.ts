@@ -1,16 +1,18 @@
 import * as THREE from "three";
+import { withDisposalScope, type DisposalScope } from "../disposal";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 /** Small, unbranded silver-and-leather camera. Floor is Y=0; the lens faces +Z. */
 export function createTableCamera() {
+  return withDisposalScope((scope) => buildTableCamera(scope));
+}
+
+function buildTableCamera(scope: DisposalScope) {
   const group = new THREE.Group();
   group.name = "table-travel-camera";
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  const instances = new Set<THREE.InstancedMesh>();
-  function geometry<T extends THREE.BufferGeometry>(value: T): T { geometries.add(value); return value; }
-  function material<T extends THREE.Material>(value: T): T { materials.add(value); return value; }
+  scope.defer(() => group.clear());
+  const geometry = scope.own;
+  const material = scope.own;
   const silver = material(new THREE.MeshStandardMaterial({ color: "#bcc0c4", roughness: 0.38, metalness: 0.55 }));
   const silverEdge = material(new THREE.MeshStandardMaterial({ color: "#d5d8da", roughness: 0.31, metalness: 0.65 }));
   const black = material(new THREE.MeshStandardMaterial({ color: "#17191b", roughness: 0.49, metalness: 0.12 }));
@@ -36,7 +38,7 @@ export function createTableCamera() {
     const v = 62 + local * 21;
     leatherPixels[p * 4] = v; leatherPixels[p * 4 + 1] = v; leatherPixels[p * 4 + 2] = v + 1; leatherPixels[p * 4 + 3] = 255;
   }
-  const leatherTexture = new THREE.DataTexture(leatherPixels, size, size);
+  const leatherTexture = scope.own(new THREE.DataTexture(leatherPixels, size, size));
   leatherTexture.colorSpace = THREE.SRGBColorSpace;
   leatherTexture.wrapS = leatherTexture.wrapT = THREE.RepeatWrapping;
   leatherTexture.magFilter = THREE.LinearFilter;
@@ -44,7 +46,6 @@ export function createTableCamera() {
   leatherTexture.generateMipmaps = true;
   leatherTexture.anisotropy = 4;
   leatherTexture.needsUpdate = true;
-  textures.add(leatherTexture);
   const leather = material(new THREE.MeshStandardMaterial({ color: "#d4d4d4", map: leatherTexture, bumpMap: leatherTexture, bumpScale: 0.00065, roughness: 0.9, metalness: 0 }));
 
   function mesh(name: string, shape: THREE.BufferGeometry, surface: THREE.Material) {
@@ -80,9 +81,8 @@ export function createTableCamera() {
   }
   function knurl(name: string, radius: number, length: number, at: [number, number, number], count: number, axis: "y" | "z", surface: THREE.Material) {
     const tooth = geometry(new THREE.BoxGeometry(0.0022, length, 0.0018));
-    const instanced = new THREE.InstancedMesh(tooth, surface, count);
+    const instanced = scope.own(new THREE.InstancedMesh(tooth, surface, count));
     instanced.name = name;
-    instances.add(instanced);
     instanced.castShadow = true; instanced.receiveShadow = true;
     const transform = new THREE.Object3D();
     for (let i = 0; i < count; i++) {
@@ -193,12 +193,12 @@ export function createTableCamera() {
     opticalPixels[p + 2] = 35 + aperture * 19 + coating + upper + lower;
     opticalPixels[p + 3] = 255;
   }
-  const opticalTexture = new THREE.DataTexture(opticalPixels, opticalSize, opticalSize);
+  const opticalTexture = scope.own(new THREE.DataTexture(opticalPixels, opticalSize, opticalSize));
   opticalTexture.colorSpace = THREE.SRGBColorSpace;
   opticalTexture.magFilter = THREE.LinearFilter;
   opticalTexture.minFilter = THREE.LinearMipmapLinearFilter;
   opticalTexture.generateMipmaps = true;
-  opticalTexture.needsUpdate = true; textures.add(opticalTexture);
+  opticalTexture.needsUpdate = true;
   const optical = material(new THREE.MeshPhysicalMaterial({ map: opticalTexture, color: "#ffffff", roughness: 0.16, metalness: 0.08, clearcoat: 0.95, clearcoatRoughness: 0.1 }));
   // One shared centre vertex and a triangle fan avoid overlapping zero-area
   // faces at the optical axis and keep its convex normal continuous.
@@ -261,11 +261,10 @@ export function createTableCamera() {
     shadowPixels[offset] = shadowPixels[offset + 1] = shadowPixels[offset + 2] = 255;
     shadowPixels[offset + 3] = Math.round(alpha * 255);
   }
-  const contactTexture = new THREE.DataTexture(shadowPixels, shadowWidth, shadowHeight);
+  const contactTexture = scope.own(new THREE.DataTexture(shadowPixels, shadowWidth, shadowHeight));
   contactTexture.magFilter = THREE.LinearFilter;
   contactTexture.minFilter = THREE.LinearFilter;
   contactTexture.needsUpdate = true;
-  textures.add(contactTexture);
   const contactMaterial = material(new THREE.MeshBasicMaterial({
     color: "#302922", map: contactTexture, transparent: true, opacity: 0.24,
     depthWrite: false, toneMapped: false,
@@ -276,18 +275,6 @@ export function createTableCamera() {
   contact.castShadow = false;
   contact.receiveShadow = false;
 
-  let disposed = false;
-  return {
-    group,
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      group.removeFromParent();
-      instances.forEach((item) => item.dispose());
-      geometries.forEach((item) => item.dispose());
-      materials.forEach((item) => item.dispose());
-      textures.forEach((item) => item.dispose());
-      group.clear();
-    },
-  };
+  scope.defer(() => group.removeFromParent());
+  return { group, dispose: scope.dispose };
 }

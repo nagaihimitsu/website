@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { withDisposalScope, type DisposalScope } from "../disposal";
 import type { RoomAvatarAnimation } from "../types";
 import { createCharacterMaterials } from "./characterMaterials";
 import { buildCharacterHead } from "./characterHead";
@@ -11,23 +12,24 @@ import type { CharacterBuilder } from "./characterBuilder";
  * Every material and geometry belongs to this model and is released by dispose.
  */
 export function createCharacter() {
+  return withDisposalScope(buildCharacter);
+}
+
+function buildCharacter(scope: DisposalScope) {
   const group = new THREE.Group();
   group.name = "little-traveller";
   group.scale.setScalar(0.98);
   group.userData.roomRaycastIgnore = true;
   const body = new THREE.Group();
   group.add(body);
-  const geometries = new Set<THREE.BufferGeometry>();
-  const surfaces = createCharacterMaterials();
+  scope.defer(() => group.clear());
+  const surfaces = scope.own(createCharacterMaterials());
   const { fur, fibers } = surfaces;
   // Tiny fibres collect diffuse light from surrounding fur; a small warm fill
   // avoids isolated dark subpixel tips against the softly scattering coat.
   fibers.emissive.copy(fur.color);
   fibers.emissiveIntensity = 0.08;
-  const remember = <T extends THREE.BufferGeometry>(geometry: T): T => {
-    geometries.add(geometry);
-    return geometry;
-  };
+  const remember = scope.own;
   function smoothNormals(geometry: THREE.BufferGeometry) {
     geometry.computeVertexNormals();
     const positions = geometry.getAttribute("position");
@@ -63,6 +65,7 @@ export function createCharacter() {
     allow?: (position: THREE.Vector3) => boolean;
   };
   const furPatches = new Map<THREE.Group, FurPatch[]>();
+  scope.defer(() => furPatches.clear());
   function pile(
     root: THREE.Group,
     surface: THREE.Mesh,
@@ -174,7 +177,6 @@ export function createCharacter() {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  const furInstances: THREE.InstancedMesh[] = [];
   group.updateMatrixWorld(true);
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
@@ -192,7 +194,7 @@ export function createCharacter() {
   const tint = new THREE.Color();
   for (const [root, patches] of furPatches) {
     const capacity = patches.reduce((sum, patch) => sum + patch.count, 0);
-    const strands = new THREE.InstancedMesh(strandGeometry, fibers, capacity);
+    const strands = scope.own(new THREE.InstancedMesh(strandGeometry, fibers, capacity));
     strands.name = "short-velvet-pile";
     strands.castShadow = false;
     strands.receiveShadow = false;
@@ -307,7 +309,6 @@ export function createCharacter() {
     if (strands.instanceColor) strands.instanceColor.needsUpdate = true;
     strands.computeBoundingSphere();
     root.add(strands);
-    furInstances.push(strands);
   }
 
   group.traverse((object) => {
@@ -317,6 +318,8 @@ export function createCharacter() {
     if (object instanceof THREE.Mesh) object.raycast = () => undefined;
   });
   let disposed = false;
+  scope.defer(() => group.removeFromParent());
+  scope.defer(() => { disposed = true; });
   let previousTime: number | null = null;
   let stridePhase = 0;
   let easedSpeed = 0;
@@ -422,16 +425,6 @@ export function createCharacter() {
         body.rotation.y = 0;
       }
     },
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      group.removeFromParent();
-      group.clear();
-      for (const geometry of geometries) geometry.dispose();
-      for (const instances of furInstances) instances.dispose();
-      surfaces.dispose();
-      geometries.clear();
-      furPatches.clear();
-    },
+    dispose: scope.dispose,
   };
 }
