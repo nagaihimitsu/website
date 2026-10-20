@@ -4,7 +4,10 @@ import {
   createPinchZoom,
   MAX_PINCH_ZOOM,
   MIN_PINCH_ZOOM,
+  PINCH_AVATAR_FADE_START,
+  PINCH_AVATAR_FADE_END,
   PINCH_RETURN_SECONDS,
+  pinchAvatarOpacity,
   type PinchZoomSnapshot,
 } from "../src/room/pinchZoom";
 
@@ -88,17 +91,34 @@ describe("temporary anchored pinch zoom", () => {
   it("responds immediately when reversing away from either scale limit", () => {
     const pinch = createPinchZoom();
     pinch.begin(...pair(195, 300, 40), viewport);
-    pinch.move(...pair(195, 300, 240), viewport);
+    pinch.move(...pair(195, 300, 320), viewport);
     expect(pinch.snapshot().zoom).toBe(MAX_PINCH_ZOOM);
-    pinch.move(...pair(195, 300, 200), viewport);
-    expect(pinch.snapshot().zoom).toBeCloseTo(2.5);
+    pinch.move(...pair(195, 300, 280), viewport);
+    expect(pinch.snapshot().zoom).toBeCloseTo(5.25);
     pinch.move(...pair(195, 300, 30), viewport);
     expect(pinch.snapshot().zoom).toBe(MIN_PINCH_ZOOM);
     pinch.move(...pair(195, 300, 40), viewport);
     expect(pinch.snapshot().zoom).toBeCloseTo(MIN_PINCH_ZOOM * 4 / 3);
   });
 
-  it.each([0.75, 2])("restores the exact original view smoothly from scale %s", (scale) => {
+  it("continues through the former maximum to 6× without moving the touched detail", () => {
+    const pinch = createPinchZoom();
+    const detail = scenePoint(240, 300);
+    const neighbour = scenePoint(230, 312);
+    pinch.begin(...pair(240, 300, 40), viewport);
+    for (const scale of [3, 3.35, 3.7, 6]) {
+      pinch.move(...pair(240, 300, 40 * scale), viewport);
+      expect(pinch.snapshot().zoom).toBeCloseTo(scale);
+      const projected = project(detail, pinch.snapshot());
+      expect(projected.x).toBeCloseTo(240);
+      expect(projected.y).toBeCloseTo(300);
+      const enlarged = project(neighbour, pinch.snapshot());
+      expect(enlarged.x).toBeCloseTo(240 - 10 * scale);
+      expect(enlarged.y).toBeCloseTo(300 + 12 * scale);
+    }
+  });
+
+  it.each([0.75, 2, 6])("restores the exact original view smoothly from scale %s", (scale) => {
     const pinch = createPinchZoom();
     pinch.begin(...pair(260, 250, 100), viewport);
     pinch.move(...pair(280, 300, 100 * scale), viewport);
@@ -165,5 +185,55 @@ describe("temporary anchored pinch zoom", () => {
     pinch.reset();
     pinch.move(...pair(100, 100, 160), viewport);
     expect(pinch.snapshot()).toEqual(resting);
+  });
+});
+
+describe("avatar visibility during close pinch inspection", () => {
+  it("keeps the original zoom range opaque and fully hides at the end of the transition", () => {
+    for (const zoom of [MIN_PINCH_ZOOM, 1, 2, PINCH_AVATAR_FADE_START])
+      expect(pinchAvatarOpacity(zoom)).toBe(1);
+    for (const zoom of [PINCH_AVATAR_FADE_END, 4, MAX_PINCH_ZOOM])
+      expect(pinchAvatarOpacity(zoom)).toBe(0);
+    expect(pinchAvatarOpacity((PINCH_AVATAR_FADE_START + PINCH_AVATAR_FADE_END) / 2))
+      .toBeCloseTo(0.5);
+  });
+
+  it("fades continuously with soft boundaries and reverses as the fingers close", () => {
+    const opacity = [3, 3.01, 3.2, 3.35, 3.5, 3.69, 3.7].map(pinchAvatarOpacity);
+    expect(opacity[1]).toBeGreaterThan(0.999);
+    expect(opacity.at(-2)).toBeLessThan(0.001);
+    for (let index = 1; index < opacity.length; index++)
+      expect(opacity[index]).toBeLessThan(opacity[index - 1]);
+
+    const pinch = createPinchZoom();
+    pinch.begin(...pair(195, 300, 40), viewport);
+    pinch.move(...pair(195, 300, 240), viewport);
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBe(0);
+    pinch.move(...pair(195, 300, 134), viewport);
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBeCloseTo(0.5);
+    pinch.move(...pair(195, 300, 120), viewport);
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBe(1);
+  });
+
+  it("restores the avatar during release and on immediate cancellation", () => {
+    const pinch = createPinchZoom();
+    pinch.begin(...pair(195, 300, 40), viewport);
+    pinch.move(...pair(195, 300, 240), viewport);
+    pinch.end();
+    pinch.step(0.064, false);
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBeGreaterThan(0);
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBeLessThan(1);
+    pinch.step(PINCH_RETURN_SECONDS, false);
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBe(1);
+
+    pinch.begin(...pair(195, 300, 40), viewport);
+    pinch.move(...pair(195, 300, 240), viewport);
+    pinch.reset();
+    expect(pinchAvatarOpacity(pinch.snapshot().zoom)).toBe(1);
+  });
+
+  it("leaves the avatar visible for non-finite input", () => {
+    for (const zoom of [NaN, Infinity, -Infinity])
+      expect(pinchAvatarOpacity(zoom)).toBe(1);
   });
 });

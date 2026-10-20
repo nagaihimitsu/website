@@ -23,7 +23,7 @@ import type {
   RoomDestination,
 } from "./types";
 import { cameraRelativeInput, smoothLocomotion } from "./locomotion";
-import { createPinchZoom } from "./pinchZoom";
+import { createPinchZoom, pinchAvatarOpacity } from "./pinchZoom";
 import {
   CAMERA_RADIUS,
   DEFAULT_CAMERA_PITCH,
@@ -136,7 +136,36 @@ function initializeRoomEngine(
         depthWrite: material.depthWrite,
       });
   });
+  // Use the same screen-space coverage mask for every part of the traveller.
+  // Alpha blending each mesh would reveal its face through the back of its head.
+  // Opaque depth remains intact in covered pixels; uncovered pixels show scenery.
+  const avatarCoverage = { value: 1 };
+  function maskAvatarMaterial(material: THREE.Material) {
+    const compile = material.onBeforeCompile;
+    const cacheKey = material.customProgramCacheKey();
+    material.onBeforeCompile = function (shader, webgl) {
+      compile.call(this, shader, webgl);
+      shader.uniforms.roomAvatarCoverage = avatarCoverage;
+      shader.fragmentShader = `uniform float roomAvatarCoverage;\n${shader.fragmentShader}`
+        .replace("#include <clipping_planes_fragment>", `
+          #include <clipping_planes_fragment>
+          if (roomAvatarCoverage < 1.0) {
+            float coverage = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))));
+            if (coverage >= roomAvatarCoverage) discard;
+          }
+        `);
+    };
+    material.customProgramCacheKey = () => `${cacheKey}:room-avatar-coverage-v1`;
+    material.needsUpdate = true;
+  }
+  for (const material of avatarMaterials.keys()) maskAvatarMaterial(material);
+  const avatarShadow = scope.own(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }));
+  maskAvatarMaterial(avatarShadow);
+  room.avatar.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.castShadow) object.customDepthMaterial = avatarShadow;
+  });
   let lastAvatarOpacity = 1;
+  let lastWallOpacity = 1;
   const cameraTarget = new THREE.Vector3();
   const boomDirection = new THREE.Vector3();
   const cameraRay = new THREE.Raycaster();
@@ -338,6 +367,7 @@ function initializeRoomEngine(
       camera.zoom = 1;
       camera.clearViewOffset();
       camera.updateProjectionMatrix();
+      updateAvatarVisibility();
     }
   }
 
@@ -483,6 +513,8 @@ function initializeRoomEngine(
       cameraOffsetX: camera.view?.enabled ? camera.view.offsetX / camera.view.fullWidth : 0,
       cameraOffsetY: camera.view?.enabled ? camera.view.offsetY / camera.view.fullHeight : 0,
       pinching: pinchZoom.snapshot().active,
+      avatarOpacity: lastAvatarOpacity,
+      avatarVisible: room.avatar.visible,
       punching: punchStarted !== null,
       brokenCount: room.breakables.filter((item) => item.broken).length,
       birdX: birdMotion.state.x,
@@ -930,6 +962,7 @@ function initializeRoomEngine(
       camera.setViewOffset(width, height,
         zoom.offsetX * width, zoom.offsetY * height, width, height);
       camera.updateProjectionMatrix();
+      updateAvatarVisibility();
       return;
     }
     camera.zoom = 1;
@@ -989,16 +1022,39 @@ function initializeRoomEngine(
     if (bassViewOffset > 0.1) camera.setViewOffset(width, height, 0, bassViewOffset, width, height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
+    updateAvatarVisibility();
+  }
+
+  function updateAvatarVisibility() {
     // In an unavoidable wall corner, keep the room visible instead of putting
-    // the camera inside an opaque head. The normal following view is fully solid.
-    const opacity = THREE.MathUtils.smoothstep(cameraDistance, 0.12, 0.78);
-    if (Math.abs(lastAvatarOpacity - opacity) > 0.001) {
+    // the camera inside an opaque head. Preserve that behavior through the old
+    // 3x zoom limit; only the new close-up range fades the whole traveller away.
+    const zoomOpacity = pinchAvatarOpacity(camera.zoom);
+    const wallOpacity = THREE.MathUtils.smoothstep(cameraDistance, 0.12, 0.78);
+    lastAvatarOpacity = wallOpacity * zoomOpacity;
+    if (avatarCoverage.value !== zoomOpacity) {
+      avatarCoverage.value = zoomOpacity;
+      renderer.shadowMap.needsUpdate = true;
+    }
+    const visible = zoomOpacity > 0;
+    if (room.avatar.visible !== visible) {
+      room.avatar.visible = visible;
+      // Static room shadows are cached. Removing/restoring the whole character
+      // must also remove/restore its shadow, even while movement is frozen.
+      renderer.shadowMap.needsUpdate = true;
+    }
+    if (lastWallOpacity !== wallOpacity &&
+      (wallOpacity === 0 || wallOpacity === 1 || Math.abs(lastWallOpacity - wallOpacity) > 0.00001)) {
       for (const [material, initial] of avatarMaterials) {
-        material.transparent = opacity < 1 || initial.transparent;
-        material.opacity = opacity * initial.opacity;
-        material.depthWrite = opacity > 0.5 && initial.depthWrite;
+        const transparent = wallOpacity < 1 || initial.transparent;
+        if (material.transparent !== transparent) {
+          material.transparent = transparent;
+          material.needsUpdate = true;
+        }
+        material.opacity = wallOpacity * initial.opacity;
+        material.depthWrite = wallOpacity > 0.5 && initial.depthWrite;
       }
-      lastAvatarOpacity = opacity;
+      lastWallOpacity = wallOpacity;
     }
   }
 

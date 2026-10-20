@@ -239,3 +239,90 @@ test("ベースを持っている間はピンチで演奏用の表示を拡大�
     expect(errors).toEqual([]);
   } finally { await input.end(); await cdp.detach(); }
 });
+
+test("3倍を超えた時だけ旅人が滑らかに消え、縮小・解除すると戻る", { tag: "@pinch" }, async ({ page, context }) => {
+  const errors = collectPageErrors(page);
+  const room = await prepare(page);
+  const initial = await position(page);
+  const hudBefore = await page.locator(".room-jump").boundingBox();
+  const cdp = await context.newCDPSession(page);
+  const input = touches(cdp);
+  // Frame the traveller's head/hood off-centre so screenshots prove that the
+  // actual model fades, rather than merely being cropped outside the view.
+  const anchor = { x: 215, y: 450 };
+  const contacts = (zoom: number, firstId = 1): Contact[] => [
+    { id: firstId, x: anchor.x - 20 * zoom, y: anchor.y },
+    { id: firstId + 1, x: anchor.x + 20 * zoom, y: anchor.y },
+  ];
+  const opacity = async () => Number(await room.getAttribute("data-avatar-opacity"));
+  const expectShown = async () => {
+    await expect(room).toHaveAttribute("data-avatar-visible", "true");
+    expect(await opacity()).toBe(1);
+  };
+  const zoomTo = async (zoom: number, firstId = 1) => {
+    await input.move(contacts(zoom, firstId));
+    // Chromium can deliver small native touch moves on a later compositor
+    // frame; wait for both that event and the throttled camera snapshot.
+    await expect.poll(async () => {
+      await page.clock.runFor(128);
+      return (await projection(page)).zoom;
+    }).toBeCloseTo(zoom, 2);
+    await expectAnchor(page, initial, anchor);
+    expect(await position(page)).toEqual(initial);
+  };
+  try {
+    await expectShown();
+    await input.start(contacts(1));
+    await zoomTo(3);
+    await expectShown();
+    await page.screenshot({ path: "docs/screenshots/pinch-avatar-3x.png" });
+
+    await zoomTo(3.35);
+    await expect(room).toHaveAttribute("data-avatar-visible", "true");
+    expect(await opacity()).toBeGreaterThan(0.35);
+    expect(await opacity()).toBeLessThan(0.65);
+    await page.screenshot({ path: "docs/screenshots/pinch-avatar-fading.png" });
+
+    await zoomTo(4.5);
+    await expect(room).toHaveAttribute("data-avatar-visible", "false");
+    expect(await opacity()).toBe(0);
+    await zoomTo(6);
+    await expect(room).toHaveAttribute("data-avatar-visible", "false");
+    expect(await opacity()).toBe(0);
+    expect(await page.locator(".room-jump").boundingBox()).toEqual(hudBefore);
+    expect(await page.evaluate(() => window.visualViewport?.scale)).toBe(1);
+    await page.screenshot({ path: "docs/screenshots/pinch-avatar-6x.png" });
+
+    await zoomTo(2.8);
+    await expectShown();
+    await page.screenshot({ path: "docs/screenshots/pinch-avatar-reversed.png" });
+    await zoomTo(0.7);
+    await expectShown();
+    await zoomTo(6);
+    await input.end();
+    await page.clock.fastForward(500);
+    await page.clock.runFor(128);
+    await expectNormalProjection(page);
+    await expectShown();
+    expect(await position(page)).toEqual(initial);
+    await page.screenshot({ path: "docs/screenshots/pinch-avatar-restored.png" });
+
+    // Cancellation and losing focus cannot leave the entire avatar hidden.
+    for (const [index, reason] of ["cancel", "blur"].entries()) {
+      const firstId = 3 + index * 2;
+      await input.start(contacts(1, firstId));
+      await zoomTo(6, firstId);
+      await expect(room).toHaveAttribute("data-avatar-visible", "false");
+      if (reason === "cancel") await input.cancel();
+      else await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+      await page.clock.fastForward(500);
+      await page.clock.runFor(128);
+      await expectNormalProjection(page);
+      await expectShown();
+      expect(await position(page)).toEqual(initial);
+      await input.end();
+    }
+    await expect(page).toHaveURL(/#\/$/);
+    expect(errors).toEqual([]);
+  } finally { await input.end(); await cdp.detach(); }
+});

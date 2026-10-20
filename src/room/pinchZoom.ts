@@ -1,6 +1,18 @@
 export const MIN_PINCH_ZOOM = 0.7;
-export const MAX_PINCH_ZOOM = 3;
+export const MAX_PINCH_ZOOM = 6;
+export const PINCH_AVATAR_FADE_START = 3;
+export const PINCH_AVATAR_FADE_END = 3.7;
 export const PINCH_RETURN_SECONDS = 0.28;
+
+/** Preserve the familiar view through 3×, then reveal scenery behind the avatar. */
+export function pinchAvatarOpacity(zoom: number) {
+  // An invalid diagnostic/input must never leave the avatar hidden.
+  if (!Number.isFinite(zoom)) return 1;
+  const progress = Math.max(0, Math.min(1,
+    (zoom - PINCH_AVATAR_FADE_START) / (PINCH_AVATAR_FADE_END - PINCH_AVATAR_FADE_START),
+  ));
+  return 1 - progress * progress * (3 - 2 * progress);
+}
 
 interface Point {
   x: number;

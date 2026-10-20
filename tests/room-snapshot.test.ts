@@ -43,6 +43,7 @@ describe("room snapshot reporting", () => {
       yaw: "0.568", pitch: "-0.247", facing: "1.111",
       cameraDistance: "2.126", cameraX: "2.111", cameraY: "3.222", cameraZ: "4.333",
       cameraZoom: "1.0000", cameraOffsetX: "0.00000", cameraOffsetY: "0.00000", pinching: "false",
+      avatarOpacity: "1.0000", avatarVisible: "true",
       punching: "false", brokenCount: "2",
       birdX: "5.000", birdZ: "-1.500", birdHeight: "0.123", birdMoving: "true",
       doorOpen: "false",
