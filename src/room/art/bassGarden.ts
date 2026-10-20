@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { withDisposalScope, type DisposalScope } from "../disposal";
-import { BASS_STRAP_TAIL, BASS_STRAP_UPPER } from "./bassPose";
+import { BASS_DIMENSIONS, BASS_STRAP_TAIL, BASS_STRAP_UPPER, bassFretWireY, bassStringX, bassStringZ } from "./bassPose";
 
 export const BASS_GARDEN_LAYOUT = {
   interaction: { x: 1.65, z: 5.65, radius: 0.85 },
@@ -102,38 +102,56 @@ function buildBassGarden(scope: DisposalScope) {
     return item;
   }
 
-  // An offset double-cutaway body: the waist, full lower bout and two distinct
-  // horns remain legible from the side as well as in the playing silhouette.
-  const bodyOutline = new THREE.Shape();
-  bodyOutline.moveTo(-0.031, 0.158);
-  bodyOutline.bezierCurveTo(-0.055, 0.169, -0.052, 0.254, -0.086, 0.256);
-  bodyOutline.bezierCurveTo(-0.108, 0.259, -0.119, 0.215, -0.115, 0.178);
-  bodyOutline.bezierCurveTo(-0.112, 0.135, -0.092, 0.101, -0.104, 0.06);
-  bodyOutline.bezierCurveTo(-0.11, 0.026, -0.158, 0.008, -0.176, -0.038);
-  bodyOutline.bezierCurveTo(-0.207, -0.116, -0.173, -0.197, -0.103, -0.222);
-  bodyOutline.bezierCurveTo(-0.041, -0.244, 0.05, -0.246, 0.109, -0.218);
-  bodyOutline.bezierCurveTo(0.171, -0.188, 0.19, -0.115, 0.173, -0.065);
-  bodyOutline.bezierCurveTo(0.161, -0.031, 0.112, -0.007, 0.103, 0.031);
-  bodyOutline.bezierCurveTo(0.092, 0.065, 0.119, 0.091, 0.124, 0.123);
-  bodyOutline.bezierCurveTo(0.128, 0.145, 0.115, 0.161, 0.101, 0.153);
-  bodyOutline.bezierCurveTo(0.081, 0.15, 0.073, 0.11, 0.052, 0.11);
-  bodyOutline.bezierCurveTo(0.035, 0.111, 0.031, 0.138, 0.031, 0.158);
-  bodyOutline.closePath();
+  // Coordinates traced from the supplied three views share one scale. The
+  // rolled rim adds 6 mm around this .498 m outline, yielding a .51 m body.
+  const referenceScale = 0.498 / 440;
+  const referenceX = (x: number) => (x - 199) * referenceScale;
+  const referenceY = (y: number) => (1140 - y) * referenceScale - 0.244;
+  function referenceShape(start: [number, number], curves: number[][]) {
+    const shape = new THREE.Shape();
+    shape.moveTo(referenceX(start[0]), referenceY(start[1]));
+    for (const values of curves) {
+      if (values.length === 2) shape.lineTo(referenceX(values[0]), referenceY(values[1]));
+      else shape.bezierCurveTo(referenceX(values[0]), referenceY(values[1]),
+        referenceX(values[2]), referenceY(values[3]), referenceX(values[4]), referenceY(values[5]));
+    }
+    shape.closePath();
+    return shape;
+  }
+  const bodyOutline = referenceShape([171, 775], [
+    [146, 798, 123, 776, 120, 746],
+    [118, 716, 115, 700, 103, 702],
+    [84, 708, 72, 741, 69, 777],
+    [69, 815, 83, 860, 94, 895],
+    [98, 918, 94, 939, 80, 964],
+    [62, 994, 48, 1021, 50, 1056],
+    [51, 1090, 73, 1115, 107, 1129],
+    [149, 1143, 235, 1147, 287, 1126],
+    [324, 1110, 347, 1082, 344, 1049],
+    [343, 1020, 321, 992, 307, 965],
+    [294, 942, 296, 922, 305, 897],
+    [318, 864, 328, 838, 325, 812],
+    [323, 792, 311, 780, 300, 786],
+    [288, 791, 288, 819, 269, 835],
+    [254, 850, 233, 848, 225, 829],
+    [225, 775],
+  ]);
 
-  // A finely sampled wood finish avoids the large triangular colour patches
-  // that interpolating colours only between outline vertices produced.
+  // Continuous, fine longitudinal grain, with broad brown shading rather than
+  // the triangular patches produced by colouring only outline vertices.
   const woodWidth = 256, woodHeight = 512;
   const woodPixels = new Uint8Array(woodWidth * woodHeight * 4);
-  const amber = new THREE.Color("#926c4e"), brown = new THREE.Color("#76513d");
-  const rim = new THREE.Color("#533b32"), woodColor = new THREE.Color();
+  const amber = new THREE.Color("#95694a"), brown = new THREE.Color("#7d533c");
+  const rim = new THREE.Color("#56372b"), woodColor = new THREE.Color();
   for (let row = 0; row < woodHeight; row++) for (let column = 0; column < woodWidth; column++) {
     const x = column / (woodWidth - 1) * 0.44 - 0.22;
     const y = row / (woodHeight - 1) * 0.55 - 0.27;
-    const radial = Math.hypot(x / 0.23, (y + 0.052) / 0.34);
-    const grainWarp = x * 330 + Math.sin(y * 8) * 2.3 + Math.sin(y * 23) * 0.38;
-    const grain = Math.sin(grainWarp) * 0.018 + Math.sin(grainWarp * 3.17 + y * 5) * 0.009;
-    woodColor.copy(amber).lerp(brown, THREE.MathUtils.smoothstep(radial, 0.32, 0.95));
-    woodColor.lerp(rim, THREE.MathUtils.smoothstep(radial, 0.81, 1.25));
+    const radial = Math.hypot(x / 0.214, (y + 0.035) / 0.36);
+    const grainWarp = x * 342 + Math.sin(y * 5.7 + x * 14) * 1.2 + Math.sin(y * 19 + x * 7) * 0.21;
+    const grain = Math.sin(grainWarp) * 0.017
+      + Math.sin(grainWarp * 2.63 + Math.sin(x * 62 + y * 11)) * 0.009 + Math.sin(x * 980 + y * 6) * 0.003;
+    woodColor.copy(amber).lerp(brown, THREE.MathUtils.smoothstep(radial, 0.31, 0.94));
+    woodColor.lerp(rim, THREE.MathUtils.smoothstep(radial, 0.82, 1.23));
     woodColor.multiplyScalar(1 + grain).convertLinearToSRGB();
     const offset = (row * woodWidth + column) * 4;
     woodPixels[offset] = Math.round(woodColor.r * 255);
@@ -148,12 +166,13 @@ function buildBassGarden(scope: DisposalScope) {
   woodTexture.generateMipmaps = true;
   woodTexture.anisotropy = 4;
   woodTexture.needsUpdate = true;
-  const lacquer = own(new THREE.MeshPhysicalMaterial({ map: woodTexture, roughness: 0.36,
-    metalness: 0, clearcoat: 0.48, clearcoatRoughness: 0.32 }));
-  const body = plate("bass-carved-sunburst-body", bodyOutline, 0.045, -0.026, lacquer, instrument, 0.009);
+  const lacquer = own(new THREE.MeshPhysicalMaterial({ map: woodTexture, roughness: 0.4,
+    metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.38 }));
+  const bodyDepth = 0.036, bodyBevel = 0.006;
+  const body = plate("bass-carved-sunburst-body", bodyOutline, bodyDepth, -0.018, lacquer, instrument, bodyBevel);
   const bodyPosition = body.geometry.getAttribute("position");
-  // ExtrudeGeometry splits the bevel into flat faces. Give its rolled edge a
-  // continuous normal field while keeping the broad front and back planar.
+  // ExtrudeGeometry splits a bevel into facets. Interpolate the contour's
+  // normals through the rolled rim while retaining the planar wood faces.
   const edgePoints = bodyOutline.getPoints(20);
   edgePoints.pop();
   const edgeNormals = edgePoints.map((_, i) => {
@@ -167,10 +186,10 @@ function buildBassGarden(scope: DisposalScope) {
   for (let i = 0; i < bodyPosition.count; i++) {
     const x = bodyPosition.getX(i), y = bodyPosition.getY(i), z = bodyPosition.getZ(i);
     woodUv.setXY(i, (x + 0.22) / 0.44, (y + 0.27) / 0.55);
-    const nz = z > 0.045 ? THREE.MathUtils.clamp((z - 0.045) / 0.009, 0, 1)
-      : z < 0 ? THREE.MathUtils.clamp(z / 0.009, -1, 0) : 0;
-    if (Math.abs(nz) > 0.999) {
-      bodyNormals.setXYZ(i, 0, 0, Math.sign(nz));
+    const nz = z > bodyDepth ? THREE.MathUtils.clamp((z - bodyDepth) / bodyBevel, 0, 1)
+      : z < 0 ? THREE.MathUtils.clamp(z / bodyBevel, -1, 0) : 0;
+    if (nz > 0.999) {
+      bodyNormals.setXYZ(i, 0, 0, 1);
       continue;
     }
     let nearest = Infinity, segment = 0, along = 0;
@@ -182,122 +201,300 @@ function buildBassGarden(scope: DisposalScope) {
       if (distance < nearest) { nearest = distance; segment = edge; along = t; }
     }
     rimNormal.copy(edgeNormals[segment]).lerp(edgeNormals[(segment + 1) % edgePoints.length], along).normalize();
-    const sideWeight = Math.sqrt(1 - nz * nz);
-    bodyNormals.setXYZ(i, rimNormal.x * sideWeight, rimNormal.y * sideWeight, nz);
+    // A slightly broader rear rollover softens the slab-like side silhouette.
+    // The asymmetric waist has a little more relief; the front, fretboard and
+    // all hand-contact surfaces retain their exact shared coordinates.
+    const rearRelief = 0.003 + 0.002 * THREE.MathUtils.smoothstep(-x, 0.025, 0.12)
+      * Math.exp(-(((y - 0.065) / 0.14) ** 4));
+    if (z < 0) {
+      const inset = rearRelief * THREE.MathUtils.clamp(-z / bodyBevel, 0, 1);
+      bodyPosition.setXY(i, x - rimNormal.x * inset, y - rimNormal.y * inset);
+    }
+    const sideWeight = Math.sqrt(1 - nz * nz) * (nz < 0 ? bodyBevel / (bodyBevel + rearRelief) : 1);
+    const normalLength = Math.hypot(sideWeight, nz);
+    bodyNormals.setXYZ(i, rimNormal.x * sideWeight / normalLength, rimNormal.y * sideWeight / normalLength, nz / normalLength);
   }
 
-  const pickguard = new THREE.Shape();
-  pickguard.moveTo(-0.032, 0.153);
-  pickguard.bezierCurveTo(-0.049, 0.163, -0.054, 0.192, -0.073, 0.189);
-  pickguard.bezierCurveTo(-0.092, 0.185, -0.077, 0.096, -0.092, 0.053);
-  pickguard.bezierCurveTo(-0.103, 0.021, -0.14, -0.003, -0.138, -0.038);
-  pickguard.bezierCurveTo(-0.136, -0.067, -0.106, -0.088, -0.076, -0.089);
-  pickguard.bezierCurveTo(-0.034, -0.09, 0.02, -0.087, 0.047, -0.075);
-  pickguard.bezierCurveTo(0.064, -0.067, 0.071, -0.044, 0.08, -0.027);
-  pickguard.bezierCurveTo(0.087, -0.007, 0.1, 0.005, 0.098, 0.019);
-  pickguard.bezierCurveTo(0.095, 0.032, 0.076, 0.028, 0.061, 0.047);
-  pickguard.bezierCurveTo(0.041, 0.067, 0.033, 0.112, 0.032, 0.153);
-  pickguard.closePath();
-  plate("bass-ivory-pickguard", pickguard, 0.0018, 0.029, ivory, instrument, 0.0007);
-  // The rear has its own heel and electronics cover rather than a second face.
-  box("bass-rear-control-cover", [0.075, 0.092, 0.002], [0.084, -0.075, -0.037], rosewood, instrument, 0.012);
-  box("bass-maple-neck", [0.055, 0.469, 0.031], [0, 0.366, -0.003], maple, instrument, 0.009);
-  box("bass-rosewood-fingerboard", [0.058, 0.445, 0.01], [0, 0.377, 0.017], rosewood, instrument, 0.003);
-  box("bass-neck-heel", [0.071, 0.074, 0.008], [0, 0.132, -0.032], instrumentChrome, instrument, 0.004);
-  box("bass-nut", [0.058, 0.008, 0.014], [0, 0.604, 0.022], ivory, instrument, 0.001);
+  const pickguard = referenceShape([170, 810], [
+    [159, 802, 148, 796, 149, 813],
+    [159, 850, 154, 890, 143, 919],
+    [133, 940, 122, 962, 133, 976],
+    [146, 991, 180, 986, 213, 987],
+    [237, 988, 253, 997, 265, 1000],
+    [286, 992, 292, 977, 290, 958],
+    [288, 933, 296, 899, 307, 866],
+    [317, 836, 315, 806, 304, 801],
+    [291, 800, 295, 830, 271, 845],
+    [253, 857, 234, 856, 225, 844],
+    [225, 810],
+  ]);
+  plate("bass-ivory-pickguard", pickguard, 0.0018, 0.0247, ivory, instrument, 0.0007);
 
-  const headstock = new THREE.Shape();
-  headstock.moveTo(-0.027, 0.606);
-  headstock.lineTo(-0.031, 0.755);
-  headstock.bezierCurveTo(-0.032, 0.779, -0.01, 0.8, 0.017, 0.795);
-  headstock.bezierCurveTo(0.048, 0.789, 0.059, 0.766, 0.05, 0.747);
-  headstock.bezierCurveTo(0.041, 0.73, 0.02, 0.735, 0.018, 0.713);
-  headstock.bezierCurveTo(0.014, 0.679, 0.025, 0.632, 0.027, 0.606);
-  headstock.closePath();
-  plate("bass-rounded-maple-headstock", headstock, 0.024, -0.015, maple, instrument, 0.004);
-  for (let i = 0; i < 4; i++) {
-    const y = 0.637 + i * 0.039;
-    frontDisc("bass-tuning-post", 0.007, 0.02, [-0.013, y, 0.017], instrumentChrome, instrument);
-    frontDisc("bass-tuner-post-washer", 0.009, 0.002, [-0.013, y, 0.011], instrumentChrome, instrument);
-    box("bass-rear-tuner-gear", [0.022, 0.025, 0.006], [-0.014, y, -0.022], instrumentChrome, instrument, 0.004);
-    rod("bass-tuner-shaft", new THREE.Vector3(-0.026, y, -0.009), new THREE.Vector3(-0.053, y, -0.009), 0.0038, instrumentChrome, instrument);
-    const clover = new THREE.Shape();
-    clover.moveTo(-0.046, y - 0.004);
-    clover.bezierCurveTo(-0.054, y - 0.006, -0.052, y - 0.015, -0.061, y - 0.014);
-    clover.bezierCurveTo(-0.067, y - 0.014, -0.071, y - 0.009, -0.068, y - 0.004);
-    clover.bezierCurveTo(-0.081, y - 0.003, -0.081, y + 0.011, -0.069, y + 0.012);
-    clover.bezierCurveTo(-0.071, y + 0.021, -0.055, y + 0.021, -0.054, y + 0.011);
-    clover.bezierCurveTo(-0.05, y + 0.01, -0.05, y + 0.004, -0.046, y + 0.004);
-    clover.closePath();
-    plate("bass-cloverleaf-tuning-key", clover, 0.004, -0.011, instrumentChrome, instrument, 0.0016);
-  }
-  for (let fret = 1; fret <= 18; fret++) {
-    const y = 0.602 - 0.69 * (1 - Math.pow(2, -fret / 12));
-    box("bass-fret-wire", [0.057, 0.0018, 0.002], [0, y, 0.023], warmMetal, instrument, 0.0003);
-    if ([3, 5, 7, 9, 12, 15, 17].includes(fret)) {
-      const next = 0.602 - 0.69 * (1 - Math.pow(2, -(fret - 0.5) / 12));
-      for (const x of fret === 12 ? [-0.01, 0.01] : [0]) frontDisc("bass-fingerboard-inlay", 0.0033, 0.0006, [x, next, 0.023], ivory, instrument);
+  const { nutY, bridgeY, fingerboardEndY, fretCount } = BASS_DIMENSIONS;
+  const fingerboardFrontZ = (y: number) => bassStringZ(y) - 0.006;
+  const neckWidth = (y: number) => THREE.MathUtils.lerp(0.07, 0.05,
+    THREE.MathUtils.clamp((y - fingerboardEndY) / (nutY - fingerboardEndY), 0, 1));
+  // A rounded D-section maple back grows gently into the heel. In particular,
+  // the thumb can rest against a curved surface rather than a square block.
+  const neckRows = 40, neckSides = 32;
+  const neckVertices: number[] = [], neckUvs: number[] = [], neckIndices: number[] = [];
+  for (let row = 0; row <= neckRows; row++) {
+    const y = THREE.MathUtils.lerp(fingerboardEndY + 0.02, nutY + 0.003, row / neckRows);
+    const top = fingerboardFrontZ(y) - 0.008;
+    const depth = 0.025 + 0.012 * THREE.MathUtils.smoothstep(nutY - y, 0.35, 0.55)
+      - 0.002 * THREE.MathUtils.smoothstep(y, nutY - 0.04, nutY + 0.003);
+    for (let side = 0; side <= neckSides; side++) {
+      const angle = side / neckSides * Math.PI * 2, sine = Math.sin(angle);
+      neckVertices.push(Math.cos(angle) * neckWidth(y) / 2, y, top + sine * (sine < 0 ? depth : 0.0005));
+      neckUvs.push(side / neckSides, row / neckRows);
+      if (row < neckRows && side < neckSides) {
+        const a = row * (neckSides + 1) + side, b = a + neckSides + 1;
+        neckIndices.push(a, b, a + 1, a + 1, b, b + 1);
+      }
     }
   }
-  box("bass-bridge-plate", [0.084, 0.044, 0.004], [0, -0.129, 0.031], instrumentChrome, instrument, 0.003);
-  box("bass-bridge-folded-lip", [0.084, 0.004, 0.012], [0, -0.149, 0.035], instrumentChrome, instrument, 0.001);
-  for (const y of [-0.033, 0.026]) {
-    box("bass-magnetic-pickup", [0.073, 0.014, 0.007], [0, y, 0.035], ink, instrument, 0.002);
-    for (let i = 0; i < 4; i++) for (const offset of [-0.002, 0.002])
-      frontDisc("bass-pickup-pole-piece", 0.0013, 0.001, [(i - 1.5) * 0.013 + offset, y, 0.039], instrumentChrome, instrument);
+  // Both ends overlap solid wood. Leaving the hidden caps out keeps their
+  // perpendicular normals from creating a dark seam across the maple join.
+  const neckGeometry = own(new THREE.BufferGeometry());
+  neckGeometry.setAttribute("position", new THREE.Float32BufferAttribute(neckVertices, 3));
+  neckGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(neckUvs, 2));
+  neckGeometry.setIndex(neckIndices);
+  neckGeometry.computeVertexNormals();
+  const neckNormals = neckGeometry.getAttribute("normal");
+  const neckSeamNormal = new THREE.Vector3(), otherNeckNormal = new THREE.Vector3();
+  for (let row = 0; row <= neckRows; row++) {
+    const first = row * (neckSides + 1), last = first + neckSides;
+    neckSeamNormal.fromBufferAttribute(neckNormals, first).add(otherNeckNormal.fromBufferAttribute(neckNormals, last)).normalize();
+    neckNormals.setXYZ(first, neckSeamNormal.x, neckSeamNormal.y, neckSeamNormal.z);
+    neckNormals.setXYZ(last, neckSeamNormal.x, neckSeamNormal.y, neckSeamNormal.z);
+  }
+  mesh("bass-rounded-maple-neck", neckGeometry, maple, instrument);
+  const boardOutline = new THREE.Shape();
+  boardOutline.moveTo(-0.025, nutY - 0.003);
+  boardOutline.lineTo(-0.035, fingerboardEndY + 0.02);
+  boardOutline.bezierCurveTo(-0.035, fingerboardEndY + 0.004, -0.021, fingerboardEndY, 0, fingerboardEndY);
+  boardOutline.bezierCurveTo(0.021, fingerboardEndY, 0.035, fingerboardEndY + 0.004, 0.035, fingerboardEndY + 0.02);
+  boardOutline.lineTo(0.025, nutY - 0.003);
+  boardOutline.closePath();
+  const board = plate("bass-tapered-rosewood-fingerboard", boardOutline, 0.008, 0, rosewood, instrument, 0.0007);
+  const boardVertices = board.geometry.getAttribute("position");
+  for (let i = 0; i < boardVertices.count; i++) {
+    boardVertices.setZ(i, boardVertices.getZ(i) + fingerboardFrontZ(boardVertices.getY(i)) - 0.0087);
+  }
+  board.geometry.computeVertexNormals();
+  box("bass-four-bolt-neck-plate", [0.064, 0.076, 0.003], [0, 0.132, -0.0255], instrumentChrome, instrument, 0.004);
+  for (const x of [-0.024, 0.024]) for (const y of [0.104, 0.16]) {
+    frontDisc("bass-neck-plate-bolt", 0.0036, 0.0015, [x, y, -0.0277], instrumentChrome, instrument);
+    box("bass-neck-bolt-slot", [0.004, 0.0007, 0.0005], [x, y, -0.0286], ink, instrument, 0);
+  }
+  box("bass-nut", [0.0505, 0.006, 0.008], [0, nutY, BASS_DIMENSIONS.nutStringZ - 0.004], ivory, instrument, 0.0007);
+
+  // A long, asymmetrical four-in-line headstock, including its dropped front
+  // face, staggered post centres, rear worm gears and separate clover keys.
+  const headY = (y: number) => nutY + (370 - y) / 195 * 0.23;
+  const headstock = new THREE.Shape();
+  headstock.moveTo(referenceX(177), headY(369));
+  for (const [a, b, c, d, e, f] of [
+    [159, 359, 150, 349, 153, 333], [164, 304, 173, 276, 179, 242],
+    [185, 207, 190, 176, 216, 176], [239, 176, 253, 189, 253, 209],
+    [253, 226, 242, 236, 236, 246], [235, 263, 241, 290, 246, 330],
+    [228, 345, 221, 354, 221, 370],
+  ]) headstock.bezierCurveTo(referenceX(a), headY(b), referenceX(c), headY(d), referenceX(e), headY(f));
+  headstock.closePath();
+  const head = plate("bass-offset-maple-headstock", headstock, 0.020, -0.013, maple, instrument, 0.002);
+  // Split only triangles that cross the short neck-to-headstock transition.
+  // Warping a few huge front-face triangles produced visibly faceted shading;
+  // these narrow strips follow a smooth volute with its analytic normals.
+  type HeadVertex = { p: THREE.Vector3; n: THREE.Vector3; uv: THREE.Vector2 };
+  const headPositions = head.geometry.getAttribute("position");
+  const headNormals = head.geometry.getAttribute("normal");
+  const headUvs = head.geometry.getAttribute("uv");
+  const smoothHeadPositions: number[] = [], smoothHeadNormals: number[] = [], smoothHeadUvs: number[] = [];
+  function splitHeadPolygon(polygon: HeadVertex[], y: number, keepUpper: boolean) {
+    const clipped: HeadVertex[] = [];
+    for (let i = 0; i < polygon.length; i++) {
+      const a = polygon[i], b = polygon[(i + 1) % polygon.length];
+      const aInside = keepUpper ? a.p.y >= y : a.p.y <= y;
+      const bInside = keepUpper ? b.p.y >= y : b.p.y <= y;
+      if (aInside) clipped.push(a);
+      if (aInside !== bInside) {
+        const t = (y - a.p.y) / (b.p.y - a.p.y);
+        clipped.push({ p: a.p.clone().lerp(b.p, t), n: a.n.clone().lerp(b.n, t).normalize(), uv: a.uv.clone().lerp(b.uv, t) });
+      }
+    }
+    return clipped;
+  }
+  function appendHeadPolygon(polygon: HeadVertex[]) {
+    for (let triangle = 1; triangle < polygon.length - 1; triangle++) {
+      for (const vertex of [polygon[0], polygon[triangle], polygon[triangle + 1]]) {
+        const t = THREE.MathUtils.clamp((vertex.p.y - nutY) / 0.05, 0, 1);
+        const offset = 0.010 * (1 - t * t * (3 - 2 * t));
+        const derivative = -0.2 * 6 * t * (1 - t);
+        const normal = vertex.n.clone();
+        normal.y -= derivative * normal.z;
+        normal.normalize();
+        smoothHeadPositions.push(vertex.p.x, vertex.p.y, vertex.p.z + offset);
+        smoothHeadNormals.push(normal.x, normal.y, normal.z);
+        smoothHeadUvs.push(vertex.uv.x, vertex.uv.y);
+      }
+    }
+  }
+  for (let i = 0; i < headPositions.count; i += 3) {
+    let remaining = [0, 1, 2].map((index) => ({
+      p: new THREE.Vector3().fromBufferAttribute(headPositions, i + index),
+      n: new THREE.Vector3().fromBufferAttribute(headNormals, i + index),
+      uv: new THREE.Vector2(headUvs.getX(i + index), headUvs.getY(i + index)),
+    }));
+    for (let step = 1; step <= 10 && remaining.length >= 3; step++) {
+      const y = nutY + step * 0.005;
+      if (remaining.every((vertex) => vertex.p.y >= y)) continue;
+      if (remaining.every((vertex) => vertex.p.y <= y)) break;
+      appendHeadPolygon(splitHeadPolygon(remaining, y, false));
+      remaining = splitHeadPolygon(remaining, y, true);
+    }
+    appendHeadPolygon(remaining);
+  }
+  const smoothHeadGeometry = own(new THREE.BufferGeometry());
+  smoothHeadGeometry.setAttribute("position", new THREE.Float32BufferAttribute(smoothHeadPositions, 3));
+  smoothHeadGeometry.setAttribute("normal", new THREE.Float32BufferAttribute(smoothHeadNormals, 3));
+  smoothHeadGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(smoothHeadUvs, 2));
+  head.geometry = smoothHeadGeometry;
+  const tunerCentres = [[174, 335], [185, 296], [197, 256], [209, 216]].map(([x, y]) => new THREE.Vector2(referenceX(x), headY(y)));
+  const tunerKeyMaterial = surface("#a5a0a1", 0.38, 0.32);
+  const tunerGearMaterial = surface("#777d82", 0.42, 0.42);
+  for (const centre of tunerCentres) {
+    const { x, y } = centre;
+    frontDisc("bass-tuner-post-washer", 0.0088, 0.002, [x, y, 0.0105], instrumentChrome, instrument);
+    frontDisc("bass-tuning-post", 0.0052, 0.019, [x, y, 0.021], instrumentChrome, instrument);
+    box("bass-tuning-post-slot", [0.007, 0.001, 0.0007], [x, y, 0.0307], ink, instrument, 0);
+    const tunerPlate = box("bass-rear-tuner-baseplate", [0.027, 0.034, 0.003], [x, y, -0.017], instrumentChrome, instrument, 0.003);
+    tunerPlate.rotation.z = -0.2;
+    frontDisc("bass-rear-tuner-gear", 0.009, 0.006, [x, y, -0.022], tunerGearMaterial, instrument);
+    frontDisc("bass-rear-tuner-axle", 0.004, 0.003, [x, y, -0.026], tunerKeyMaterial, instrument);
+    box("bass-rear-gear-screw-slot", [0.005, 0.0008, 0.0004], [x, y, -0.0277], ink, instrument, 0);
+    for (let tooth = 0; tooth < 12; tooth++) {
+      const angle = tooth / 12 * Math.PI * 2;
+      const gearTooth = box("bass-rear-gear-tooth", [0.0023, 0.0025, 0.004],
+        [x + Math.sin(angle) * 0.009, y + Math.cos(angle) * 0.009, -0.022], tunerGearMaterial, instrument, 0.0003);
+      gearTooth.rotation.z = -angle;
+    }
+    rod("bass-tuner-worm-shaft", new THREE.Vector3(x - 0.014, y + 0.009, -0.026),
+      new THREE.Vector3(x + 0.012, y + 0.009, -0.026), 0.0028, instrumentChrome, instrument);
+    for (const dx of [-0.009, 0.009]) frontDisc("bass-rear-tuner-fixing-screw", 0.0017, 0.001,
+      [x + dx, y - 0.012, -0.019], instrumentChrome, instrument);
+    rod("bass-tuner-key-shaft", new THREE.Vector3(x - 0.010, y + 0.009, -0.021),
+      new THREE.Vector3(x - 0.045, y + 0.019, -0.021), 0.0033, instrumentChrome, instrument);
+    const keyX = x - 0.053, keyY = y + 0.022;
+    const clover = new THREE.Shape();
+    clover.moveTo(keyX + 0.011, keyY - 0.003);
+    clover.bezierCurveTo(keyX + 0.009, keyY - 0.010, keyX + 0.004, keyY - 0.017, keyX - 0.003, keyY - 0.014);
+    clover.bezierCurveTo(keyX - 0.009, keyY - 0.016, keyX - 0.015, keyY - 0.010, keyX - 0.012, keyY - 0.004);
+    clover.bezierCurveTo(keyX - 0.021, keyY, keyX - 0.018, keyY + 0.013, keyX - 0.009, keyY + 0.013);
+    clover.bezierCurveTo(keyX - 0.008, keyY + 0.023, keyX + 0.007, keyY + 0.024, keyX + 0.010, keyY + 0.014);
+    clover.bezierCurveTo(keyX + 0.014, keyY + 0.009, keyX + 0.014, keyY + 0.004, keyX + 0.011, keyY - 0.003);
+    clover.closePath();
+    plate("bass-cloverleaf-tuning-key", clover, 0.004, -0.023, tunerKeyMaterial, instrument, 0.0016);
+  }
+  const retainer = new THREE.Vector2(referenceX(209), headY(311));
+  frontDisc("bass-two-string-retainer-stem", 0.003, 0.013, [retainer.x, retainer.y, 0.016], instrumentChrome, instrument);
+  frontDisc("bass-two-string-retainer-disc", 0.009, 0.003, [retainer.x, retainer.y, 0.025], instrumentChrome, instrument);
+  frontDisc("bass-string-retainer-screw", 0.003, 0.001, [retainer.x, retainer.y, 0.027], tunerKeyMaterial, instrument);
+  box("bass-retainer-screw-slot", [0.004, 0.0008, 0.0004], [retainer.x, retainer.y, 0.0276], ink, instrument, 0);
+  for (let fret = 1; fret <= fretCount; fret++) {
+    const y = bassFretWireY(fret), width = neckWidth(y) - 0.002;
+    rod("bass-rounded-fret-wire", new THREE.Vector3(-width / 2, y, fingerboardFrontZ(y) + 0.0008),
+      new THREE.Vector3(width / 2, y, fingerboardFrontZ(y) + 0.0008), 0.0009, warmMetal, instrument, 8);
+    if ([3, 5, 7, 9, 12, 15, 17, 19].includes(fret)) {
+      const dotY = (bassFretWireY(fret - 1) + y) / 2;
+      for (const x of fret === 12 ? [-0.010, 0.010] : [0]) frontDisc("bass-fingerboard-inlay", 0.0023, 0.0005,
+        [x, dotY, fingerboardFrontZ(dotY) + 0.0003], ivory, instrument);
+      sphere("bass-neck-side-position-dot", [0.0007, 0.0014, 0.0014],
+        [-neckWidth(dotY) / 2 - 0.0004, dotY, fingerboardFrontZ(dotY) - 0.003], ivory, instrument);
+    }
+  }
+
+  box("bass-bridge-plate", [0.088, 0.049, 0.004], [0, bridgeY - 0.004, 0.027], instrumentChrome, instrument, 0.0025);
+  box("bass-bridge-folded-lip", [0.088, 0.004, 0.013], [0, bridgeY - 0.026, 0.0335], instrumentChrome, instrument, 0.001);
+  for (const y of [-0.045, -0.125]) {
+    box("bass-magnetic-pickup", [0.095, 0.022, 0.008], [0, y, 0.0325], ink, instrument, 0.003);
+    for (let i = 0; i < 4; i++) for (const offset of [-0.0025, 0.0025])
+      frontDisc("bass-pickup-pole-piece", 0.0017, 0.0008, [bassStringX(3 - i, y) + offset, y, 0.037], instrumentChrome, instrument);
+    for (const side of [-1, 1]) frontDisc("bass-pickup-height-screw", 0.002, 0.001,
+      [side * 0.043, y, 0.0365], instrumentChrome, instrument);
   }
   const vibratingStrings: { mesh: THREE.Mesh; rest: Float32Array; length: number; phase: number }[] = [];
   for (let i = 0; i < 4; i++) {
-    const x = (i - 1.5) * 0.013;
-    rod("bass-individual-bridge-saddle", new THREE.Vector3(x - 0.005, -0.129, 0.037),
-      new THREE.Vector3(x + 0.005, -0.129, 0.037), 0.0035, instrumentChrome, instrument, 12);
-    rod("bass-bridge-adjustment-screw", new THREE.Vector3(x, -0.148, 0.035),
-      new THREE.Vector3(x, -0.12, 0.035), 0.0013, warmMetal, instrument);
-    const bridge = new THREE.Vector3(x, -0.142, 0.042), nut = new THREE.Vector3(x * 0.82, 0.603, 0.033);
-    const string = rod("bass-steel-string", bridge, nut, 0.00055 + (3 - i) * 0.00013, instrumentChrome, instrument, 5, 16);
+    const x = bassStringX(3 - i, bridgeY), radius = 0.00055 + (3 - i) * 0.00013;
+    rod("bass-individual-bridge-saddle", new THREE.Vector3(x - 0.006, bridgeY, 0.037),
+      new THREE.Vector3(x + 0.006, bridgeY, 0.037), 0.005, instrumentChrome, instrument, 16);
+    rod("bass-bridge-adjustment-screw", new THREE.Vector3(x, bridgeY - 0.026, 0.033),
+      new THREE.Vector3(x, bridgeY - 0.001, 0.033), 0.0013, warmMetal, instrument);
+    const bridge = new THREE.Vector3(x, bridgeY, BASS_DIMENSIONS.bridgeStringZ);
+    const nut = new THREE.Vector3(bassStringX(3 - i, nutY), nutY, BASS_DIMENSIONS.nutStringZ);
+    rod("bass-bridge-string-tail", bridge, new THREE.Vector3(x, bridgeY - 0.023, 0.031), radius, instrumentChrome, instrument, 5);
+    const string = rod("bass-steel-string", bridge, nut, radius, instrumentChrome, instrument, 5, 20);
     string.userData.bassVibratingString = true;
     const positions = string.geometry.getAttribute("position") as THREE.BufferAttribute;
     positions.setUsage(THREE.DynamicDrawUsage);
     string.geometry.computeBoundingSphere();
     if (string.geometry.boundingSphere) string.geometry.boundingSphere.radius += 0.003;
     vibratingStrings.push({ mesh: string, rest: new Float32Array(positions.array), length: bridge.distanceTo(nut), phase: i * 0.71 });
-    rod("bass-headstock-string", new THREE.Vector3(x * 0.82, 0.603, 0.033), new THREE.Vector3(-0.013, 0.637 + i * 0.039, 0.028), 0.00055 + (3 - i) * 0.00013, instrumentChrome, instrument, 5);
+    const centre = tunerCentres[i];
+    const post = new THREE.Vector3(centre.x + 0.0047, centre.y, 0.025);
+    if (i < 2) rod("bass-headstock-string", nut, post, radius, instrumentChrome, instrument, 5);
+    else {
+      const guide = new THREE.Vector3(THREE.MathUtils.lerp(nut.x, post.x, (retainer.y - nutY) / (post.y - nutY)), retainer.y, 0.0225);
+      rod("bass-headstock-string-to-retainer", nut, guide, radius, instrumentChrome, instrument, 5);
+      rod("bass-headstock-string-to-post", guide, post, radius, instrumentChrome, instrument, 5);
+    }
+    const winding = mesh("bass-string-post-winding", own(new THREE.TorusGeometry(0.0053, radius, 5, 18)), instrumentChrome, instrument);
+    winding.position.set(centre.x, centre.y, 0.025);
   }
-  const controlPlate = new THREE.Shape();
-  controlPlate.moveTo(0.092, -0.035);
-  controlPlate.bezierCurveTo(0.102, -0.028, 0.127, -0.038, 0.134, -0.055);
-  controlPlate.bezierCurveTo(0.15, -0.09, 0.141, -0.152, 0.127, -0.174);
-  controlPlate.bezierCurveTo(0.114, -0.193, 0.096, -0.182, 0.096, -0.168);
-  controlPlate.bezierCurveTo(0.1, -0.121, 0.085, -0.073, 0.085, -0.052);
-  controlPlate.bezierCurveTo(0.085, -0.044, 0.087, -0.038, 0.092, -0.035);
-  controlPlate.closePath();
-  plate("bass-chrome-control-plate", controlPlate, 0.002, 0.029, instrumentChrome, instrument, 0.001);
-  for (const [x, y, radius] of [[0.109, -0.06, 0.011], [0.116, -0.099, 0.011], [0.114, -0.132, 0.009]]) {
-    frontDisc("bass-knob-chrome-skirt", radius + 0.0015, 0.002, [x, y, 0.033], instrumentChrome, instrument);
-    frontDisc("bass-knurled-volume-knob", radius, 0.012, [x, y, 0.039], ink, instrument);
-    box("bass-knob-index", [0.0015, 0.005, 0.001], [x, y + 0.003, 0.046], ivory, instrument, 0.0002);
+  for (const x of [-0.035, 0.035]) frontDisc("bass-bridge-mounting-screw", 0.0022, 0.001,
+    [x, bridgeY + 0.014, 0.0295], instrumentChrome, instrument);
+  const controlPlate = referenceShape([260, 973], [
+    [270, 965, 282, 965, 290, 979],
+    [301, 994, 315, 1016, 327, 1034],
+    [338, 1051, 332, 1068, 319, 1068],
+    [305, 1065, 288, 1041, 276, 1025],
+    [264, 1010, 251, 997, 253, 986],
+    [253, 980, 256, 976, 260, 973],
+  ]);
+  plate("bass-chrome-control-plate", controlPlate, 0.002, 0.0248, instrumentChrome, instrument, 0.0008);
+  for (const [x, y] of [[0.084, -0.077], [0.111, -0.110]]) {
+    frontDisc("bass-knob-chrome-skirt", 0.0125, 0.002, [x, y, 0.0285], instrumentChrome, instrument);
+    frontDisc("bass-knurled-volume-knob", 0.011, 0.012, [x, y, 0.035], ink, instrument);
+    box("bass-knob-index", [0.0015, 0.005, 0.0008], [x, y + 0.003, 0.0414], ivory, instrument, 0.0002);
+    for (let ridge = 0; ridge < 16; ridge++) {
+      const angle = ridge * Math.PI / 8;
+      rod("bass-knob-fine-knurl", new THREE.Vector3(x + Math.sin(angle) * 0.011, y + Math.cos(angle) * 0.011, 0.031),
+        new THREE.Vector3(x + Math.sin(angle) * 0.011, y + Math.cos(angle) * 0.011, 0.039), 0.0004, rubber, instrument, 5);
+    }
   }
-  for (const [x, y] of [[-0.072, 0.168], [-0.085, 0.065], [-0.126, -0.028], [-0.076, -0.081], [0.041, -0.067], [0.089, 0.018], [0.041, 0.083]]) {
-    frontDisc("bass-pickguard-screw", 0.0021, 0.001, [x, y, 0.032], instrumentChrome, instrument);
-    box("bass-pickguard-screw-slot", [0.0025, 0.0005, 0.0003], [x, y, 0.0326], ink, instrument, 0);
+  for (const [x, y] of [[153, 813], [162, 867], [143, 937], [147, 977], [228, 984], [288, 954], [304, 818], [236, 855]]) {
+    frontDisc("bass-pickguard-screw", 0.0019, 0.0008, [referenceX(x), referenceY(y), 0.0276], instrumentChrome, instrument);
+    box("bass-pickguard-screw-slot", [0.0024, 0.0005, 0.0003], [referenceX(x), referenceY(y), 0.0281], ink, instrument, 0);
   }
+  for (const [x, y] of [[0.078, -0.062], [0.142, -0.155]]) frontDisc("bass-control-plate-screw", 0.002, 0.0008,
+    [x, y, 0.0278], instrumentChrome, instrument);
   for (const point of [BASS_STRAP_UPPER, BASS_STRAP_TAIL]) {
-    const direction = new THREE.Vector3(0, point === BASS_STRAP_UPPER ? 1 : -1, 0);
-    const inside = point.clone().addScaledVector(direction, -0.014);
+    const inside = point.clone().add(point === BASS_STRAP_UPPER ? new THREE.Vector3(0.004, -0.018, 0) : new THREE.Vector3(0, 0.018, 0));
     rod("bass-load-bearing-strap-button", inside, point, 0.0038, instrumentChrome, instrument, 12);
     const cap = mesh("bass-strap-button-cap", own(new THREE.CylinderGeometry(0.007, 0.007, 0.003, 20)), instrumentChrome, instrument);
     cap.position.copy(point);
+    cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), point.clone().sub(inside).normalize());
   }
-  // A front-mounted output socket belongs to the metal control plate, not to
-  // the strap endpin. The elbow turns the lead down along the outside edge.
-  frontDisc("bass-output-socket-washer", 0.008, 0.003, [0.112, -0.163, 0.033], instrumentChrome, instrument);
-  frontDisc("bass-output-socket-opening", 0.0043, 0.002, [0.112, -0.163, 0.035], rubber, instrument);
-  rod("bass-output-plug", new THREE.Vector3(0.112, -0.163, 0.035), new THREE.Vector3(0.112, -0.163, 0.063), 0.005, instrumentChrome, instrument, 12);
-  sphere("bass-output-plug-elbow", [0.007, 0.007, 0.007], [0.112, -0.163, 0.064], instrumentChrome, instrument);
-  rod("bass-output-plug-boot", new THREE.Vector3(0.112, -0.164, 0.064), new THREE.Vector3(0.112, -0.196, 0.064), 0.0055, rubber, instrument, 12);
+  // The lead exits the lower end of the front control plate through a real
+  // socket and right-angle plug. Its anchor is the boot's end, never an endpin.
+  const jackX = 0.132, jackY = -0.139, jackZ = 0.060;
+  frontDisc("bass-output-socket-washer", 0.008, 0.003, [jackX, jackY, 0.029], instrumentChrome, instrument);
+  frontDisc("bass-output-socket-opening", 0.0043, 0.002, [jackX, jackY, 0.031], rubber, instrument);
+  rod("bass-output-plug", new THREE.Vector3(jackX, jackY, 0.031), new THREE.Vector3(jackX, jackY, jackZ - 0.001), 0.005, instrumentChrome, instrument, 12);
+  sphere("bass-output-plug-elbow", [0.007, 0.007, 0.007], [jackX, jackY, jackZ], instrumentChrome, instrument);
+  rod("bass-output-plug-boot", new THREE.Vector3(jackX, jackY - 0.001, jackZ), new THREE.Vector3(jackX, jackY - 0.033, jackZ), 0.0055, rubber, instrument, 12);
   const cableJack = new THREE.Object3D();
   cableJack.name = "bass-output-jack-anchor";
-  cableJack.position.set(0.112, -0.196, 0.064);
+  cableJack.position.set(jackX, jackY - 0.033, jackZ);
   instrument.add(cableJack);
 
   const restPosition = new THREE.Vector3(1.65, 0.27, 6.45);

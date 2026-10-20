@@ -7,6 +7,7 @@ import { buildCharacterBody } from "./characterBody";
 import type { CharacterBuilder } from "./characterBuilder";
 import {
   BASS_HELD_POSITION, BASS_HELD_ROTATION, BASS_HELD_SCALE, BASS_STRAP_UPPER, BASS_STRAP_TAIL,
+  BASS_PICK_Y, BASS_SLAP_Y,
   bassFretY, bassStringX, bassStringZ, bassPosePoint,
 } from "./bassPose";
 
@@ -431,10 +432,15 @@ function buildCharacter(scope: DisposalScope) {
   // Both terminal centres share the instrument's actual button coordinates.
   const strapSurface = remember(new THREE.MeshStandardMaterial({ color: "#493b32", roughness: 0.76,
     side: THREE.DoubleSide, transparent: true, opacity: 0 }));
+  const upperStrapButton = bassPosePoint(...BASS_STRAP_UPPER.toArray());
+  const upperStrapDirection = new THREE.Vector3(-0.125, 0.685, -0.210)
+    .sub(upperStrapButton).normalize();
   const strapPoints = [
-    bassPosePoint(...BASS_STRAP_UPPER.toArray()),
-    new THREE.Vector3(-0.125, 0.678, -0.202),
-    new THREE.Vector3(-0.172, 0.719, -0.132),
+    // Extend the rounded leather tab a little past the button: the fastener
+    // passes through the tab, rather than terminating at a cut ribbon edge.
+    upperStrapButton.clone().addScaledVector(upperStrapDirection, -0.009),
+    new THREE.Vector3(-0.125, 0.685, -0.210),
+    new THREE.Vector3(-0.177, 0.713, -0.169),
     new THREE.Vector3(-0.215, 0.732, -0.052),
     new THREE.Vector3(-0.206, 0.695, 0.04),
     new THREE.Vector3(-0.15, 0.651, 0.134),
@@ -456,15 +462,21 @@ function buildCharacter(scope: DisposalScope) {
   const strapPositions: number[] = [], strapIndices: number[] = [];
   const strapAcross = new THREE.Vector3(), strapOut = new THREE.Vector3();
   const strapSides = 12;
+  const strapLength = strapCurve.getLength();
   for (let row = 0; row <= 128; row++) {
     const t = row / 128;
-    const point = strapCurve.getPoint(t), tangent = strapCurve.getTangent(t);
-    strapGuides.getPoint(t, strapOut).normalize();
+    const curveT = strapCurve.getUtoTmapping(t, 0);
+    const point = strapCurve.getPoint(curveT), tangent = strapCurve.getTangent(curveT);
+    strapGuides.getPoint(curveT, strapOut).normalize();
     strapAcross.crossVectors(tangent, strapOut).normalize();
     strapOut.crossVectors(strapAcross, tangent).normalize();
-    const endTaper = Math.min(THREE.MathUtils.smoothstep(t, 0, 0.012),
-      1 - THREE.MathUtils.smoothstep(t, 0.93, 1));
-    const halfWidth = THREE.MathUtils.lerp(0.016, 0.023, endTaper);
+    const distance = t * strapLength;
+    // A slim, constant-width belt and a small rounded mounting tab. Width is
+    // measured by arc length, so a turn over the shoulder cannot grow a leaf.
+    const tabCap = Math.sqrt(Math.max(0, 1 - Math.max(0, 1 - distance / 0.012) ** 2));
+    const terminal = 1 - THREE.MathUtils.smoothstep(t, 0.95, 1);
+    const halfWidth = THREE.MathUtils.lerp(0.012, 0.016,
+      THREE.MathUtils.smoothstep(distance, 0.026, 0.060)) * tabCap * terminal;
     for (let side = 0; side <= strapSides; side++) {
       const angle = side / strapSides * Math.PI * 2;
       const w = Math.cos(angle) * halfWidth, thickness = Math.sin(angle) * 0.0024;
@@ -648,8 +660,12 @@ function buildCharacter(scope: DisposalScope) {
           fingerboardY = bassFretY(state.bass.fret);
           frettingX = bassStringX(state.bass.string, fingerboardY);
         }
-        const pickX = bassStringX(state.bass.pluckString ?? state.bass.string);
-        const thumbX = bassStringX(state.bass.pluckString ?? state.bass.string, 0.067);
+        // Slapping at the fingerboard end moves the wrist as a whole. Keeping
+        // the palm at the lower pickup would stretch a short paw thumb across
+        // the instrument instead of making a believable change of technique.
+        const pickingY = THREE.MathUtils.lerp(BASS_PICK_Y, BASS_SLAP_Y - 0.030, slap);
+        const pickX = bassStringX(state.bass.pluckString ?? state.bass.string, pickingY);
+        const thumbX = bassStringX(state.bass.pluckString ?? state.bass.string, BASS_SLAP_Y);
         const touchZ = bassStringZ(fingerboardY) + (state.bass.fretting ? 0 : 0.014);
         playingFingers.visible = lift > 0.65;
         playingFingers.scale.setScalar(BASS_HELD_SCALE * THREE.MathUtils.smoothstep(lift, 0.65, 1));
@@ -658,43 +674,43 @@ function buildCharacter(scope: DisposalScope) {
         // with reduced motion, without moving the elbow through the instrument.
         // The fingers grow out of a broad rounded mitt. Their short pads overlap
         // at the knuckles and curl only at the strings; no long human phalanges.
-        const pickPalmX = -0.067 + pickX * 0.3;
-        pluckingIndex([[pickPalmX + 0.018, 0.019, 0.082 + slap * 0.004],
-          [pickX - 0.018, 0.022, 0.077 + slap * 0.008],
-          [pickX - 0.006, 0.019, 0.059 + slap * 0.014],
-          [pickX - fingerPluck * 0.007, 0.015, bassStringZ(0.015) + 0.002 + fingerPluck * 0.003 + slap * 0.015]]);
-        pluckingMiddle([[pickPalmX + 0.016, -0.007, 0.081 + slap * 0.004],
-          [pickX - 0.019, -0.006, 0.075 + slap * 0.008],
-          [pickX - 0.007, -0.009, 0.057 + slap * 0.013],
-          [pickX - 0.001, -0.014, 0.044 + slap * 0.016]]);
-        pluckingRing([[pickPalmX + 0.011, -0.029, 0.078 + slap * 0.004],
-          [pickX - 0.024, -0.031, 0.073 + slap * 0.008],
-          [pickX - 0.015, -0.036, 0.058 + slap * 0.012],
-          [pickX - 0.01, -0.04, 0.048 + slap * 0.015]]);
-        pluckingThumb([[pickPalmX + 0.005, 0.025, 0.073],
-          [pickPalmX + 0.021, 0.04, 0.073],
+        const pickPalmX = THREE.MathUtils.lerp(-0.067 + pickX * 0.3, thumbX - 0.044, slap);
+        pluckingIndex([[pickPalmX + 0.018, pickingY + 0.004, 0.082 + slap * 0.004],
+          [pickX - 0.018, pickingY + 0.007, 0.077 + slap * 0.008],
+          [pickX - 0.006, pickingY + 0.004, 0.059 + slap * 0.014],
+          [pickX - fingerPluck * 0.007, pickingY, bassStringZ(pickingY) + 0.002 + fingerPluck * 0.003 + slap * 0.015]]);
+        pluckingMiddle([[pickPalmX + 0.016, pickingY - 0.022, 0.081 + slap * 0.004],
+          [pickX - 0.019, pickingY - 0.021, 0.075 + slap * 0.008],
+          [pickX - 0.007, pickingY - 0.024, 0.057 + slap * 0.013],
+          [pickX - 0.001, pickingY - 0.029, 0.044 + slap * 0.016]]);
+        pluckingRing([[pickPalmX + 0.011, pickingY - 0.044, 0.078 + slap * 0.004],
+          [pickX - 0.024, pickingY - 0.046, 0.073 + slap * 0.008],
+          [pickX - 0.015, pickingY - 0.051, 0.058 + slap * 0.012],
+          [pickX - 0.01, pickingY - 0.055, 0.048 + slap * 0.015]]);
+        pluckingThumb([[pickPalmX + 0.005, pickingY + 0.01, 0.073 - slap * 0.006],
+          [pickPalmX + 0.021, pickingY + 0.025, 0.073 - slap * 0.007],
           [THREE.MathUtils.lerp(-0.03, thumbX - 0.012, slap),
-            THREE.MathUtils.lerp(0.047, 0.061, slap), 0.06],
-          [THREE.MathUtils.lerp(-0.022, thumbX, slap), THREE.MathUtils.lerp(0.043, 0.067, slap),
-            THREE.MathUtils.lerp(0.052, bassStringZ(0.067) + 0.0008, slap)]]);
-        frettingIndex([[0.041, fingerboardY + 0.002, 0.065],
-          [0.023, fingerboardY + 0.011, 0.072],
-          [frettingX + 0.009, fingerboardY + 0.007, touchZ + 0.022],
+            THREE.MathUtils.lerp(pickingY + 0.032, BASS_SLAP_Y - 0.006, slap), 0.06],
+          [THREE.MathUtils.lerp(-0.022, thumbX, slap), THREE.MathUtils.lerp(pickingY + 0.028, BASS_SLAP_Y, slap),
+            THREE.MathUtils.lerp(0.052, bassStringZ(BASS_SLAP_Y) + 0.0008, slap)]]);
+        frettingIndex([[0.041, fingerboardY + 0.002, 0.057],
+          [0.023, fingerboardY + 0.006, 0.060],
+          [frettingX + 0.009, fingerboardY + 0.003, touchZ + 0.017],
           [frettingX, fingerboardY, touchZ + 0.0008]]);
-        frettingMiddle([[0.042, fingerboardY - 0.023, 0.065],
-          [0.023, fingerboardY - 0.015, 0.071],
-          [0.004, fingerboardY - 0.02, 0.058],
+        frettingMiddle([[0.042, fingerboardY - 0.023, 0.060],
+          [0.023, fingerboardY - 0.018, 0.062],
+          [0.004, fingerboardY - 0.022, 0.054],
           [-0.013, fingerboardY - 0.025, 0.039]]);
-        frettingRing([[0.044, fingerboardY - 0.046, 0.062],
-          [0.024, fingerboardY - 0.04, 0.068],
-          [0.009, fingerboardY - 0.045, 0.057],
+        frettingRing([[0.044, fingerboardY - 0.046, 0.060],
+          [0.024, fingerboardY - 0.043, 0.060],
+          [0.009, fingerboardY - 0.047, 0.051],
           [-0.008, fingerboardY - 0.052, 0.041]]);
-        // A short tucked thumb supports the back of the neck; it is neither
-        // a second long forefinger nor a human opposable claw in silhouette.
+        // A short tucked thumb cups the rounded maple back. The first bend
+        // clears the neck's shoulder before the pad curls in toward its centre.
         frettingThumb([[0.048, fingerboardY - 0.025, 0.048],
-          [0.037, fingerboardY - 0.025, 0.02],
-          [0.023, fingerboardY - 0.023, -0.017],
-          [0.008, fingerboardY - 0.019, -0.018]]);
+          [0.046, fingerboardY - 0.025, 0.02],
+          [0.027, fingerboardY - 0.023, -0.017],
+          [0.008, fingerboardY - 0.019, -0.01]]);
         bassStrap.visible = lift > 0.55;
         strapSurface.opacity = THREE.MathUtils.smoothstep(lift, 0.55, 1);
         for (let index = 0; index < armSkins.length; index++) {
@@ -705,20 +721,20 @@ function buildCharacter(scope: DisposalScope) {
           // Palm position is expressed in instrument space, separate from the
           // string-contacting fingertips. Only the wrist shifts on a pluck.
           const picking = index === 1;
-          if (picking) bassPosePoint(pickPalmX - fingerPluck * 0.002, 0.004,
+          if (picking) bassPosePoint(pickPalmX - fingerPluck * 0.002, pickingY - 0.011,
             0.081 + fingerPluck * 0.001 + slap * 0.003, handTarget);
           else bassPosePoint(0.050, fingerboardY - 0.025, 0.063, handTarget);
           sleeveCurve.v0.set(0, 0.012, 0);
-          sleeveCurve.v1.set(side * 0.04, -0.11, -0.04);
-          sleeveCurve.v2.set(side * 0.085, -0.17, -0.15);
+          sleeveCurve.v1.set(side * 0.04, -0.085, -0.04);
+          sleeveCurve.v2.set(side * 0.085, -0.105, -0.15);
           wrist.copy(handTarget).sub(arm.position);
           direction.copy(sleeveCurve.v2).sub(wrist).normalize();
           sleeveCurve.v3.copy(wrist).addScaledVector(direction, 0.032);
           if (picking) {
             // A relaxed low elbow passes around the lower bout, then the
             // forearm comes forward above the strings instead of across the chest.
-            sleeveCurve.v1.set(side * 0.15, -0.12, -0.06);
-            sleeveCurve.v2.set(side * 0.32, -0.20, -0.46);
+            sleeveCurve.v1.set(side * (0.13 + slap * 0.010), -0.12, -0.12 - slap * 0.030);
+            sleeveCurve.v2.set(side * (0.285 + slap * 0.012), -0.20, -0.48 - slap * 0.025);
             sleeveCurve.v3.copy(wrist).add(new THREE.Vector3(side * 0.027, -0.008, 0.003));
           }
           palmRotation.copy(BASS_HELD_ROTATION).multiply(frameRotation.setFromAxisAngle(

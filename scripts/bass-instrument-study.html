@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Bass three-view study</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#fafafa}
+    canvas{display:block}
+    .labels{position:absolute;bottom:7%;left:0;width:100%;display:grid;grid-template-columns:42% 29% 29%;text-align:center;font:500 17px system-ui;color:#494641;letter-spacing:.12em;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div class="labels"><span>FRONT</span><span>BACK</span><span>SIDE</span></div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createBassGarden } from '../src/room/art/bassGarden.ts';
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#fafafa');
+    scene.add(new THREE.HemisphereLight('#ffffff', '#8b8176', 2.1));
+    const key = new THREE.DirectionalLight('#fff4e6', 2.1);
+    key.position.set(-3, 5, 4);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight('#e2e9f5', 1.2);
+    fill.position.set(4, 2, -3);
+    scene.add(fill);
+    const garden = createBassGarden();
+    const instruments = [];
+    for (const [x, rotation] of [[-.33, 0], [.065, Math.PI], [.40, Math.PI / 2]]) {
+      const instrument = garden.instrument.clone(true);
+      instrument.position.set(x, .265, 0);
+      instrument.rotation.set(0, rotation, 0);
+      scene.add(instrument);
+      instruments.push(instrument);
+    }
+    const halfHeight = .76, halfWidth = halfHeight * innerWidth / innerHeight;
+    const camera = new THREE.OrthographicCamera(-halfWidth, halfWidth, halfHeight, -halfHeight, .01, 20);
+    camera.position.set(0, .6, 5);
+    camera.lookAt(0, .6, 0);
+    document.body.append(renderer.domElement);
+    renderer.render(scene, camera);
+    document.body.dataset.ready = 'true';
+    window.bassInstrumentStudy = { scene, camera, renderer, garden, instruments };
+    addEventListener('pagehide', () => {
+      instruments.forEach(instrument => instrument.removeFromParent());
+      garden.dispose();
+      renderer.dispose();
+    });
+  </script>
+</body>
+</html>
