@@ -12,6 +12,8 @@
 
 確認画像：[正面](screenshots/bass-refined-front.png)・[斜め](screenshots/bass-refined-quarter.png)・[横](screenshots/bass-refined-side.png)・[後ろ](screenshots/bass-refined-rear.png)・[指先](screenshots/bass-refined-paws.png)・[スラップ](screenshots/bass-refined-slap.png)・[スマホの演奏画面](screenshots/bass-refined-mobile.png)。
 
+`cee1099` を公開済み（[公開ワークフロー](https://github.com/nagaihimitsu/website/actions/runs/39405225186)）。公開時の描画1件・本番ビルドも成功し、配信11ファイルのSHA-256はローカルビルドと一致しています。公開URLを390×844のタッチ画面でも確認し、時計を置き換えず取得→NORMAL→タップ／上スワイプ→置くが完了。楽器の収まり・シールドの接続・姿の復帰を確認し、ページ例外とコンソールエラーはありません（ブラウザが自動要求する未設定のfaviconを除く）。上記のスマホ画像はこの公開版です。
+
 ## 近接ズームと主人公のフェード（2026-10-20）
 
 ピンチの最大倍率を3倍から6倍へ拡張。0.7〜3倍の基準点・表示・操作感は保ち、3〜3.7倍で主人公が滑らかに消え、3.7倍以上では背景を遮りません。縮小・指を離す・中断で元へ戻ります。復帰時間は従来の約0.28秒です。
