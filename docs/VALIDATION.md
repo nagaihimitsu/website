@@ -19,6 +19,8 @@
 
 確認画像：[正面](screenshots/bass-length142-front.png)／[斜め前](screenshots/bass-length142-quarter.png)／[弾く側の側面](screenshots/bass-length142-picking-side.png)／[三面図](screenshots/bass-length142-threeview.png)。
 
+`2feb8d6` を公開済み（[公開ワークフロー](https://github.com/nagaihimitsu/website/actions/runs/39451611362)）。公開時の描画1件と本番ビルドも成功し、配信11ファイルのSHA-256がローカルビルドと一致しました。公開URLを390×844のタッチ画面で開き、取得→NORMAL→タップ／スラップ→置くの表示を確認。腕が元の形状へ戻り、ページ例外・コンソールエラーはありません。[公開版のスマホ画面](screenshots/bass-length142-mobile.png)。スマホはChromiumのタッチエミュレーションで確認し、実機Safariは未確認です。
+
 ## 演奏時の肩・短い上腕・肘・リュック紐（2026-10-20）
 
 追加の正面・左右側面と見本を比較し、演奏時だけ肩全体を前へ移していた処理を削除しました。肩を胴体とリュック紐の下に保ち、太い上腕、低い肘、楽器の外周を回る前腕へ修正しています。ベースの位置と角度も調整し、腕を伸ばすだけで合わせない構えにしました。
