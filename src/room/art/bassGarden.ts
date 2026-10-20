@@ -722,6 +722,7 @@ function buildBassGarden(scope: DisposalScope) {
         const merged = mergeGeometries(parts);
         if (!merged) throw new Error("Could not batch garden instrument hardware");
         const combined = mesh(`${parent.name}-batched-details`, own(merged), material, parent);
+        combined.userData.sourcePartNames = items.map((item) => item.name);
         combined.castShadow = items.some((item) => item.castShadow);
         combined.receiveShadow = items.some((item) => item.receiveShadow);
         for (const item of items) parent.remove(item);

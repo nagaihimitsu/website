@@ -19,7 +19,9 @@ export const BASS_DIMENSIONS = {
   bridgeStringZ: 0.042,
   nutStringZ: 0.033,
 } as const;
-export const BASS_PICK_Y = -0.025;
+// A relaxed paw plucks just neckward of the pickup, rather than reaching down
+// toward the bridge and pulling the whole sleeve into a long hanging tube.
+export const BASS_PICK_Y = 0.035;
 export const BASS_SLAP_Y = 0.08;
 /** Instrument-local strap-button ends, shared by the hardware and shoulder strap. */
 export const BASS_STRAP_UPPER = new THREE.Vector3(-0.112, 0.235, 0.027);

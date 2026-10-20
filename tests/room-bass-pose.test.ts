@@ -85,13 +85,24 @@ describe("the actual bass-performing model", () => {
     }
   });
 
-  it("keeps the torso and both cloth sleeves outside the actual bass body at every beat and stroke extreme", () => {
+  it("keeps the torso, sleeves, paws and actual fingers outside the wooden body and neck at every stroke extreme", () => {
     const bassBody = garden.instrument.getObjectByName("bass-carved-sunburst-body") as THREE.Mesh;
+    const fingerboard = garden.instrument.getObjectByName("bass-tapered-rosewood-fingerboard") as THREE.Mesh;
+    const neck = garden.instrument.children.find((item): item is THREE.Mesh =>
+      item instanceof THREE.Mesh && item.userData.sourcePartNames?.includes("bass-rounded-maple-neck"));
+    expect(neck).toBeDefined();
     const inspectionMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-    const inspectionBody = new THREE.Mesh(bassBody.geometry, inspectionMaterial);
-    inspectionBody.position.copy(bassBody.position);
-    inspectionBody.updateMatrixWorld(true);
-    const bodyBounds = new THREE.Box3().setFromObject(inspectionBody);
+    const solids = [bassBody, fingerboard, neck!].map((source) => {
+      const mesh = new THREE.Mesh(source.geometry, inspectionMaterial);
+      mesh.position.copy(source.position);
+      mesh.quaternion.copy(source.quaternion);
+      mesh.scale.copy(source.scale);
+      mesh.updateMatrixWorld(true);
+      return { mesh, name: source.name, bounds: new THREE.Box3().setFromObject(mesh) };
+    });
+    const fingers = character.group.getObjectByName("bass-articulated-fingers")!.children
+      .filter((item): item is THREE.Mesh => item instanceof THREE.Mesh);
+    expect(fingers).toHaveLength(8);
     const ray = new THREE.Raycaster();
     const direction = new THREE.Vector3(0, 0, 1);
     try {
@@ -119,22 +130,30 @@ describe("the actual bass-performing model", () => {
         // fixed gap made the instrument and supporting strap float in profile.
         expect(torsoFront - bassBack).toBeGreaterThan(0.02);
         const instrumentInverse = garden.instrument.matrixWorld.clone().invert();
-        let penetratingCloth = 0;
-        for (const mesh of armSurfaces()) {
+        let penetratingVertices = 0;
+        const intersections = new Map<string, number>();
+        for (const mesh of [...armSurfaces(), ...fingers]) {
           const vertices = mesh.geometry.getAttribute("position");
           for (let i = 0; i < vertices.count; i++) {
             point.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(instrumentInverse);
-            if (!bodyBounds.containsPoint(point)) continue;
-            ray.set(new THREE.Vector3(point.x, point.y, -1), direction);
-            const hits = ray.intersectObject(inspectionBody, false);
-            if (hits.length < 2) continue;
-            const first = Math.min(...hits.map((hit) => hit.point.z));
-            const last = Math.max(...hits.map((hit) => hit.point.z));
-            if (point.z > first + 0.00001 && point.z < last - 0.00001) penetratingCloth++;
+            for (const solid of solids) {
+              if (!solid.bounds.containsPoint(point)) continue;
+              ray.set(new THREE.Vector3(point.x, point.y, -1), direction);
+              const hits = ray.intersectObject(solid.mesh, false);
+              if (hits.length < 2) continue;
+              const first = Math.min(...hits.map((hit) => hit.point.z));
+              const last = Math.max(...hits.map((hit) => hit.point.z));
+              if (point.z > first + 0.00001 && point.z < last - 0.00001) {
+                penetratingVertices++;
+                const key = `${mesh.parent?.name}/${mesh.name} in ${solid.name}`;
+                intersections.set(key, (intersections.get(key) ?? 0) + 1);
+              }
+            }
           }
         }
-        expect(penetratingCloth).toBe(0);
+        expect(penetratingVertices, JSON.stringify({ fret, beat, pluck, slap,
+          intersections: Object.fromEntries(intersections) })).toBe(0);
       }
     } finally { inspectionMaterial.dispose(); }
-  });
+  }, 30_000);
 });

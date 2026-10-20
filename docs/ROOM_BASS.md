@@ -54,6 +54,8 @@ Space／Enterは画面全体では開始用です。フォーカスした操作�
 
 演奏時はネックを耳の高さまで立て、奏者を斜め前から見せます。短く丸い動物の指で支え、平たいチャコール色のストラップが肩を通ってホーン前面とボディ下端の金具につながります。待機中は9フレット付近で支え、曲が始まると実際の譜面のフレットへ移動します。ピッキングは上側のピックアップ付近、スラップは手全体と短い親指で指板の終端付近を叩きます。シールドは白いピックガード下端の出力ジャックにL字プラグで接続し、楽器の動きに合わせてアンプまでのたるみが変わります。スタンド上と保持中の楽器の倍率は共通です。
 
+弾く腕は肩・肘・手首を分け、上腕が体の横へ下がり、短い前腕が楽器の縁を回って弦へ届きます。ピッキング位置をピックアップのネック寄りへ上げ、手を低く伸ばし過ぎない構えにしています。小さな掌に短い指を丸め、袖口から手首を見せます。指の断面は曲がり目でねじれない基準を使い、袖の陰影も曲げた実形状から更新します。
+
 成功した録音区間は次の譜面音符まで継続します。難易度内の選曲、スコア保存・ランキングは未実装です。演奏によってコレクションのTXTや実績は変わりません。
 
 ## 実装と確認
@@ -81,5 +83,7 @@ npm run build
 確認画像：[難易度選択](screenshots/bass-ready-desktop.png)／[NORMAL](screenshots/bass-playing-normal-landscape.png)／[HARD](screenshots/bass-playing-hard-landscape.png)／[EASY](screenshots/bass-playing-desktop.png)／[縦持ち](screenshots/bass-playing-mobile.png)／[横持ち](screenshots/bass-playing-landscape.png)／[演奏と花の動き](screenshots/bass-playing-effects.png)。実行結果は [VALIDATION.md](VALIDATION.md) を参照してください。スマホ操作はChromiumのタッチエミュレーションで確認し、実機Safariの検証は未実施です。
 
 造形の比較には開発サーバーの `/scripts/bass-study.html?view=side` を使えます。`view` は `front` / `quarter` / `side` / `rear` / `back`。既定は9フレットの支持姿勢で、`fret=3` で曲中の低いフレット、`pluck=1&slap=1` でスラップ時の手元も比較できます。各姿勢は補間が落ち着くまで進め、実際のキャラクターと楽器を固定照明で描画します。開発用ページで、本番ビルドには含めません。
+
+腕と指の変更だけを確認するときは `npx vitest run tests/room-bass-pose.test.ts` を使います。実弦との接触、袖・掌・8本の指の実形状と木製ボディ／指板／ネックの非貫通、演奏終了後の元の頂点と法線への復帰を3件で確認します。
 
 楽器単体の正面・背面・側面を同時に比較するページは `/scripts/bass-instrument-study.html` です。寸法は `art/bassPose.ts` の `BASS_DIMENSIONS` に集約し、指板・弦・フレット・演奏する手の位置を連動させています。こちらも開発専用で、本番には含めません。
