@@ -12,6 +12,8 @@
 
 確認画像：[正面](screenshots/bass-compact-front.png)／[斜め前](screenshots/bass-compact-quarter.png)／[押弦側の側面](screenshots/bass-compact-side.png)／[弾く側の側面](screenshots/bass-compact-picking-side.png)／[背面](screenshots/bass-compact-back.png)／[三面図](screenshots/bass-compact-threeview.png)。
 
+`a2955ac` を公開済み（[公開ワークフロー](https://github.com/nagaihimitsu/website/actions/runs/39440855487)）。公開時の描画1件と本番ビルドも成功し、配信11ファイルはローカルビルドとSHA-256が一致しました。公開URLを390×844のタッチ画面で開き、時計を置き換えずに取得→NORMAL→タップ／上スワイプ→置くまで確認。置く動作が終わった後、腕を下ろした元の姿への復帰も目視確認しました。ページ例外・コンソールエラーなし。[公開版のスマホ画面](screenshots/bass-compact-mobile.png)。スマホ確認はChromiumのタッチエミュレーションで、実機Safariは未確認です。
+
 以下は以前の変更時点の記録です。
 
 ## 演奏時の右腕・袖口・指の作り直し（2026-10-20）
