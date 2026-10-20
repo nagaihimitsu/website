@@ -10,6 +10,8 @@
 - 実画像5枚を目視確認：[3倍](screenshots/pinch-avatar-3x.png)・[フェード途中](screenshots/pinch-avatar-fading.png)・[6倍](screenshots/pinch-avatar-6x.png)・[縮小](screenshots/pinch-avatar-reversed.png)・[通常復帰](screenshots/pinch-avatar-restored.png)。途中の顔・内部パーツの透けは解消しています。スマホはChromiumのタッチエミュレーションで確認し、実機Safariは未確認です。
 - 本番ビルド（データ・ライセンス・TypeScript・Vite）と `git diff --check` 成功。
 
+`ee6baff` を公開済み（[公開ワークフロー](https://github.com/nagaihimitsu/website/actions/runs/39399056115)）。公開時の描画1件・本番ビルドも成功し、配信11ファイルのSHA-256はローカル本番ビルドと一致しています。公開URLでも時計を置き換えず、3倍で表示率1・3.35倍で0.5・6倍で0かつ全体非表示・2.8倍で再表示を実タッチで確認。指を離すと元の位置・向き・倍率・表示へ復帰し、ページ例外・シェーダーを含むコンソールエラーはありません。
+
 ## 指の位置を基準にした一時ズーム（2026-10-20）
 
 通常の部屋・テラスで、景色に置いた2本指の中点を基準に0.7〜3倍へ拡大・縮小できます。カメラの位置・向きと主人公の移動を止め、投影だけを変えます。片方の指を離すと約0.28秒で元のビューへ戻り、残った指は全て離すまで見回しやタップに変わりません。「動きを減らす」では即座に戻ります。
