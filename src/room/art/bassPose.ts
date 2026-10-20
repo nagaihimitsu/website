@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
 /** Shared by the instrument, sleeves and fingertips; all points are torso-local. */
-export const BASS_HELD_POSITION = new THREE.Vector3(0.065, 0.43, -0.25);
+export const BASS_HELD_POSITION = new THREE.Vector3(0.09, 0.39, -0.20);
 export const BASS_HELD_ROTATION = new THREE.Quaternion().setFromEuler(
-  new THREE.Euler(0, Math.PI, (-42 * Math.PI) / 180),
+  new THREE.Euler(0.04, Math.PI - 0.20, (-42 * Math.PI) / 180),
 );
 export const BASS_HELD_SCALE = 1.04;
 /** Relaxed supporting grip between phrases; sounding notes use their real frets. */
@@ -19,10 +19,10 @@ export const BASS_DIMENSIONS = {
   bridgeStringZ: 0.042,
   nutStringZ: 0.033,
 } as const;
-// A relaxed paw plucks just neckward of the pickup, rather than reaching down
-// toward the bridge and pulling the whole sleeve into a long hanging tube.
-export const BASS_PICK_Y = 0.035;
-export const BASS_SLAP_Y = 0.08;
+// A relaxed paw plucks by the fingerboard end, leaving the elbow beside the
+// torso instead of reaching down toward the bridge.
+export const BASS_PICK_Y = 0.085;
+export const BASS_SLAP_Y = 0.10;
 /** Instrument-local strap-button ends, shared by the hardware and shoulder strap. */
 export const BASS_STRAP_UPPER = new THREE.Vector3(-0.112, 0.235, 0.027);
 export const BASS_STRAP_TAIL = new THREE.Vector3(0, -0.265, -0.003);

@@ -323,7 +323,7 @@ function buildCharacter(scope: DisposalScope) {
     const meshes = arm.children.filter((child): child is THREE.Mesh =>
       child instanceof THREE.Mesh && !(child instanceof THREE.InstancedMesh));
     const sections = new Map<number, {
-      t: number; clamped: number; width: number; centre: THREE.Vector3; rotation: THREE.Quaternion;
+      t: number; clamped: number; centre: THREE.Vector3; rotation: THREE.Quaternion;
     }>();
     for (const item of meshes) {
       if (item.name === "sculpted-soft-mitt") continue;
@@ -332,9 +332,7 @@ function buildCharacter(scope: DisposalScope) {
         const y = vertices.getY(vertex);
         if (sections.has(y)) continue;
         const t = -y / 0.3, clamped = THREE.MathUtils.clamp(t, 0, 1);
-        sections.set(y, { t, clamped,
-          width: 1 - 0.23 * THREE.MathUtils.smoothstep(clamped, 0.3, 1),
-          centre: new THREE.Vector3(), rotation: new THREE.Quaternion() });
+        sections.set(y, { t, clamped, centre: new THREE.Vector3(), rotation: new THREE.Quaternion() });
       }
     }
     return {
@@ -481,7 +479,7 @@ function buildCharacter(scope: DisposalScope) {
     new THREE.Vector3(0, 0, -1), new THREE.Vector3(-0.2, 0.05, -1),
     new THREE.Vector3(-0.50, 0.315, -0.806), new THREE.Vector3(-0.903, -0.196, -0.382),
     new THREE.Vector3(-0.866, -0.476, 0.154), new THREE.Vector3(-0.810, -0.397, 0.432),
-    new THREE.Vector3(-0.382, -0.901, 0.207),
+    new THREE.Vector3(-0.382, -0.22, 0.9),
     new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 1),
     new THREE.Vector3(1, 0, 0.5), new THREE.Vector3(1, 0, 0),
     new THREE.Vector3(0.5, 0, -1),
@@ -760,51 +758,63 @@ function buildCharacter(scope: DisposalScope) {
         for (let index = 0; index < armSkins.length; index++) {
           const rig = armSkins[index], { arm, side } = rig;
           const picking = index === 1;
-          arm.position.z -= (picking ? 0.125 : 0.065) * lift;
+          // The shoulder stays inside the hoodie, directly under the backpack
+          // strap. Moving the entire arm toward the bass detached it in profile.
           arm.quaternion.slerp(identity, lift);
           rig.pile.forEach((item) => { item.visible = lift < 0.01; });
           // Palm position is expressed in instrument space, separate from the
           // string-contacting fingertips. Only the wrist shifts on a pluck.
           if (picking) bassPosePoint(pickPalmX - fingerPluck * 0.002, pickingY - 0.011,
-            0.077 + fingerPluck * 0.001 + slap * 0.003, handTarget);
-          else bassPosePoint(0.031, fingerboardY - 0.010, 0.070, handTarget);
-          sleeveCurve.v0.set(0, 0.012, 0);
-          wrist.copy(handTarget).sub(arm.position);
-          if (picking) {
-            // Two short sleeve sections meet at a real, lowered elbow. The
-            // upper arm drops beside the ribs; the forearm crosses toward the
-            // strings instead of extending the shoulder into one long hose.
-            elbow.set(side * 0.130, -0.145 + slap * 0.012, -0.145 - slap * 0.010);
-            elbowTangent.set(side * 0.004, -0.014, -0.066);
-            sleeveCurve.v1.set(side * 0.055, -0.060, 0.005);
-            sleeveCurve.v2.copy(elbow).sub(elbowTangent);
-            sleeveCurve.v3.copy(elbow);
-            forearmCurve.v0.copy(elbow);
-            forearmCurve.v1.copy(elbow).add(elbowTangent);
-            forearmCurve.v3.copy(wrist).add(new THREE.Vector3(side * 0.033, 0.012, 0.010));
-            forearmCurve.v2.copy(forearmCurve.v3).add(new THREE.Vector3(side * 0.060, 0.005, 0.012));
-          } else {
-            // A relaxed bent elbow stays below the hand. Reaching the first
-            // frets raises the forearm naturally while the shoulder stays put.
-            sleeveCurve.v1.set(side * 0.055, -0.085, -0.065);
-            sleeveCurve.v2.set(wrist.x + side * 0.065,
-              Math.min(-0.065, wrist.y - 0.065), wrist.z + 0.065);
-            direction.copy(sleeveCurve.v2).sub(wrist).normalize();
-            sleeveCurve.v3.copy(wrist).addScaledVector(direction, 0.030);
+            0.098 + fingerPluck * 0.001 + slap * 0.003, handTarget);
+          else {
+            const reach = THREE.MathUtils.smoothstep(fingerboardY, 0.42, 0.61);
+            bassPosePoint(0.031 + 0.012 * reach, fingerboardY - 0.010, 0.070 + 0.020 * reach, handTarget);
           }
           palmRotation.copy(BASS_HELD_ROTATION).multiply(frameRotation.setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0), picking ? 0.30 : -0.30));
+            new THREE.Vector3(0, 1, 0), picking ? -0.15 : 0.30));
           palmRotation.multiply(frameRotation.setFromAxisAngle(
             new THREE.Vector3(0, 0, 1), (picking ? Math.PI / 2 : -Math.PI / 2)
-              + (picking ? fingerPluck * 0.07 + slap * 0.10 : 0)));
+              + (picking ? fingerPluck * 0.07 + slap * 0.10
+                : -0.70 * THREE.MathUtils.smoothstep(fingerboardY, 0.42, 0.61))));
+          sleeveCurve.v0.set(0, 0.012, 0);
+          wrist.copy(handTarget).sub(arm.position);
+          // Both sleeves have a broad upper arm beside the ribs, a lowered
+          // elbow, and a separate, short padded forearm. The cuff meets the
+          // proximal edge of the paw instead of reaching its centre.
+          elbow.set(side * (picking ? 0.10 : 0.055),
+            picking ? -0.14 + slap * 0.012 : -0.075 + Math.max(0, wrist.y) * 0.30,
+            picking ? -0.13 : -0.110);
+          elbowTangent.set(picking ? 0.06 : side * 0.010,
+            picking ? 0.015 : 0.022 + Math.max(0, wrist.y) * 0.10, picking ? -0.10 : -0.063);
+          if (!picking) {
+            const reach = THREE.MathUtils.smoothstep(fingerboardY, 0.42, 0.61);
+            // Only a high reach needs the full detour around the neck.
+            // Keeping it at the resting fret folded the inner sleeve rings.
+            elbowTangent.add(direction.set(0.075 + 0.045 * reach, 0, 0).applyQuaternion(BASS_HELD_ROTATION));
+            elbowTangent.z -= 0.035 * reach;
+          }
+          sleeveCurve.v1.set(side * 0.025, picking ? -0.06 : -0.045, -0.008);
+          sleeveCurve.v2.copy(elbow).addScaledVector(elbowTangent, -0.65);
+          sleeveCurve.v3.copy(elbow);
+          forearmCurve.v0.copy(elbow);
+          forearmCurve.v1.copy(elbow).add(elbowTangent);
+          direction.set(0, 1, 0).applyQuaternion(palmRotation);
+          forearmCurve.v3.copy(wrist).addScaledVector(direction, 0.027);
+          forearmCurve.v2.copy(forearmCurve.v3).addScaledVector(direction, picking ? 0.13 : 0.045);
           // Every ring shares a centre and tangent. Evaluate each section once,
           // rather than repeating curve sampling for its 49 surface vertices.
           for (const section of rig.sections.values()) {
-            const curve = picking && section.clamped > 0.52 ? forearmCurve : sleeveCurve;
-            const curveT = picking
-              ? (section.clamped > 0.52 ? (section.clamped - 0.52) / 0.48 : section.clamped / 0.52)
-              : section.clamped;
+            const curve = section.clamped > 0.52 ? forearmCurve : sleeveCurve;
+            const curveT = section.clamped > 0.52
+              ? (section.clamped - 0.52) / 0.48 : section.clamped / 0.52;
             curve.getPoint(curveT, section.centre);
+            if (!picking && curve === forearmCurve) {
+              // The padded forearm cups the side of the neck; it must not
+              // cut diagonally through it when reaching the first frets.
+              const reach = THREE.MathUtils.smoothstep(fingerboardY, 0.42, 0.61);
+              const aroundNeck = 0.025 * reach * Math.sin(Math.PI * curveT) ** 2;
+              section.centre.addScaledVector(direction.set(1, 0, 0).applyQuaternion(BASS_HELD_ROTATION), aroundNeck);
+            }
             curve.getTangent(curveT, direction).normalize();
             section.centre.addScaledVector(direction, (section.t - section.clamped) * 0.3);
             section.rotation.setFromUnitVectors(down, direction);
@@ -819,7 +829,7 @@ function buildCharacter(scope: DisposalScope) {
               if (skin.paw) {
                 const palmWidth = picking ? 1.10 : 1.08;
                 const palmLength = picking ? 0.94 : 0.96;
-                const palmDepth = 0.88;
+                const palmDepth = picking ? 1.02 : 0.88;
                 skinPoint.set((x - side * 0.025) * palmWidth,
                   (y + 0.319) * palmLength, (z + 0.02) * palmDepth)
                   .applyQuaternion(palmRotation).add(handTarget).sub(arm.position);
@@ -827,26 +837,20 @@ function buildCharacter(scope: DisposalScope) {
                   .normalize().applyQuaternion(palmRotation);
               } else {
                 const section = rig.sections.get(y)!;
-                const sleeveWidth = picking
-                  ? 0.84 - 0.18 * THREE.MathUtils.smoothstep(section.clamped, 0.08, 0.35)
-                    - 0.045 * Math.exp(-(((section.clamped - 0.52) / 0.17) ** 2))
-                    + 0.08 * THREE.MathUtils.smoothstep(section.clamped, 0.82, 1)
-                  : section.width * (0.88 + 0.12 * THREE.MathUtils.smoothstep(section.clamped, 0.7, 1));
+                const sleeveWidth = 1.10
+                  - 0.10 * THREE.MathUtils.smoothstep(section.clamped, 0.35, 0.65)
+                  + 0.07 * THREE.MathUtils.smoothstep(section.clamped, 0.85, 1)
+                  - (picking ? 0.10 * THREE.MathUtils.smoothstep(section.clamped, 0.52, 0.70)
+                    * (1 - THREE.MathUtils.smoothstep(section.clamped, 0.90, 1)) : 0);
                 skinPoint.set((x - side * 0.024 * section.clamped) * sleeveWidth, 0,
-                  (z + 0.02 * section.clamped) * sleeveWidth
-                    * (picking ? 1 - 0.22 * THREE.MathUtils.smoothstep(section.clamped, 0.55, 0.82) : 1))
+                  (z + 0.02 * section.clamped) * sleeveWidth)
                   .applyQuaternion(section.rotation);
-                skinNormal.applyQuaternion(section.rotation);
-                if (picking) {
-                  // The inside of the soft forearm rests against the wooden
-                  // bout. Compress that half only; preserve the rounded outer
-                  // silhouette instead of pushing the entire elbow forward.
-                  const gather = 0.55
-                    * THREE.MathUtils.smoothstep(section.clamped, 0.45, 0.60)
-                    * (1 - THREE.MathUtils.smoothstep(section.clamped, 0.83, 0.96));
-                  const rear = skinPoint.z;
-                  skinPoint.z -= gather * ((rear + Math.sqrt(rear * rear + 0.000004)) * 0.5 - 0.001);
+                if (picking && skinPoint.z < 0) {
+                  const innerElbow = Math.sin(Math.PI * THREE.MathUtils.clamp(
+                    (section.clamped - 0.42) / 0.22, 0, 1)) ** 2;
+                  skinPoint.z *= 1 - 0.10 * innerElbow;
                 }
+                skinNormal.applyQuaternion(section.rotation);
                 skinPoint.add(section.centre);
               }
               positions.setXYZ(vertex, THREE.MathUtils.lerp(x, skinPoint.x, lift),

@@ -38,6 +38,10 @@ describe("the actual bass-performing model", () => {
       vertices: Array.from(mesh.geometry.getAttribute("position").array),
       normals: Array.from(mesh.geometry.getAttribute("normal").array),
     }));
+    const shoulders = ["right-arm", "left-arm"].map((name) => {
+      const arm = character.group.getObjectByName(name)!;
+      return { arm, attachment: arm.position.clone() };
+    });
     for (const lift of [0.2, 0.7, 1, 1, 1, 1, 0.6, 0.1]) {
       pose({ lift, pluck: time % 1, slap: Math.floor(time * 20) % 2, playing: true, beat: time * 1.6,
         string: Math.floor(time * 10) % 4, fret: 2 + Math.floor(time * 10) % 4, fretting: true });
@@ -45,6 +49,8 @@ describe("the actual bass-performing model", () => {
         expect(Array.from(mesh.geometry.getAttribute("position").array).every(Number.isFinite)).toBe(true);
         expect(Array.from(mesh.geometry.getAttribute("normal").array).every(Number.isFinite)).toBe(true);
       }
+      for (const { arm, attachment } of shoulders)
+        expect(arm.position.distanceTo(attachment), `${arm.name} stays attached under its shoulder strap`).toBeLessThan(1e-6);
     }
     pose();
     for (const { mesh, vertices, normals } of originals) {
@@ -103,32 +109,48 @@ describe("the actual bass-performing model", () => {
     const fingers = character.group.getObjectByName("bass-articulated-fingers")!.children
       .filter((item): item is THREE.Mesh => item instanceof THREE.Mesh);
     expect(fingers).toHaveLength(8);
+    const pickingSleeve = character.group.getObjectByName("left-arm")!
+      .getObjectByName("rounded-bag-sleeve") as THREE.Mesh;
+    const edges = new Map<string, [number, number]>();
+    const indices = pickingSleeve.geometry.index!;
+    for (let i = 0; i < indices.count; i += 3) {
+      const triangle = [indices.getX(i), indices.getX(i + 1), indices.getX(i + 2)];
+      for (let corner = 0; corner < 3; corner++) {
+        const a = triangle[corner], b = triangle[(corner + 1) % 3];
+        edges.set(`${Math.min(a, b)}:${Math.max(a, b)}`, [a, b]);
+      }
+    }
     const ray = new THREE.Raycaster();
     const direction = new THREE.Vector3(0, 0, 1);
     try {
-      for (const fret of [3, BASS_REST_FRET]) for (const beat of [0, 0.25, 0.5, 0.75, 1]) for (const pluck of [0, 1]) for (const slap of [0, 0.5, 1]) {
-        pose({ lift: 1, pluck, slap, playing: true, beat, string: Math.floor(beat * 4) % 4, fret, fretting: true });
-        const torsoInverse = character.bassAnchor.matrixWorld.clone().invert();
-        let torsoFront = Infinity, bassBack = -Infinity;
-        for (const name of ["loose-cotton-body", "sewn-kangaroo-pocket"]) {
-          const mesh = character.group.getObjectByName(name) as THREE.Mesh;
-          const vertices = mesh.geometry.getAttribute("position");
-          for (let i = 0; i < vertices.count; i++) {
-            point.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(torsoInverse);
-            torsoFront = Math.min(torsoFront, point.z);
+      pose({ lift: 1, pluck: 0, playing: true, beat: 0, string: 3, fret: BASS_REST_FRET, fretting: true });
+      const instrumentInverse = garden.instrument.matrixWorld.clone().invert();
+      // These clothes and the bass share the torso anchor, so their relative
+      // clearance is unchanged by the animated torso's sway. Compare their
+      // actual overlapping surfaces once, not unrelated global Z extrema.
+      for (const name of ["loose-cotton-body", "sewn-kangaroo-pocket", "continuous-collapsed-cotton-hood"]) {
+        const mesh = character.group.getObjectByName(name) as THREE.Mesh;
+        const vertices = mesh.geometry.getAttribute("position");
+        let clearance = Infinity, overlappingSamples = 0;
+        for (let i = 0; i < vertices.count; i++) {
+          point.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(instrumentInverse);
+          for (const solid of solids) {
+            if (point.x < solid.bounds.min.x || point.x > solid.bounds.max.x ||
+              point.y < solid.bounds.min.y || point.y > solid.bounds.max.y) continue;
+            ray.set(new THREE.Vector3(point.x, point.y, -1), direction);
+            const hits = ray.intersectObject(solid.mesh, false);
+            if (!hits.length) continue;
+            // Instrument +Z faces outward; its first ray hit is the rear
+            // surface that must remain in front of the sampled hoodie point.
+            clearance = Math.min(clearance, hits[0].point.z - point.z);
+            overlappingSamples++;
           }
         }
-        garden.instrument.traverse((item) => {
-          if (!(item instanceof THREE.Mesh)) return;
-          const vertices = item.geometry.getAttribute("position");
-          for (let i = 0; i < vertices.count; i++) {
-            point.fromBufferAttribute(vertices, i).applyMatrix4(item.matrixWorld).applyMatrix4(torsoInverse);
-            bassBack = Math.max(bassBack, point.z);
-          }
-        });
-        // A small real clearance lets the bass rest near the hoodie; a large
-        // fixed gap made the instrument and supporting strap float in profile.
-        expect(torsoFront - bassBack).toBeGreaterThan(0.02);
+        expect(overlappingSamples, name).toBeGreaterThan(0);
+        expect(clearance, `${name} to actual bass rear surface`).toBeGreaterThan(0.003);
+      }
+      for (const fret of [3, BASS_REST_FRET]) for (const beat of [0, 0.25, 0.5, 0.75, 1]) for (const pluck of [0, 1]) for (const slap of [0, 0.5, 1]) {
+        pose({ lift: 1, pluck, slap, playing: true, beat, string: Math.floor(beat * 4) % 4, fret, fretting: true });
         const instrumentInverse = garden.instrument.matrixWorld.clone().invert();
         let penetratingVertices = 0;
         const intersections = new Map<string, number>();
@@ -153,6 +175,27 @@ describe("the actual bass-performing model", () => {
         }
         expect(penetratingVertices, JSON.stringify({ fret, beat, pluck, slap,
           intersections: Object.fromEntries(intersections) })).toBe(0);
+        if (fret === BASS_REST_FRET && beat === 0 && pluck === 0 && slap < 1) {
+          // Clear vertices alone are insufficient: a sleeve triangle can
+          // still cut from the back of the wooden bout through its front.
+          const vertices = pickingSleeve.geometry.getAttribute("position");
+          const transform = instrumentInverse.clone().multiply(pickingSleeve.matrixWorld);
+          const edgeRay = new THREE.Raycaster(), a = new THREE.Vector3(), b = new THREE.Vector3();
+          const edgeBounds = new THREE.Box3(), wood = solids[0];
+          for (const [from, to] of edges.values()) {
+            a.fromBufferAttribute(vertices, from).applyMatrix4(transform);
+            b.fromBufferAttribute(vertices, to).applyMatrix4(transform);
+            edgeBounds.setFromPoints([a, b]);
+            const length = a.distanceTo(b);
+            if (length < 1e-6 || !edgeBounds.intersectsBox(wood.bounds)) continue;
+            edgeRay.set(a, b.clone().sub(a).divideScalar(length));
+            edgeRay.near = 1e-6;
+            edgeRay.far = length - 1e-6;
+            const hits = edgeRay.intersectObject(wood.mesh, false);
+            const traversed = hits.length < 2 ? 0 : hits[hits.length - 1].distance - hits[0].distance;
+            expect(traversed, `sleeve edge ${from}-${to}, slap=${slap}`).toBeLessThan(1e-5);
+          }
+        }
       }
     } finally { inspectionMaterial.dispose(); }
   }, 30_000);
