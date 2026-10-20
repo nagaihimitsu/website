@@ -11,6 +11,8 @@
 
 確認画像：[正面](screenshots/bass-arm-front.png)／[斜め前](screenshots/bass-arm-quarter.png)／[左側面](screenshots/bass-arm-side.png)／[右側面](screenshots/bass-arm-picking-side.png)／[手元](screenshots/bass-arm-paws.png)。スマホ確認はChromiumのタッチエミュレーションで、実機Safariは未確認です。
 
+`af01934` を公開済み（[公開ワークフロー](https://github.com/nagaihimitsu/website/actions/runs/39427822090)）。公開時の描画1件と本番ビルドも成功。配信11ファイルはローカルビルドとSHA-256が一致し、公開URLでも時計を置き換えず取得→NORMAL→タップ／上スワイプ→置くが完了しました。新しい肘・袖口・手の表示と元の姿への復帰を確認し、ページ例外・コンソールエラーなし。[公開版のスマホ画面](screenshots/bass-arm-mobile.png)。
+
 ## 演奏姿の見本に合わせた比率・腕・手・ストラップ（2026-10-20）
 
 最新の演奏姿の画像を基準に、楽器単体だけでなく主人公に対する大きさと構え方を修正しました。全体の拡大でボディまで大きくなる問題を比較中に見つけ、ボディ・ネック・ヘッドの比率を個別に調整。変更前に比べ、保持時の指板は約35%長く、ネックを立てた斜め前の構えになっています。
