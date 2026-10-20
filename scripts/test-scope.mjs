@@ -9,6 +9,7 @@ const roomSpecs = [
   "tests/e2e/bird.spec.ts",
   "tests/e2e/outdoors.spec.ts",
   "tests/e2e/bass.spec.ts",
+  "tests/e2e/pinch.spec.ts",
 ];
 const roomUnits = readdirSync(new URL("../tests/", import.meta.url))
   .filter((file) => /^room-.*\.test\.ts$/.test(file))
@@ -20,9 +21,9 @@ const scopes = {
   movement: {
     units: [
       "tests/room-movement.test.ts", "tests/room-locomotion.test.ts",
-      "tests/room-camera.test.ts", "tests/room-breakables.test.ts",
+      "tests/room-camera.test.ts", "tests/room-pinch-zoom.test.ts", "tests/room-breakables.test.ts",
     ],
-    browser: [roomSpecs[0], "--grep", "@movement|@visual"],
+    browser: [roomSpecs[0], "tests/e2e/pinch.spec.ts", "--grep", "@movement|@pinch|@visual"],
   },
   npc: {
     units: ["tests/room-bird.test.ts", "tests/room-movement.test.ts"],

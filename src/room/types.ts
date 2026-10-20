@@ -84,6 +84,10 @@ export interface RoomSnapshot {
   cameraX: number;
   cameraY: number;
   cameraZ: number;
+  cameraZoom: number;
+  cameraOffsetX: number;
+  cameraOffsetY: number;
+  pinching: boolean;
   punching: boolean;
   brokenCount: number;
   birdX: number;

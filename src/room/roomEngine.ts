@@ -23,6 +23,7 @@ import type {
   RoomDestination,
 } from "./types";
 import { cameraRelativeInput, smoothLocomotion } from "./locomotion";
+import { createPinchZoom } from "./pinchZoom";
 import {
   CAMERA_RADIUS,
   DEFAULT_CAMERA_PITCH,
@@ -98,7 +99,7 @@ function initializeRoomEngine(
   canvas.tabIndex = 0;
   canvas.setAttribute(
     "aria-label",
-    "部屋の3D表示。ドラッグで360度見回す、矢印キーで移動、Rで視点を戻す。",
+    "部屋の3D表示。ドラッグで360度見回す、2本指で触れた場所を一時的に拡大・縮小、矢印キーで移動、Rで視点を戻す。",
   );
   canvas.style.touchAction = "none";
   scope.defer(() => canvas.remove());
@@ -142,6 +143,16 @@ function initializeRoomEngine(
   let cameraDistance = FOLLOW_DISTANCE;
   let cameraInitialized = false;
   let returningView: { yaw: number } | null = null;
+  const pinchZoom = createPinchZoom();
+  const canvasTouches = new Map<number, { x: number; y: number }>();
+  let pinchPair: [number, number] | null = null;
+  // Once a pinch ends, consume every remaining finger until all have lifted.
+  // The surviving finger must never become a drag or a portal click.
+  let pinchConsumed = false;
+  const pinchControlsLocked = () => {
+    const state = pinchZoom.snapshot();
+    return state.active || state.returning || pinchConsumed;
+  };
 
   const raycaster = new THREE.Raycaster();
   const targeting = createRoomTargeting({
@@ -299,20 +310,42 @@ function initializeRoomEngine(
   }
 
   function releaseViewPointer() {
-    if (viewPointer && canvas.hasPointerCapture(viewPointer.id))
-      canvas.releasePointerCapture(viewPointer.id);
+    const id = viewPointer?.id;
     viewPointer = null;
+    if (id !== undefined && canvas.hasPointerCapture(id))
+      canvas.releasePointerCapture(id);
   }
 
-  function clearInputs() {
+  function clearMovementInputs() {
     keyboard.clear();
     pad.clear();
     analog.x = 0;
     analog.z = 0;
     moveVelocity = { x: 0, z: 0 };
     jumpRequested = false;
+  }
+
+  function cancelPinch() {
+    const wasZoomed = pinchControlsLocked();
+    const ids = [...canvasTouches.keys()];
+    canvasTouches.clear();
+    pinchPair = null;
+    pinchConsumed = false;
+    pinchZoom.reset();
+    for (const id of ids)
+      if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+    if (wasZoomed) {
+      camera.zoom = 1;
+      camera.clearViewOffset();
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  function clearInputs() {
+    clearMovementInputs();
     bassState = bassGame.snapshot();
     releaseViewPointer();
+    cancelPinch();
   }
 
   function reportBass(time = performance.now(), immediate = false) {
@@ -337,7 +370,8 @@ function initializeRoomEngine(
     // different rate under load; seeking the recording to them would skip audio.
     // A missing transport freezes the score until sync() anchors its resume.
     const musicDelta = playbackTime === null ? 0 : Math.max(0, playbackTime - timeline);
-    bassState = bassGame.tick(performing ? musicDelta : delta, near && !bassNeedsExit && !opening && !opened);
+    bassState = bassGame.tick(performing ? musicDelta : delta,
+      near && !bassNeedsExit && !opening && !opened && !pinchControlsLocked());
     if (phase === "idle" && bassState.phase === "approaching") void bassAudio.preload();
     if ((phase === "idle" || phase === "approaching") && bassHeld()) {
       bassPickupStart = { x: player.x, z: player.z };
@@ -445,6 +479,10 @@ function initializeRoomEngine(
       cameraX: camera.position.x,
       cameraY: camera.position.y,
       cameraZ: camera.position.z,
+      cameraZoom: camera.zoom,
+      cameraOffsetX: camera.view?.enabled ? camera.view.offsetX / camera.view.fullWidth : 0,
+      cameraOffsetY: camera.view?.enabled ? camera.view.offsetY / camera.view.fullHeight : 0,
+      pinching: pinchZoom.snapshot().active,
       punching: punchStarted !== null,
       brokenCount: room.breakables.filter((item) => item.broken).length,
       birdX: birdMotion.state.x,
@@ -462,6 +500,7 @@ function initializeRoomEngine(
   function resize() {
     if (disposed) return;
     const bounds = host.getBoundingClientRect();
+    if (bounds.width !== width || bounds.height !== height) clearInputs();
     width = Math.max(1, bounds.width);
     height = Math.max(1, bounds.height);
     renderer.setPixelRatio(
@@ -483,7 +522,7 @@ function initializeRoomEngine(
   }
 
   function open(section: RoomDestination) {
-    if (disposed || failed || opening || opened || bassHeld()) return;
+    if (disposed || failed || opening || opened || bassHeld() || pinchControlsLocked()) return;
     const portal = room.portals.find(
       (candidate) => candidate.destination === section,
     );
@@ -538,7 +577,7 @@ function initializeRoomEngine(
       document.hidden ||
       opening ||
       opened ||
-      !player.grounded || bassControlsLocked()
+      !player.grounded || bassControlsLocked() || pinchControlsLocked()
     )
       return;
     jumpRequested = true;
@@ -552,7 +591,7 @@ function initializeRoomEngine(
       document.hidden ||
       opening ||
       opened ||
-      punchStarted !== null || bassControlsLocked()
+      punchStarted !== null || bassControlsLocked() || pinchControlsLocked()
     )
       return;
     punchStarted = performance.now();
@@ -635,7 +674,7 @@ function initializeRoomEngine(
   }
 
   function resetView() {
-    if (disposed || failed || opening || opened) return;
+    if (disposed || failed || opening || opened || pinchControlsLocked()) return;
     returningView = { yaw: facing };
     if (reducedMotion) {
       yaw = facing;
@@ -657,7 +696,8 @@ function initializeRoomEngine(
       failed ||
       paused ||
       opening ||
-      opened
+      opened ||
+      pinchControlsLocked()
     )
       return;
     if (bassHeld()) {
@@ -713,8 +753,28 @@ function initializeRoomEngine(
   }
 
   function pointerDown(event: PointerEvent) {
-    if (event.button !== 0 || viewPointer || paused || opening || opened)
+    if (event.button !== 0 || disposed || failed || paused || document.hidden || opening || opened)
       return;
+    if (event.pointerType === "touch" && !bassControlsLocked()) {
+      canvasTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      canvas.setPointerCapture(event.pointerId);
+      if (canvasTouches.size === 2 && !pinchConsumed) {
+        pinchPair = [...canvasTouches.keys()] as [number, number];
+        pinchConsumed = true;
+        viewPointer = null; // Keep both captures owned by the pinch.
+        clearMovementInputs();
+        returningView = null;
+        punchStarted = null;
+        targeting.clear();
+        setHovered(null);
+        const [a, b] = pinchPoints();
+        pinchZoom.begin(a, b, { width, height });
+        event.preventDefault();
+        return;
+      }
+      if (pinchControlsLocked() || canvasTouches.size > 1) return;
+    }
+    if (viewPointer || pinchControlsLocked()) return;
     canvas.focus({ preventScroll: true });
     viewPointer = {
       id: event.pointerId,
@@ -727,8 +787,24 @@ function initializeRoomEngine(
     canvas.setPointerCapture(event.pointerId);
   }
 
+  function pinchPoints() {
+    const bounds = canvas.getBoundingClientRect();
+    return pinchPair!.map((id) => {
+      const point = canvasTouches.get(id)!;
+      return { x: point.x - bounds.left, y: point.y - bounds.top };
+    }) as [{ x: number; y: number }, { x: number; y: number }];
+  }
+
   function pointerMove(event: PointerEvent) {
     if (paused || opening || opened) return;
+    if (canvasTouches.has(event.pointerId)) {
+      canvasTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (pinchPair?.includes(event.pointerId)) {
+        const [a, b] = pinchPoints();
+        pinchZoom.move(a, b, { width, height });
+      }
+    }
+    if (pinchControlsLocked()) return;
     if (viewPointer?.id === event.pointerId) {
       if (
         Math.hypot(
@@ -761,7 +837,21 @@ function initializeRoomEngine(
     }
   }
 
+  function releaseTouch(event: PointerEvent) {
+    if (!canvasTouches.delete(event.pointerId)) return false;
+    if (pinchPair?.includes(event.pointerId)) {
+      pinchPair = null;
+      pinchZoom.end();
+    }
+    if (!pinchConsumed) return false;
+    if (canvasTouches.size === 0) pinchConsumed = false;
+    if (canvas.hasPointerCapture(event.pointerId))
+      canvas.releasePointerCapture(event.pointerId);
+    return true;
+  }
+
   function pointerUp(event: PointerEvent) {
+    if (releaseTouch(event)) return;
     if (!viewPointer || viewPointer.id !== event.pointerId) return;
     const clicked =
       !viewPointer.moved &&
@@ -781,6 +871,7 @@ function initializeRoomEngine(
   }
 
   function pointerCancel(event: PointerEvent) {
+    if (releaseTouch(event)) return;
     if (viewPointer?.id === event.pointerId) releaseViewPointer();
   }
 
@@ -831,6 +922,17 @@ function initializeRoomEngine(
   }
 
   function setCameraFromPlayer(elapsed: number) {
+    if (pinchControlsLocked()) {
+      const zoom = pinchZoom.snapshot();
+      // Optical zoom and an off-axis frustum preserve the touched image point
+      // without moving the camera through walls or changing the orbit.
+      camera.zoom = zoom.zoom;
+      camera.setViewOffset(width, height,
+        zoom.offsetX * width, zoom.offsetY * height, width, height);
+      camera.updateProjectionMatrix();
+      return;
+    }
+    camera.zoom = 1;
     if (returningView) {
       const blend = 1 - Math.exp(-10 * elapsed);
       yaw += shortestAngle(yaw, returningView.yaw) * blend;
@@ -928,6 +1030,7 @@ function initializeRoomEngine(
     const elapsed = Math.max((time - previousTime) / 1000, 0);
     previousTime = time;
     animationTime += elapsed;
+    pinchZoom.step(elapsed, reducedMotion);
     const directions = new Set(pad);
     for (const code of keyboard) directions.add(KEY_DIRECTIONS[code]);
     const oldPosition = { x: player.x, y: player.y, z: player.z };
@@ -940,7 +1043,7 @@ function initializeRoomEngine(
       player,
       reducedMotion || Boolean(opening) || opened,
     );
-    if (!opening && !opened && !bassControlsLocked()) {
+    if (!opening && !opened && !bassControlsLocked() && !pinchControlsLocked()) {
       if (Math.hypot(input.x, input.z) > 0.01) {
         const targetFacing = Math.atan2(-input.x, -input.z);
         facing +=
@@ -1061,7 +1164,7 @@ function initializeRoomEngine(
         bassState.notes.length ? bassState.hits / bassState.notes.length : 0, reducedMotion,
         { playing: bassState.phase === "playing", beat: bassBeat, success: bassSuccessPulse, string: bassPluckString, slap: bassSlapPulse });
       room.scene.updateMatrixWorld();
-      if (time - aimTime >= 100 && !opening && !opened && !bassHeld()) {
+      if (time - aimTime >= 100 && !opening && !opened && !bassHeld() && !pinchControlsLocked()) {
         aimTime = time;
         setHovered(
           targeting.current()?.destination ?? null,
@@ -1134,13 +1237,13 @@ function initializeRoomEngine(
 
   return {
     direction(direction, pressed) {
-      if (disposed || failed || paused || opening || opened || bassControlsLocked()) return;
+      if (disposed || failed || paused || opening || opened || bassControlsLocked() || pinchControlsLocked()) return;
       if (pressed) targeting.clear();
       if (pressed) pad.add(direction);
       else pad.delete(direction);
     },
     move(x, z) {
-      if (disposed || failed || paused || opening || opened || bassControlsLocked()) return;
+      if (disposed || failed || paused || opening || opened || bassControlsLocked() || pinchControlsLocked()) return;
       const length = Math.hypot(x, z);
       if (!Number.isFinite(length)) return;
       if (length > 0) targeting.clear();

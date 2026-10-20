@@ -626,6 +626,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             <div>
               <dt>見回す</dt>
               <dd>ドラッグ / スワイプ（360°）</dd>
+              <dt>拡大・縮小</dt>
+              <dd>景色を2本指でピンチ。指を離すと元に戻ります。</dd>
             </div>
             <div>
               <dt>移動</dt>
