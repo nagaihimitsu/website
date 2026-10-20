@@ -14,6 +14,8 @@
 
 確認画像：[斜め前](screenshots/bass-reference-quarter.png)／[正面](screenshots/bass-reference-front.png)／[横](screenshots/bass-reference-side.png)／[手元](screenshots/bass-reference-paws.png)／[スマホ横](screenshots/bass-reference-landscape.png)。スマホ確認はChromiumのタッチエミュレーションで、実機Safariは未確認です。
 
+`b1e1934` を公開済み（[公開ワークフロー](https://github.com/nagaihimitsu/website/actions/runs/39417490097)）。公開時の描画1件・本番ビルドも成功し、配信HTML・JavaScript・CSS・JPEG・MP3の11ファイルはローカルビルドとSHA-256が一致しています。公開URLを390×844のタッチ画面で確認し、時計を置き換えず取得→NORMAL→タップ／上スワイプ→置くが完了。斜めの構え・長いネック・丸い手・ストラップ・シールド接続と元の姿への復帰を目視確認し、ページ例外とコンソールエラーはありません。[公開版のスマホ演奏画面](screenshots/bass-reference-mobile.png)。
+
 ## 三面図に合わせたベースの作り直し（2026-10-20）
 
 新たに提供された正面・背面・側面の三面図を基準に、ボディの輪郭と各部の位置を測り直しました。指板は約3割長くしてボディ内部まで伸ばし、ブリッジを下げ、細身のボディ・長い上ホーン・小さい下ホーンを再構築。ナットからサドルまでの寸法をフレット・4本の弦・指先で共有し、20フレットの間隔も実際の弦長に合わせています。
