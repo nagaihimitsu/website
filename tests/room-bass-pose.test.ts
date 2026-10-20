@@ -115,7 +115,9 @@ describe("the actual bass-performing model", () => {
             bassBack = Math.max(bassBack, point.z);
           }
         });
-        expect(torsoFront - bassBack).toBeGreaterThan(0.045);
+        // A small real clearance lets the bass rest near the hoodie; a large
+        // fixed gap made the instrument and supporting strap float in profile.
+        expect(torsoFront - bassBack).toBeGreaterThan(0.02);
         const instrumentInverse = garden.instrument.matrixWorld.clone().invert();
         let penetratingCloth = 0;
         for (const mesh of armSurfaces()) {

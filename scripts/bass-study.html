@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bass performance study</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Bass performance study</title>
 <style>html,body{margin:0;height:100%;overflow:hidden;background:#f5f3ee}canvas{display:block}</style></head>
 <body><script type="module">
 import * as THREE from 'three';
@@ -24,13 +24,13 @@ ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
 const character=createCharacter(); scene.add(character.group);
 const garden=createBassGarden(); scene.add(garden.instrument);
 const camera=new THREE.OrthographicCamera(-.78*innerWidth/innerHeight,.78*innerWidth/innerHeight,.78,-.78,.01,30);
-const views={front:0,quarter:-45,side:-90,rear:-135,back:180,other:90};
+const views={front:0,quarter:-35,side:-90,rear:-135,back:180,other:90};
 const angle=(views[params.get('view')||'quarter']??-45)*Math.PI/180;
 camera.position.set(Math.sin(angle)*4,.85,-Math.cos(angle)*4);camera.lookAt(0,.6,-.05);
 const scale=new THREE.Vector3();
-function renderPose(beat=Number(params.get('beat')||0),string=Number(params.get('string')||3),fret=Number(params.get('fret')||3),pluck=Number(params.get('pluck')||0), draw=true) {
+function renderPose(beat=Number(params.get('beat')||0),string=Number(params.get('string')||3),fret=Number(params.get('fret')||3),pluck=Number(params.get('pluck')||0), draw=true,slap=Number(params.get('slap')||0)) {
   character.animate({time:beat*.625,speed:0,grounded:true,velocityY:0,punchProgress:null,reducedMotion:false,
-    bass:{lift:1,playing:true,beat,string,fret,fretting:true,pluckString:string,pluck}});
+    bass:{lift:1,playing:true,beat,string,fret,fretting:true,pluckString:string,pluck,slap}});
   character.bassAnchor.updateWorldMatrix(true,false);
   garden.instrument.position.copy(pose.BASS_HELD_POSITION).applyMatrix4(character.bassAnchor.matrixWorld);
   character.bassAnchor.getWorldQuaternion(garden.instrument.quaternion).multiply(pose.BASS_HELD_ROTATION);

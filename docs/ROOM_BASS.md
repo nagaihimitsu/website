@@ -50,6 +50,8 @@ Space／Enterは画面全体では開始用です。フォーカスした操作�
 
 楽器と指先の位置は共通計算です。左手は譜面の弦・フレットへ自動で移動し、右手はピッキングと親指のスラップを使い分けます。拍に合わせて体と花が動き、成功時には花びらと音符が舞います。スラップ成功時は少し強いアクセントになります。「動きを減らす」では踊りと粒子を抑えます。
 
+ベースは提供された参考画像に合わせた左右非対称の木製ボディ、白いピックガード、金属のブリッジ・コントロールプレート、4本の弦とクローバー型のペグを持つ立体モデルです。演奏時は短く丸い動物の指で支え、茶色のストラップが肩を通って上側のホーンとボディ下端の金具につながります。シールドは前面プレートの出力ジャックにL字プラグで接続し、楽器の動きに合わせてアンプまでのたるみが変わります。
+
 成功した録音区間は次の譜面音符まで継続します。難易度内の選曲、スコア保存・ランキングは未実装です。演奏によってコレクションのTXTや実績は変わりません。
 
 ## 実装と確認
@@ -76,4 +78,4 @@ npm run build
 
 確認画像：[難易度選択](screenshots/bass-ready-desktop.png)／[NORMAL](screenshots/bass-playing-normal-landscape.png)／[HARD](screenshots/bass-playing-hard-landscape.png)／[EASY](screenshots/bass-playing-desktop.png)／[縦持ち](screenshots/bass-playing-mobile.png)／[横持ち](screenshots/bass-playing-landscape.png)／[演奏と花の動き](screenshots/bass-playing-effects.png)。実行結果は [VALIDATION.md](VALIDATION.md) を参照してください。スマホ操作はChromiumのタッチエミュレーションで確認し、実機Safariの検証は未実施です。
 
-造形の比較には開発サーバーの `/scripts/bass-study.html?view=side` を使えます。`view` は `front` / `quarter` / `side` / `rear` / `back`。実際のキャラクターと楽器を固定照明で描画する開発用ページで、本番ビルドには含めません。
+造形の比較には開発サーバーの `/scripts/bass-study.html?view=side` を使えます。`view` は `front` / `quarter` / `side` / `rear` / `back`。`pluck=1&slap=1` でスラップ時の手元も比較できます。実際のキャラクターと楽器を固定照明で描画する開発用ページで、本番ビルドには含めません。

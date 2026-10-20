@@ -1,11 +1,14 @@
 import * as THREE from "three";
 
 /** Shared by the instrument, sleeves and fingertips; all points are torso-local. */
-export const BASS_HELD_POSITION = new THREE.Vector3(-0.065, 0.52, -0.28);
+export const BASS_HELD_POSITION = new THREE.Vector3(0.065, 0.44, -0.25);
 export const BASS_HELD_ROTATION = new THREE.Quaternion().setFromEuler(
-  new THREE.Euler(0, Math.PI, (55 * Math.PI) / 180),
+  new THREE.Euler(0, Math.PI, (-55 * Math.PI) / 180),
 );
 export const BASS_HELD_SCALE = 0.9;
+/** Instrument-local strap-button ends, shared by the hardware and shoulder strap. */
+export const BASS_STRAP_UPPER = new THREE.Vector3(-0.087, 0.266, -0.002);
+export const BASS_STRAP_TAIL = new THREE.Vector3(0.012, -0.251, -0.003);
 
 /** HUD order is G, D, A, E; the model's thick E string is at negative X. */
 export function bassStringX(string: number, y = 0.015) {

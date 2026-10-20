@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { withDisposalScope, type DisposalScope } from "../disposal";
+import { BASS_STRAP_TAIL, BASS_STRAP_UPPER } from "./bassPose";
 
 export const BASS_GARDEN_LAYOUT = {
   interaction: { x: 1.65, z: 5.65, radius: 0.85 },
@@ -43,10 +44,13 @@ function buildBassGarden(scope: DisposalScope) {
   const ink = surface("#25282a", 0.74);
   const rubber = surface("#15191a", 0.88);
   const silver = surface("#c1c3bb", 0.28, 0.72);
+  // Modest metalness keeps the hardware readable in the room's soft light;
+  // a near-mirror metal turns almost black without a photographic HDR map.
+  const instrumentChrome = surface("#cbd0d1", 0.32, 0.4);
   const warmMetal = surface("#a7a28e", 0.43, 0.54);
-  const ivory = surface("#ede2c9", 0.41);
-  const maple = surface("#c79d63", 0.53);
-  const rosewood = surface("#4d342c", 0.67);
+  const ivory = surface("#f0ece2", 0.39);
+  const maple = surface("#c7a276", 0.47);
+  const rosewood = surface("#382821", 0.58);
   const clay = surface("#b9856b", 0.94);
   const clayLight = surface("#c89478", 0.94);
   const clayDark = surface("#a87460", 0.96);
@@ -86,7 +90,7 @@ function buildBassGarden(scope: DisposalScope) {
   function plate(name: string, outline: THREE.Shape, depth: number, z: number, material: THREE.Material, parent: THREE.Object3D = instrument, bevel = 0.002) {
     const item = mesh(name, own(new THREE.ExtrudeGeometry(outline, {
       depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel,
-      bevelSegments: 2, curveSegments: 10, steps: 1,
+      bevelSegments: 4, curveSegments: 20, steps: 1,
     })), material, parent);
     item.position.z = z;
     return item;
@@ -98,65 +102,134 @@ function buildBassGarden(scope: DisposalScope) {
     return item;
   }
 
-  // The sunburst is evaluated in object space, so its edge colour continues
-  // naturally around the softened sides and never stretches with camera yaw.
+  // An offset double-cutaway body: the waist, full lower bout and two distinct
+  // horns remain legible from the side as well as in the playing silhouette.
   const bodyOutline = new THREE.Shape();
-  bodyOutline.moveTo(-0.034, 0.161);
-  bodyOutline.bezierCurveTo(-0.052, 0.171, -0.056, 0.253, -0.089, 0.248);
-  bodyOutline.bezierCurveTo(-0.14, 0.239, -0.147, 0.164, -0.112, 0.102);
-  bodyOutline.bezierCurveTo(-0.092, 0.06, -0.107, 0.039, -0.141, 0.01);
-  bodyOutline.bezierCurveTo(-0.2, -0.053, -0.169, -0.151, -0.111, -0.179);
-  bodyOutline.bezierCurveTo(-0.061, -0.211, 0.083, -0.217, 0.139, -0.16);
-  bodyOutline.bezierCurveTo(0.2, -0.095, 0.168, -0.035, 0.13, 0.008);
-  bodyOutline.bezierCurveTo(0.099, 0.047, 0.093, 0.066, 0.113, 0.096);
-  bodyOutline.bezierCurveTo(0.15, 0.152, 0.126, 0.192, 0.098, 0.187);
-  bodyOutline.bezierCurveTo(0.071, 0.18, 0.072, 0.144, 0.034, 0.15);
+  bodyOutline.moveTo(-0.031, 0.158);
+  bodyOutline.bezierCurveTo(-0.055, 0.169, -0.052, 0.254, -0.086, 0.256);
+  bodyOutline.bezierCurveTo(-0.108, 0.259, -0.119, 0.215, -0.115, 0.178);
+  bodyOutline.bezierCurveTo(-0.112, 0.135, -0.092, 0.101, -0.104, 0.06);
+  bodyOutline.bezierCurveTo(-0.11, 0.026, -0.158, 0.008, -0.176, -0.038);
+  bodyOutline.bezierCurveTo(-0.207, -0.116, -0.173, -0.197, -0.103, -0.222);
+  bodyOutline.bezierCurveTo(-0.041, -0.244, 0.05, -0.246, 0.109, -0.218);
+  bodyOutline.bezierCurveTo(0.171, -0.188, 0.19, -0.115, 0.173, -0.065);
+  bodyOutline.bezierCurveTo(0.161, -0.031, 0.112, -0.007, 0.103, 0.031);
+  bodyOutline.bezierCurveTo(0.092, 0.065, 0.119, 0.091, 0.124, 0.123);
+  bodyOutline.bezierCurveTo(0.128, 0.145, 0.115, 0.161, 0.101, 0.153);
+  bodyOutline.bezierCurveTo(0.081, 0.15, 0.073, 0.11, 0.052, 0.11);
+  bodyOutline.bezierCurveTo(0.035, 0.111, 0.031, 0.138, 0.031, 0.158);
   bodyOutline.closePath();
-  const lacquer = own(new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.31, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.26 }));
+
+  // A finely sampled wood finish avoids the large triangular colour patches
+  // that interpolating colours only between outline vertices produced.
+  const woodWidth = 256, woodHeight = 512;
+  const woodPixels = new Uint8Array(woodWidth * woodHeight * 4);
+  const amber = new THREE.Color("#926c4e"), brown = new THREE.Color("#76513d");
+  const rim = new THREE.Color("#533b32"), woodColor = new THREE.Color();
+  for (let row = 0; row < woodHeight; row++) for (let column = 0; column < woodWidth; column++) {
+    const x = column / (woodWidth - 1) * 0.44 - 0.22;
+    const y = row / (woodHeight - 1) * 0.55 - 0.27;
+    const radial = Math.hypot(x / 0.23, (y + 0.052) / 0.34);
+    const grainWarp = x * 330 + Math.sin(y * 8) * 2.3 + Math.sin(y * 23) * 0.38;
+    const grain = Math.sin(grainWarp) * 0.018 + Math.sin(grainWarp * 3.17 + y * 5) * 0.009;
+    woodColor.copy(amber).lerp(brown, THREE.MathUtils.smoothstep(radial, 0.32, 0.95));
+    woodColor.lerp(rim, THREE.MathUtils.smoothstep(radial, 0.81, 1.25));
+    woodColor.multiplyScalar(1 + grain).convertLinearToSRGB();
+    const offset = (row * woodWidth + column) * 4;
+    woodPixels[offset] = Math.round(woodColor.r * 255);
+    woodPixels[offset + 1] = Math.round(woodColor.g * 255);
+    woodPixels[offset + 2] = Math.round(woodColor.b * 255);
+    woodPixels[offset + 3] = 255;
+  }
+  const woodTexture = own(new THREE.DataTexture(woodPixels, woodWidth, woodHeight));
+  woodTexture.colorSpace = THREE.SRGBColorSpace;
+  woodTexture.magFilter = THREE.LinearFilter;
+  woodTexture.minFilter = THREE.LinearMipmapLinearFilter;
+  woodTexture.generateMipmaps = true;
+  woodTexture.anisotropy = 4;
+  woodTexture.needsUpdate = true;
+  const lacquer = own(new THREE.MeshPhysicalMaterial({ map: woodTexture, roughness: 0.36,
+    metalness: 0, clearcoat: 0.48, clearcoatRoughness: 0.32 }));
   const body = plate("bass-carved-sunburst-body", bodyOutline, 0.045, -0.026, lacquer, instrument, 0.009);
   const bodyPosition = body.geometry.getAttribute("position");
-  const colors: number[] = [];
-  const centerColor = new THREE.Color("#c18b48"), middleColor = new THREE.Color("#a45a31"), edgeColor = new THREE.Color("#54332c");
-  const color = new THREE.Color();
+  // ExtrudeGeometry splits the bevel into flat faces. Give its rolled edge a
+  // continuous normal field while keeping the broad front and back planar.
+  const edgePoints = bodyOutline.getPoints(20);
+  edgePoints.pop();
+  const edgeNormals = edgePoints.map((_, i) => {
+    const previous = edgePoints[(i + edgePoints.length - 1) % edgePoints.length];
+    const next = edgePoints[(i + 1) % edgePoints.length];
+    return new THREE.Vector2(next.y - previous.y, previous.x - next.x).normalize();
+  });
+  const bodyNormals = body.geometry.getAttribute("normal");
+  const rimNormal = new THREE.Vector2();
+  const woodUv = body.geometry.getAttribute("uv");
   for (let i = 0; i < bodyPosition.count; i++) {
     const x = bodyPosition.getX(i), y = bodyPosition.getY(i), z = bodyPosition.getZ(i);
-    const edge = Math.hypot(x / 0.18, (y + 0.035) / 0.255);
-    color.copy(centerColor).lerp(middleColor, THREE.MathUtils.smoothstep(edge, 0.15, 0.76));
-    color.lerp(edgeColor, Math.max(THREE.MathUtils.smoothstep(edge, 0.69, 1.04), z < 0.004 ? 0.53 : 0));
-    colors.push(color.r, color.g, color.b);
+    woodUv.setXY(i, (x + 0.22) / 0.44, (y + 0.27) / 0.55);
+    const nz = z > 0.045 ? THREE.MathUtils.clamp((z - 0.045) / 0.009, 0, 1)
+      : z < 0 ? THREE.MathUtils.clamp(z / 0.009, -1, 0) : 0;
+    if (Math.abs(nz) > 0.999) {
+      bodyNormals.setXYZ(i, 0, 0, Math.sign(nz));
+      continue;
+    }
+    let nearest = Infinity, segment = 0, along = 0;
+    for (let edge = 0; edge < edgePoints.length; edge++) {
+      const a = edgePoints[edge], b = edgePoints[(edge + 1) % edgePoints.length];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = THREE.MathUtils.clamp(((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy), 0, 1);
+      const distance = (x - a.x - dx * t) ** 2 + (y - a.y - dy * t) ** 2;
+      if (distance < nearest) { nearest = distance; segment = edge; along = t; }
+    }
+    rimNormal.copy(edgeNormals[segment]).lerp(edgeNormals[(segment + 1) % edgePoints.length], along).normalize();
+    const sideWeight = Math.sqrt(1 - nz * nz);
+    bodyNormals.setXYZ(i, rimNormal.x * sideWeight, rimNormal.y * sideWeight, nz);
   }
-  body.geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 
   const pickguard = new THREE.Shape();
-  pickguard.moveTo(-0.037, 0.154);
-  pickguard.lineTo(-0.061, 0.173);
-  pickguard.bezierCurveTo(-0.091, 0.174, -0.08, 0.083, -0.108, 0.045);
-  pickguard.bezierCurveTo(-0.14, -0.001, -0.13, -0.075, -0.09, -0.096);
-  pickguard.bezierCurveTo(-0.044, -0.12, 0.08, -0.117, 0.096, -0.069);
-  pickguard.bezierCurveTo(0.101, -0.038, 0.037, 0.001, 0.038, 0.062);
-  pickguard.lineTo(0.037, 0.154);
+  pickguard.moveTo(-0.032, 0.153);
+  pickguard.bezierCurveTo(-0.049, 0.163, -0.054, 0.192, -0.073, 0.189);
+  pickguard.bezierCurveTo(-0.092, 0.185, -0.077, 0.096, -0.092, 0.053);
+  pickguard.bezierCurveTo(-0.103, 0.021, -0.14, -0.003, -0.138, -0.038);
+  pickguard.bezierCurveTo(-0.136, -0.067, -0.106, -0.088, -0.076, -0.089);
+  pickguard.bezierCurveTo(-0.034, -0.09, 0.02, -0.087, 0.047, -0.075);
+  pickguard.bezierCurveTo(0.064, -0.067, 0.071, -0.044, 0.08, -0.027);
+  pickguard.bezierCurveTo(0.087, -0.007, 0.1, 0.005, 0.098, 0.019);
+  pickguard.bezierCurveTo(0.095, 0.032, 0.076, 0.028, 0.061, 0.047);
+  pickguard.bezierCurveTo(0.041, 0.067, 0.033, 0.112, 0.032, 0.153);
   pickguard.closePath();
-  plate("bass-ivory-pickguard", pickguard, 0.0018, 0.03, ivory, instrument, 0.0007);
+  plate("bass-ivory-pickguard", pickguard, 0.0018, 0.029, ivory, instrument, 0.0007);
   // The rear has its own heel and electronics cover rather than a second face.
   box("bass-rear-control-cover", [0.075, 0.092, 0.002], [0.084, -0.075, -0.037], rosewood, instrument, 0.012);
   box("bass-maple-neck", [0.055, 0.469, 0.031], [0, 0.366, -0.003], maple, instrument, 0.009);
   box("bass-rosewood-fingerboard", [0.058, 0.445, 0.01], [0, 0.377, 0.017], rosewood, instrument, 0.003);
-  box("bass-neck-heel", [0.071, 0.074, 0.008], [0, 0.132, -0.032], silver, instrument, 0.004);
+  box("bass-neck-heel", [0.071, 0.074, 0.008], [0, 0.132, -0.032], instrumentChrome, instrument, 0.004);
   box("bass-nut", [0.058, 0.008, 0.014], [0, 0.604, 0.022], ivory, instrument, 0.001);
 
   const headstock = new THREE.Shape();
   headstock.moveTo(-0.027, 0.606);
-  headstock.lineTo(-0.035, 0.732);
-  headstock.bezierCurveTo(-0.042, 0.765, -0.014, 0.792, 0.018, 0.784);
-  headstock.bezierCurveTo(0.053, 0.775, 0.065, 0.748, 0.048, 0.727);
-  headstock.bezierCurveTo(0.035, 0.707, 0.033, 0.642, 0.027, 0.606);
+  headstock.lineTo(-0.031, 0.755);
+  headstock.bezierCurveTo(-0.032, 0.779, -0.01, 0.8, 0.017, 0.795);
+  headstock.bezierCurveTo(0.048, 0.789, 0.059, 0.766, 0.05, 0.747);
+  headstock.bezierCurveTo(0.041, 0.73, 0.02, 0.735, 0.018, 0.713);
+  headstock.bezierCurveTo(0.014, 0.679, 0.025, 0.632, 0.027, 0.606);
   headstock.closePath();
   plate("bass-rounded-maple-headstock", headstock, 0.024, -0.015, maple, instrument, 0.004);
   for (let i = 0; i < 4; i++) {
     const y = 0.637 + i * 0.039;
-    frontDisc("bass-tuning-post", 0.007, 0.02, [-0.013, y, 0.017], silver, instrument);
-    rod("bass-tuner-shaft", new THREE.Vector3(-0.026, y, -0.001), new THREE.Vector3(-0.05, y, -0.001), 0.0038, silver, instrument);
-    sphere("bass-tuner-paddle", [0.009, 0.013, 0.004], [-0.052, y, -0.001], silver, instrument);
+    frontDisc("bass-tuning-post", 0.007, 0.02, [-0.013, y, 0.017], instrumentChrome, instrument);
+    frontDisc("bass-tuner-post-washer", 0.009, 0.002, [-0.013, y, 0.011], instrumentChrome, instrument);
+    box("bass-rear-tuner-gear", [0.022, 0.025, 0.006], [-0.014, y, -0.022], instrumentChrome, instrument, 0.004);
+    rod("bass-tuner-shaft", new THREE.Vector3(-0.026, y, -0.009), new THREE.Vector3(-0.053, y, -0.009), 0.0038, instrumentChrome, instrument);
+    const clover = new THREE.Shape();
+    clover.moveTo(-0.046, y - 0.004);
+    clover.bezierCurveTo(-0.054, y - 0.006, -0.052, y - 0.015, -0.061, y - 0.014);
+    clover.bezierCurveTo(-0.067, y - 0.014, -0.071, y - 0.009, -0.068, y - 0.004);
+    clover.bezierCurveTo(-0.081, y - 0.003, -0.081, y + 0.011, -0.069, y + 0.012);
+    clover.bezierCurveTo(-0.071, y + 0.021, -0.055, y + 0.021, -0.054, y + 0.011);
+    clover.bezierCurveTo(-0.05, y + 0.01, -0.05, y + 0.004, -0.046, y + 0.004);
+    clover.closePath();
+    plate("bass-cloverleaf-tuning-key", clover, 0.004, -0.011, instrumentChrome, instrument, 0.0016);
   }
   for (let fret = 1; fret <= 18; fret++) {
     const y = 0.602 - 0.69 * (1 - Math.pow(2, -fret / 12));
@@ -166,33 +239,66 @@ function buildBassGarden(scope: DisposalScope) {
       for (const x of fret === 12 ? [-0.01, 0.01] : [0]) frontDisc("bass-fingerboard-inlay", 0.0033, 0.0006, [x, next, 0.023], ivory, instrument);
     }
   }
-  box("bass-bridge-plate", [0.078, 0.04, 0.006], [0, -0.129, 0.029], silver, instrument, 0.003);
-  for (const y of [-0.033, 0.026]) box("bass-magnetic-pickup", [0.075, 0.018, 0.009], [0, y, 0.037], ink, instrument, 0.003);
+  box("bass-bridge-plate", [0.084, 0.044, 0.004], [0, -0.129, 0.031], instrumentChrome, instrument, 0.003);
+  box("bass-bridge-folded-lip", [0.084, 0.004, 0.012], [0, -0.149, 0.035], instrumentChrome, instrument, 0.001);
+  for (const y of [-0.033, 0.026]) {
+    box("bass-magnetic-pickup", [0.073, 0.014, 0.007], [0, y, 0.035], ink, instrument, 0.002);
+    for (let i = 0; i < 4; i++) for (const offset of [-0.002, 0.002])
+      frontDisc("bass-pickup-pole-piece", 0.0013, 0.001, [(i - 1.5) * 0.013 + offset, y, 0.039], instrumentChrome, instrument);
+  }
   const vibratingStrings: { mesh: THREE.Mesh; rest: Float32Array; length: number; phase: number }[] = [];
   for (let i = 0; i < 4; i++) {
     const x = (i - 1.5) * 0.013;
-    box("bass-individual-bridge-saddle", [0.011, 0.014, 0.007], [x, -0.128, 0.035], warmMetal, instrument, 0.002);
+    rod("bass-individual-bridge-saddle", new THREE.Vector3(x - 0.005, -0.129, 0.037),
+      new THREE.Vector3(x + 0.005, -0.129, 0.037), 0.0035, instrumentChrome, instrument, 12);
+    rod("bass-bridge-adjustment-screw", new THREE.Vector3(x, -0.148, 0.035),
+      new THREE.Vector3(x, -0.12, 0.035), 0.0013, warmMetal, instrument);
     const bridge = new THREE.Vector3(x, -0.142, 0.042), nut = new THREE.Vector3(x * 0.82, 0.603, 0.033);
-    const string = rod("bass-steel-string", bridge, nut, 0.00055 + (3 - i) * 0.00013, silver, instrument, 5, 16);
+    const string = rod("bass-steel-string", bridge, nut, 0.00055 + (3 - i) * 0.00013, instrumentChrome, instrument, 5, 16);
     string.userData.bassVibratingString = true;
     const positions = string.geometry.getAttribute("position") as THREE.BufferAttribute;
     positions.setUsage(THREE.DynamicDrawUsage);
     string.geometry.computeBoundingSphere();
     if (string.geometry.boundingSphere) string.geometry.boundingSphere.radius += 0.003;
     vibratingStrings.push({ mesh: string, rest: new Float32Array(positions.array), length: bridge.distanceTo(nut), phase: i * 0.71 });
-    rod("bass-headstock-string", new THREE.Vector3(x * 0.82, 0.603, 0.033), new THREE.Vector3(-0.013, 0.637 + i * 0.039, 0.028), 0.00055 + (3 - i) * 0.00013, silver, instrument, 5);
+    rod("bass-headstock-string", new THREE.Vector3(x * 0.82, 0.603, 0.033), new THREE.Vector3(-0.013, 0.637 + i * 0.039, 0.028), 0.00055 + (3 - i) * 0.00013, instrumentChrome, instrument, 5);
   }
-  for (const [x, y] of [[0.095, -0.08], [0.115, -0.116]]) {
-    frontDisc("bass-knurled-volume-knob", 0.011, 0.013, [x, y, 0.035], warmMetal, instrument);
-    box("bass-knob-index", [0.002, 0.006, 0.001], [x, y + 0.003, 0.042], ivory, instrument, 0.0002);
+  const controlPlate = new THREE.Shape();
+  controlPlate.moveTo(0.092, -0.035);
+  controlPlate.bezierCurveTo(0.102, -0.028, 0.127, -0.038, 0.134, -0.055);
+  controlPlate.bezierCurveTo(0.15, -0.09, 0.141, -0.152, 0.127, -0.174);
+  controlPlate.bezierCurveTo(0.114, -0.193, 0.096, -0.182, 0.096, -0.168);
+  controlPlate.bezierCurveTo(0.1, -0.121, 0.085, -0.073, 0.085, -0.052);
+  controlPlate.bezierCurveTo(0.085, -0.044, 0.087, -0.038, 0.092, -0.035);
+  controlPlate.closePath();
+  plate("bass-chrome-control-plate", controlPlate, 0.002, 0.029, instrumentChrome, instrument, 0.001);
+  for (const [x, y, radius] of [[0.109, -0.06, 0.011], [0.116, -0.099, 0.011], [0.114, -0.132, 0.009]]) {
+    frontDisc("bass-knob-chrome-skirt", radius + 0.0015, 0.002, [x, y, 0.033], instrumentChrome, instrument);
+    frontDisc("bass-knurled-volume-knob", radius, 0.012, [x, y, 0.039], ink, instrument);
+    box("bass-knob-index", [0.0015, 0.005, 0.001], [x, y + 0.003, 0.046], ivory, instrument, 0.0002);
   }
-  for (const [x, y] of [[-0.066, 0.134], [-0.105, -0.035], [-0.071, -0.087], [0.065, -0.075]]) frontDisc("bass-pickguard-screw", 0.0021, 0.001, [x, y, 0.034], silver, instrument);
+  for (const [x, y] of [[-0.072, 0.168], [-0.085, 0.065], [-0.126, -0.028], [-0.076, -0.081], [0.041, -0.067], [0.089, 0.018], [0.041, 0.083]]) {
+    frontDisc("bass-pickguard-screw", 0.0021, 0.001, [x, y, 0.032], instrumentChrome, instrument);
+    box("bass-pickguard-screw-slot", [0.0025, 0.0005, 0.0003], [x, y, 0.0326], ink, instrument, 0);
+  }
+  for (const point of [BASS_STRAP_UPPER, BASS_STRAP_TAIL]) {
+    const direction = new THREE.Vector3(0, point === BASS_STRAP_UPPER ? 1 : -1, 0);
+    const inside = point.clone().addScaledVector(direction, -0.014);
+    rod("bass-load-bearing-strap-button", inside, point, 0.0038, instrumentChrome, instrument, 12);
+    const cap = mesh("bass-strap-button-cap", own(new THREE.CylinderGeometry(0.007, 0.007, 0.003, 20)), instrumentChrome, instrument);
+    cap.position.copy(point);
+  }
+  // A front-mounted output socket belongs to the metal control plate, not to
+  // the strap endpin. The elbow turns the lead down along the outside edge.
+  frontDisc("bass-output-socket-washer", 0.008, 0.003, [0.112, -0.163, 0.033], instrumentChrome, instrument);
+  frontDisc("bass-output-socket-opening", 0.0043, 0.002, [0.112, -0.163, 0.035], rubber, instrument);
+  rod("bass-output-plug", new THREE.Vector3(0.112, -0.163, 0.035), new THREE.Vector3(0.112, -0.163, 0.063), 0.005, instrumentChrome, instrument, 12);
+  sphere("bass-output-plug-elbow", [0.007, 0.007, 0.007], [0.112, -0.163, 0.064], instrumentChrome, instrument);
+  rod("bass-output-plug-boot", new THREE.Vector3(0.112, -0.164, 0.064), new THREE.Vector3(0.112, -0.196, 0.064), 0.0055, rubber, instrument, 12);
   const cableJack = new THREE.Object3D();
   cableJack.name = "bass-output-jack-anchor";
-  cableJack.position.set(0.148, -0.1, 0);
+  cableJack.position.set(0.112, -0.196, 0.064);
   instrument.add(cableJack);
-  rod("bass-output-plug", new THREE.Vector3(0.14, -0.1, 0), new THREE.Vector3(0.174, -0.105, 0), 0.005, silver, instrument);
-  cableJack.position.x = 0.176;
 
   const restPosition = new THREE.Vector3(1.65, 0.27, 6.45);
   const restQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.06, Math.PI, 0.08));
@@ -421,10 +527,10 @@ function buildBassGarden(scope: DisposalScope) {
     new THREE.Vector3(1.035, 0.559, 6.262), new THREE.Vector3(1.03, 0.07, 6.1),
     new THREE.Vector3(0.98, 0.016, 5.94), new THREE.Vector3(1.41, 0.016, 5.79),
     new THREE.Vector3(1.96, 0.016, 5.92), new THREE.Vector3(2.02, 0.025, 6.19),
-    new THREE.Vector3(1.62, 0.14, 6.35), new THREE.Vector3(),
+    new THREE.Vector3(1.62, 0.14, 6.35), new THREE.Vector3(), new THREE.Vector3(),
   ];
   const cableCurve = new THREE.CatmullRomCurve3(cablePoints);
-  const cableSegments = 56, cableRadial = 6, cableRadius = 0.007;
+  const cableSegments = 64, cableRadial = 6, cableRadius = 0.0045;
   const cablePositions = new Float32Array((cableSegments + 1) * (cableRadial + 1) * 3);
   const cableNormals = new Float32Array(cablePositions.length);
   const cableIndices: number[] = [];
@@ -439,16 +545,31 @@ function buildBassGarden(scope: DisposalScope) {
   const cable = mesh("bass-connected-coiled-cable", cableGeometry, rubber);
   cable.frustumCulled = false;
   const lastJack = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const lastExit = new THREE.Vector3(Infinity, Infinity, Infinity);
   const jack = new THREE.Vector3(), center = new THREE.Vector3(), tangent = new THREE.Vector3();
+  const plugExit = new THREE.Vector3(), outward = new THREE.Vector3();
+  const plugExitOffset = new THREE.Vector3(0, -0.045, 0.005);
+  const frontClearance = new THREE.Vector3(0, 0, 0.05);
   const normal = new THREE.Vector3(), binormal = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3(1, 0, 0);
   function updateCable() {
     cableJack.getWorldPosition(jack);
     group.worldToLocal(jack);
-    if (lastJack.distanceToSquared(jack) < 0.0000001) return;
+    // The first short length continues along the elbow boot. Its direction
+    // rotates with the instrument before the rest of the lead sags to earth.
+    plugExit.copy(cableJack.position).add(plugExitOffset);
+    instrument.localToWorld(plugExit);
+    group.worldToLocal(plugExit);
+    if (lastJack.distanceToSquared(jack) < 0.0000001 && lastExit.distanceToSquared(plugExit) < 0.0000001) return;
     lastJack.copy(jack);
-    cablePoints[7].copy(jack);
-    cablePoints[6].copy(jack).add(new THREE.Vector3(0, -Math.min(0.18, jack.y * 0.6), 0.06));
+    lastExit.copy(plugExit);
+    cablePoints[8].copy(jack);
+    cablePoints[7].copy(plugExit);
+    outward.copy(cableJack.position).add(frontClearance);
+    instrument.localToWorld(outward);
+    group.worldToLocal(outward).sub(jack);
+    cablePoints[6].copy(plugExit).add(outward);
+    cablePoints[6].y -= Math.min(0.18, jack.y * 0.6);
     cablePoints[6].y = Math.max(cableRadius, cablePoints[6].y);
     cableCurve.updateArcLengths();
     for (let i = 0; i <= cableSegments; i++) {
