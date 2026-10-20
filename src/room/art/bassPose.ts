@@ -1,26 +1,28 @@
 import * as THREE from "three";
 
 /** Shared by the instrument, sleeves and fingertips; all points are torso-local. */
-export const BASS_HELD_POSITION = new THREE.Vector3(0.065, 0.44, -0.25);
+export const BASS_HELD_POSITION = new THREE.Vector3(0.065, 0.43, -0.25);
 export const BASS_HELD_ROTATION = new THREE.Quaternion().setFromEuler(
-  new THREE.Euler(0, Math.PI, (-55 * Math.PI) / 180),
+  new THREE.Euler(0, Math.PI, (-42 * Math.PI) / 180),
 );
-export const BASS_HELD_SCALE = 0.9;
+export const BASS_HELD_SCALE = 1.04;
+/** Relaxed supporting grip between phrases; sounding notes use their real frets. */
+export const BASS_REST_FRET = 9;
 /** One physical scale for the nut, bridge, fret wires and performing paws. */
 export const BASS_DIMENSIONS = {
-  nutY: 0.65,
+  nutY: 0.75,
   bridgeY: -0.19,
   fingerboardEndY: 0.058,
-  fretCount: 20,
+  fretCount: 22,
   bridgeStringSpacing: 0.018,
   nutStringSpacing: 0.013,
   bridgeStringZ: 0.042,
   nutStringZ: 0.033,
 } as const;
-export const BASS_PICK_Y = -0.065;
+export const BASS_PICK_Y = -0.025;
 export const BASS_SLAP_Y = 0.08;
 /** Instrument-local strap-button ends, shared by the hardware and shoulder strap. */
-export const BASS_STRAP_UPPER = new THREE.Vector3(-0.112, 0.274, -0.002);
+export const BASS_STRAP_UPPER = new THREE.Vector3(-0.112, 0.235, 0.027);
 export const BASS_STRAP_TAIL = new THREE.Vector3(0, -0.265, -0.003);
 
 function stringProgress(y: number) {

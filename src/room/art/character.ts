@@ -427,73 +427,95 @@ function buildCharacter(scope: DisposalScope) {
   const frettingRing = liveFinger("bass-fretting-ring", 0.0125);
   const frettingThumb = liveFinger("bass-fretting-thumb", 0.016);
 
-  // Broad leather carries the bass from its upper horn, over the fretting
-  // shoulder and behind the backpack, to the separate lower strap button.
-  // Both terminal centres share the instrument's actual button coordinates.
-  const strapSurface = remember(new THREE.MeshStandardMaterial({ color: "#493b32", roughness: 0.76,
+  // A flat leather strap follows the outside of the shoulder. The front tab
+  // surrounds the real upper-horn button; it is not a leaf-shaped tube that
+  // vanishes into the hood. The tail goes behind the backpack to the endpin.
+  const strapSurface = remember(new THREE.MeshStandardMaterial({ color: "#4a4447", roughness: 0.72,
     side: THREE.DoubleSide, transparent: true, opacity: 0 }));
+  const strapMetal = remember(new THREE.MeshStandardMaterial({ color: "#b8babc", roughness: 0.29,
+    metalness: 0.48, transparent: true, opacity: 0 }));
+  const bassStrap = new THREE.Group();
+  bassStrap.name = "bass-shoulder-support-strap";
+  bassStrap.visible = false;
+  body.add(bassStrap);
   const upperStrapButton = bassPosePoint(...BASS_STRAP_UPPER.toArray());
-  const upperStrapDirection = new THREE.Vector3(-0.125, 0.685, -0.210)
-    .sub(upperStrapButton).normalize();
+  const shoulderFront = new THREE.Vector3(-0.115, 0.749, -0.205);
+  const tabDirection = shoulderFront.clone().sub(upperStrapButton).normalize();
   const strapPoints = [
-    // Extend the rounded leather tab a little past the button: the fastener
-    // passes through the tab, rather than terminating at a cut ribbon edge.
-    upperStrapButton.clone().addScaledVector(upperStrapDirection, -0.009),
-    new THREE.Vector3(-0.125, 0.685, -0.210),
-    new THREE.Vector3(-0.177, 0.713, -0.169),
-    new THREE.Vector3(-0.215, 0.732, -0.052),
-    new THREE.Vector3(-0.206, 0.695, 0.04),
-    new THREE.Vector3(-0.15, 0.651, 0.134),
-    new THREE.Vector3(-0.055, 0.565, 0.147),
+    upperStrapButton.clone().addScaledVector(tabDirection, -0.016),
+    shoulderFront,
+    // These shoulder supports follow the outer hood surface plus 9mm of
+    // clearance, including its downward-facing rear fold.
+    new THREE.Vector3(-0.194, 0.749, -0.124),
+    new THREE.Vector3(-0.254, 0.747, -0.054),
+    new THREE.Vector3(-0.255, 0.742, 0.078),
+    new THREE.Vector3(-0.228, 0.708, 0.175),
+    new THREE.Vector3(-0.153, 0.683, 0.233),
+    new THREE.Vector3(-0.075, 0.572, 0.147),
     new THREE.Vector3(0.104, 0.475, 0.145),
     new THREE.Vector3(0.192, 0.422, 0.078),
-    new THREE.Vector3(0.233, 0.397, -0.092),
+    new THREE.Vector3(0.233, 0.362, -0.092),
     bassPosePoint(...BASS_STRAP_TAIL.toArray()),
   ];
   const strapCurve = new THREE.CatmullRomCurve3(strapPoints);
   const strapGuides = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0, -1), new THREE.Vector3(-0.25, 0.3, -1),
-    new THREE.Vector3(-0.5, 0.7, -0.3), new THREE.Vector3(-0.5, 1, 0),
-    new THREE.Vector3(-0.4, 0.5, 1),
-    new THREE.Vector3(0, 0.3, 1), new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0.5),
-    new THREE.Vector3(1, 0, 0), new THREE.Vector3(0.5, 0, -1),
+    new THREE.Vector3(0, 0, -1), new THREE.Vector3(-0.2, 0.05, -1),
+    new THREE.Vector3(-0.50, 0.315, -0.806), new THREE.Vector3(-0.903, -0.196, -0.382),
+    new THREE.Vector3(-0.866, -0.476, 0.154), new THREE.Vector3(-0.810, -0.397, 0.432),
+    new THREE.Vector3(-0.382, -0.901, 0.207),
+    new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(1, 0, 0.5), new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(0.5, 0, -1),
   ]);
-  const strapPositions: number[] = [], strapIndices: number[] = [];
+  const strapPositions: number[] = [], strapNormals: number[] = [], strapIndices: number[] = [];
   const strapAcross = new THREE.Vector3(), strapOut = new THREE.Vector3();
-  const strapSides = 12;
+  // A softly bevelled rectangle retains two broad leather faces. An ellipse
+  // changed apparent width continuously and made the old band look inflated.
+  const strapSection = [[-1,-0.35],[-0.96,-1],[0.96,-1],[1,-0.35],
+    [1,0.35],[0.96,1],[-0.96,1],[-1,0.35],[-1,-0.35]];
+  const strapSides = strapSection.length - 1;
   const strapLength = strapCurve.getLength();
-  for (let row = 0; row <= 128; row++) {
-    const t = row / 128;
-    const curveT = strapCurve.getUtoTmapping(t, 0);
+  for (let row = 0; row <= 160; row++) {
+    const t = row / 160, curveT = strapCurve.getUtoTmapping(t, 0);
     const point = strapCurve.getPoint(curveT), tangent = strapCurve.getTangent(curveT);
     strapGuides.getPoint(curveT, strapOut).normalize();
     strapAcross.crossVectors(tangent, strapOut).normalize();
     strapOut.crossVectors(strapAcross, tangent).normalize();
     const distance = t * strapLength;
-    // A slim, constant-width belt and a small rounded mounting tab. Width is
-    // measured by arc length, so a turn over the shoulder cannot grow a leaf.
-    const tabCap = Math.sqrt(Math.max(0, 1 - Math.max(0, 1 - distance / 0.012) ** 2));
-    const terminal = 1 - THREE.MathUtils.smoothstep(t, 0.95, 1);
-    const halfWidth = THREE.MathUtils.lerp(0.012, 0.016,
-      THREE.MathUtils.smoothstep(distance, 0.026, 0.060)) * tabCap * terminal;
+    const roundedTab = Math.sqrt(Math.max(0, 1 - Math.max(0, 1 - distance / 0.020) ** 2));
+    const tailTaper = 1 - THREE.MathUtils.smoothstep(t, 0.97, 1);
+    const halfWidth = THREE.MathUtils.lerp(0.021, 0.022,
+      THREE.MathUtils.smoothstep(distance, 0.03, 0.08)) * roundedTab * tailTaper;
     for (let side = 0; side <= strapSides; side++) {
-      const angle = side / strapSides * Math.PI * 2;
-      const w = Math.cos(angle) * halfWidth, thickness = Math.sin(angle) * 0.0024;
+      const [across, depth] = strapSection[side];
+      const w = across * halfWidth, thickness = depth * 0.0022;
       strapPositions.push(point.x + strapAcross.x * w + strapOut.x * thickness,
         point.y + strapAcross.y * w + strapOut.y * thickness,
         point.z + strapAcross.z * w + strapOut.z * thickness);
-      if (row < 128 && side < strapSides) { const a = row * (strapSides + 1) + side, b = a + strapSides + 1;
-        strapIndices.push(a, a + 1, b, b, a + 1, b + 1); }
+      // Give the two broad faces their own smooth surface normal. Averaging
+      // long, thin triangles around the bevel made a zigzag of black facets.
+      const broadFace = Math.abs(depth) === 1;
+      const normal = strapOut.clone().multiplyScalar(broadFace ? Math.sign(depth) : Math.sign(depth) * 0.35)
+        .addScaledVector(strapAcross, broadFace ? 0 : Math.sign(across) * 0.94).normalize();
+      strapNormals.push(normal.x, normal.y, normal.z);
+      if (row < 160 && side < strapSides) {
+        const a = row * (strapSides + 1) + side, b = a + strapSides + 1;
+        strapIndices.push(a, b, a + 1, b, b + 1, a + 1);
+      }
     }
   }
   const strapGeometry = remember(new THREE.BufferGeometry());
   strapGeometry.setAttribute("position", new THREE.Float32BufferAttribute(strapPositions, 3));
+  strapGeometry.setAttribute("normal", new THREE.Float32BufferAttribute(strapNormals, 3));
   strapGeometry.setIndex(strapIndices);
-  strapGeometry.computeVertexNormals();
-  const bassStrap = mesh(strapGeometry, strapSurface, body);
-  bassStrap.name = "bass-shoulder-support-strap";
-  bassStrap.visible = false;
+  const strapBand = mesh(strapGeometry, strapSurface, bassStrap);
+  strapBand.name = "bass-flat-leather-shoulder-band";
+  // This thin, folded sheet casts onto the hoodie, but cannot resolve its own
+  // back face in the room shadow map without false triangular self-shadows.
+  strapBand.receiveShadow = false;
+  const strapLock = ellipsoid(0.010, 0.010, 0.0033, strapMetal, bassStrap,
+    upperStrapButton.x, upperStrapButton.y, upperStrapButton.z - 0.0058);
+  strapLock.name = "bass-round-strap-lock";
 
   group.traverse((object) => {
     object.userData.roomRaycastIgnore = true;
@@ -674,37 +696,37 @@ function buildCharacter(scope: DisposalScope) {
         // with reduced motion, without moving the elbow through the instrument.
         // The fingers grow out of a broad rounded mitt. Their short pads overlap
         // at the knuckles and curl only at the strings; no long human phalanges.
-        const pickPalmX = THREE.MathUtils.lerp(-0.067 + pickX * 0.3, thumbX - 0.044, slap);
-        pluckingIndex([[pickPalmX + 0.018, pickingY + 0.004, 0.082 + slap * 0.004],
-          [pickX - 0.018, pickingY + 0.007, 0.077 + slap * 0.008],
+        const pickPalmX = THREE.MathUtils.lerp(-0.043 + pickX * 0.3, thumbX - 0.034, slap);
+        pluckingIndex([[pickPalmX + 0.007, pickingY - 0.002, 0.078 + slap * 0.004],
+          [pickX - 0.017, pickingY + 0.002, 0.071 + slap * 0.008],
           [pickX - 0.006, pickingY + 0.004, 0.059 + slap * 0.014],
           [pickX - fingerPluck * 0.007, pickingY, bassStringZ(pickingY) + 0.002 + fingerPluck * 0.003 + slap * 0.015]]);
-        pluckingMiddle([[pickPalmX + 0.016, pickingY - 0.022, 0.081 + slap * 0.004],
-          [pickX - 0.019, pickingY - 0.021, 0.075 + slap * 0.008],
-          [pickX - 0.007, pickingY - 0.024, 0.057 + slap * 0.013],
-          [pickX - 0.001, pickingY - 0.029, 0.044 + slap * 0.016]]);
-        pluckingRing([[pickPalmX + 0.011, pickingY - 0.044, 0.078 + slap * 0.004],
-          [pickX - 0.024, pickingY - 0.046, 0.073 + slap * 0.008],
-          [pickX - 0.015, pickingY - 0.051, 0.058 + slap * 0.012],
-          [pickX - 0.01, pickingY - 0.055, 0.048 + slap * 0.015]]);
-        pluckingThumb([[pickPalmX + 0.005, pickingY + 0.01, 0.073 - slap * 0.006],
-          [pickPalmX + 0.021, pickingY + 0.025, 0.073 - slap * 0.007],
+        pluckingMiddle([[pickPalmX + 0.006, pickingY - 0.020, 0.077 + slap * 0.004],
+          [pickX - 0.018, pickingY - 0.019, 0.069 + slap * 0.008],
+          [pickX - 0.007, pickingY - 0.020, 0.054 + slap * 0.013],
+          [pickX - 0.003, pickingY - 0.024, 0.044 + slap * 0.016]]);
+        pluckingRing([[pickPalmX + 0.004, pickingY - 0.037, 0.073 + slap * 0.004],
+          [pickX - 0.022, pickingY - 0.036, 0.067 + slap * 0.008],
+          [pickX - 0.014, pickingY - 0.039, 0.054 + slap * 0.012],
+          [pickX - 0.012, pickingY - 0.043, 0.046 + slap * 0.015]]);
+        pluckingThumb([[pickPalmX - 0.002, pickingY + 0.005, 0.070 - slap * 0.006],
+          [pickPalmX + 0.013, pickingY + 0.018, 0.071 - slap * 0.007],
           [THREE.MathUtils.lerp(-0.03, thumbX - 0.012, slap),
-            THREE.MathUtils.lerp(pickingY + 0.032, BASS_SLAP_Y - 0.006, slap), 0.06],
-          [THREE.MathUtils.lerp(-0.022, thumbX, slap), THREE.MathUtils.lerp(pickingY + 0.028, BASS_SLAP_Y, slap),
+            THREE.MathUtils.lerp(pickingY + 0.024, BASS_SLAP_Y - 0.006, slap), 0.06],
+          [THREE.MathUtils.lerp(-0.022, thumbX, slap), THREE.MathUtils.lerp(pickingY + 0.020, BASS_SLAP_Y, slap),
             THREE.MathUtils.lerp(0.052, bassStringZ(BASS_SLAP_Y) + 0.0008, slap)]]);
-        frettingIndex([[0.041, fingerboardY + 0.002, 0.057],
-          [0.023, fingerboardY + 0.006, 0.060],
+        frettingIndex([[0.024, fingerboardY - 0.014, 0.086],
+          [0.014, fingerboardY - 0.008, 0.089],
           [frettingX + 0.009, fingerboardY + 0.003, touchZ + 0.017],
           [frettingX, fingerboardY, touchZ + 0.0008]]);
-        frettingMiddle([[0.042, fingerboardY - 0.023, 0.060],
-          [0.023, fingerboardY - 0.018, 0.062],
+        frettingMiddle([[0.026, fingerboardY - 0.026, 0.092],
+          [0.014, fingerboardY - 0.022, 0.094],
           [0.004, fingerboardY - 0.022, 0.054],
           [-0.013, fingerboardY - 0.025, 0.039]]);
-        frettingRing([[0.044, fingerboardY - 0.046, 0.060],
-          [0.024, fingerboardY - 0.043, 0.060],
-          [0.009, fingerboardY - 0.047, 0.051],
-          [-0.008, fingerboardY - 0.052, 0.041]]);
+        frettingRing([[0.027, fingerboardY - 0.043, 0.089],
+          [0.015, fingerboardY - 0.040, 0.091],
+          [0.009, fingerboardY - 0.040, 0.051],
+          [-0.008, fingerboardY - 0.044, 0.041]]);
         // A short tucked thumb cups the rounded maple back. The first bend
         // clears the neck's shoulder before the pad curls in toward its centre.
         frettingThumb([[0.048, fingerboardY - 0.025, 0.048],
@@ -712,30 +734,36 @@ function buildCharacter(scope: DisposalScope) {
           [0.027, fingerboardY - 0.023, -0.017],
           [0.008, fingerboardY - 0.019, -0.01]]);
         bassStrap.visible = lift > 0.55;
-        strapSurface.opacity = THREE.MathUtils.smoothstep(lift, 0.55, 1);
+        strapSurface.opacity = strapMetal.opacity = THREE.MathUtils.smoothstep(lift, 0.55, 1);
         for (let index = 0; index < armSkins.length; index++) {
           const rig = armSkins[index], { arm, side } = rig;
-          arm.position.z -= 0.045 * lift;
+          const picking = index === 1;
+          arm.position.z -= (picking ? 0.090 : 0.065) * lift;
           arm.quaternion.slerp(identity, lift);
           rig.pile.forEach((item) => { item.visible = lift < 0.01; });
           // Palm position is expressed in instrument space, separate from the
           // string-contacting fingertips. Only the wrist shifts on a pluck.
-          const picking = index === 1;
           if (picking) bassPosePoint(pickPalmX - fingerPluck * 0.002, pickingY - 0.011,
-            0.081 + fingerPluck * 0.001 + slap * 0.003, handTarget);
-          else bassPosePoint(0.050, fingerboardY - 0.025, 0.063, handTarget);
+            0.077 + fingerPluck * 0.001 + slap * 0.003, handTarget);
+          else bassPosePoint(0.026, fingerboardY - 0.010, 0.078, handTarget);
           sleeveCurve.v0.set(0, 0.012, 0);
-          sleeveCurve.v1.set(side * 0.04, -0.085, -0.04);
-          sleeveCurve.v2.set(side * 0.085, -0.105, -0.15);
           wrist.copy(handTarget).sub(arm.position);
-          direction.copy(sleeveCurve.v2).sub(wrist).normalize();
-          sleeveCurve.v3.copy(wrist).addScaledVector(direction, 0.032);
           if (picking) {
-            // A relaxed low elbow passes around the lower bout, then the
-            // forearm comes forward above the strings instead of across the chest.
-            sleeveCurve.v1.set(side * (0.13 + slap * 0.010), -0.12, -0.12 - slap * 0.030);
-            sleeveCurve.v2.set(side * (0.285 + slap * 0.012), -0.20, -0.48 - slap * 0.025);
-            sleeveCurve.v3.copy(wrist).add(new THREE.Vector3(side * 0.027, -0.008, 0.003));
+            // The elbow comes forward above the upper bout, then the padded
+            // forearm drops to the strings. Its lateral reach follows the
+            // wrist, instead of forming the old fixed-width U around the body.
+            sleeveCurve.v1.set(-side * 0.005, 0.040, -0.255 - slap * 0.056);
+            sleeveCurve.v2.set(wrist.x + side * 0.015, wrist.y + 0.110,
+              Math.min(wrist.z - 0.015, -0.305) - slap * 0.046);
+            sleeveCurve.v3.copy(wrist).add(new THREE.Vector3(side * 0.035, -0.007, 0.002));
+          } else {
+            // A relaxed bent elbow stays below the hand. Reaching the first
+            // frets raises the forearm naturally while the shoulder stays put.
+            sleeveCurve.v1.set(side * 0.055, -0.085, -0.065);
+            sleeveCurve.v2.set(wrist.x + side * 0.065,
+              Math.min(-0.065, wrist.y - 0.065), wrist.z + 0.065);
+            direction.copy(sleeveCurve.v2).sub(wrist).normalize();
+            sleeveCurve.v3.copy(wrist).addScaledVector(direction, 0.030);
           }
           palmRotation.copy(BASS_HELD_ROTATION).multiply(frameRotation.setFromAxisAngle(
             new THREE.Vector3(0, 0, 1), (picking ? Math.PI / 2 : -Math.PI / 2)
@@ -756,18 +784,38 @@ function buildCharacter(scope: DisposalScope) {
               const x = skin.positions[i], y = skin.positions[i + 1], z = skin.positions[i + 2];
               skinNormal.set(skin.normals[i], skin.normals[i + 1], skin.normals[i + 2]);
               if (skin.paw) {
-                skinPoint.set((x - side * 0.025) * 1.04, (y + 0.319) * 1.09, (z + 0.02) * 0.88)
+                const palmWidth = picking ? 1.28 : 1.18;
+                const palmLength = picking ? 1.30 : 1.16;
+                const palmDepth = picking ? 1.00 : 0.88;
+                skinPoint.set((x - side * 0.025) * palmWidth,
+                  (y + 0.319) * palmLength, (z + 0.02) * palmDepth)
                   .applyQuaternion(palmRotation).add(handTarget).sub(arm.position);
-                skinNormal.set(skinNormal.x / 1.04, skinNormal.y / 1.09, skinNormal.z / 0.88)
+                skinNormal.set(skinNormal.x / palmWidth, skinNormal.y / palmLength, skinNormal.z / palmDepth)
                   .normalize().applyQuaternion(palmRotation);
               } else {
                 const section = rig.sections.get(y)!;
-                const sleeveWidth = section.width * (picking
-                  ? 0.82 + 0.18 * THREE.MathUtils.smoothstep(section.clamped, 0.7, 1) : 1);
+                const sleeveWidth = section.width * (
+                  (picking ? 0.82 : 0.88) + (picking ? 0.18 : 0.12)
+                    * THREE.MathUtils.smoothstep(section.clamped, 0.7, 1));
                 skinPoint.set((x - side * 0.024 * section.clamped) * sleeveWidth, 0,
                   (z + 0.02 * section.clamped) * sleeveWidth)
-                  .applyQuaternion(section.rotation).add(section.centre);
+                  .applyQuaternion(section.rotation);
                 skinNormal.applyQuaternion(section.rotation);
+                if (picking) {
+                  // The soft rear half of the sleeve compresses against the
+                  // upper bout. Its visible front stays rounded; moving the
+                  // entire elbow forward produced an oversized U in profile.
+                  const compression = 0.52
+                    * THREE.MathUtils.smoothstep(section.clamped, 0.12, 0.34)
+                    * (1 - THREE.MathUtils.smoothstep(section.clamped, 0.78, 1));
+                  const rear = skinPoint.z;
+                  const rounded = Math.sqrt(rear * rear + 0.000004);
+                  skinPoint.z -= compression * ((rear + rounded) * 0.5 - 0.001);
+                  const derivative = 1 - compression * (1 + rear / rounded) * 0.5;
+                  skinNormal.z /= derivative;
+                  skinNormal.normalize();
+                }
+                skinPoint.add(section.centre);
               }
               positions.setXYZ(vertex, THREE.MathUtils.lerp(x, skinPoint.x, lift),
                 THREE.MathUtils.lerp(y, skinPoint.y, lift), THREE.MathUtils.lerp(z, skinPoint.z, lift));

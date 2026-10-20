@@ -1064,7 +1064,9 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const bassTarget = new THREE.Vector3();
   const bassRotation = new THREE.Quaternion();
   const bassTargetScale = new THREE.Vector3();
-  const bassRestScale = new THREE.Vector3(1, 1, 1);
+  // Preserve the instrument's physical size from its stand into the paws.
+  const bassRestScale = avatar.scale.clone().multiplyScalar(BASS_HELD_SCALE);
+  bassGarden.instrument.scale.copy(bassRestScale);
   // The bird is a living, solid room occupant, never a destructible prop.
   const bird = scope.own(createBird());
   scene.add(bird.group);

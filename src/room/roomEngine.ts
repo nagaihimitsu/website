@@ -9,6 +9,7 @@ import { worldRecovery } from "./roomArchitecture";
 import { findRecoveryPosition } from "./worldRecovery";
 import { createBassGame, type BassDifficulty, type BassString, type BassTechnique } from "./bassGame";
 import { createBassAudio } from "./bassAudio";
+import { BASS_REST_FRET } from "./art/bassPose";
 import {
   createPlayer,
   movementVector,
@@ -45,6 +46,9 @@ const PUNCH_DURATION = 420;
 const PUNCH_IMPACT = 125;
 const BIRD_FLOOR_OFFSET = 0.012;
 const BASS_VIEW_YAW = Math.PI;
+// A three-quarter presentation shows the supporting shoulder, backpack and
+// carved body depth while keeping the garden behind the live performance.
+const BASS_PERFORMER_YAW = Math.PI + BASS_VIEW_YAW - (30 * Math.PI) / 180;
 const BASS_PLUCK_KEYS: Record<string, BassString> = { Digit7: 0, Digit8: 1, Digit9: 2, Digit0: 3 };
 const KEY_DIRECTIONS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -980,13 +984,15 @@ function initializeRoomEngine(
       }
     }
     // Frame the performer above the compact play bar, with the garden behind.
-    const targetHeight = THREE.MathUtils.lerp(FOLLOW_TARGET_HEIGHT, 0.6, bassVisualLift);
+    const shortLandscape = height < 500 && camera.aspect > 1.2;
+    const targetHeight = THREE.MathUtils.lerp(FOLLOW_TARGET_HEIGHT,
+      shortLandscape ? 0.65 : 0.6, bassVisualLift);
     cameraTarget.set(player.x, player.y + targetHeight, player.z);
     const direction = orbitDirection(yaw, pitch);
     boomDirection.set(direction.x, direction.y, direction.z);
     const wantedDistance = THREE.MathUtils.lerp(
       FOLLOW_DISTANCE + (camera.aspect < 0.8 ? 0.1 : 0),
-      height < 500 && camera.aspect > 1.2 ? 2.85 : 2.2, bassVisualLift,
+      shortLandscape ? 2.85 : 2.2, bassVisualLift,
     );
     let safeDistance = cameraBoomLimit(
       cameraTarget,
@@ -1139,7 +1145,7 @@ function initializeRoomEngine(
         z: (wantedZ - player.z) / (2.8 * stepTime),
       }, stepTime, room.obstacles);
     }
-    if (bassHeld()) facing += shortestAngle(facing, Math.PI + BASS_VIEW_YAW) * (1 - Math.exp(-8 * elapsed));
+    if (bassHeld()) facing += shortestAngle(facing, BASS_PERFORMER_YAW) * (1 - Math.exp(-8 * elapsed));
     const liftTarget = bassHeld() ? (bassState.phase === "pickup" ? bassState.pickupProgress : 1) : 0;
     bassVisualLift = bassHeld() ? liftTarget : Math.max(0, bassVisualLift - elapsed * 2.5);
     bassPluckPulse *= Math.exp(-12 * elapsed);
@@ -1191,8 +1197,9 @@ function initializeRoomEngine(
         reducedMotion,
       });
       const punchProgress = updatePunch(time);
-      const automaticPhrase = bassState.currentPhrase ?? bassState.nextPhrase;
-      const bassLeft = automaticPhrase ?? { string: 3, fret: 3 };
+      const automaticPhrase = bassState.phase === "playing"
+        ? bassState.currentPhrase ?? bassState.nextPhrase : null;
+      const bassLeft = automaticPhrase ?? { string: 3, fret: BASS_REST_FRET };
       const bassBeat = bassState.beat;
       room.animateAvatar({
         time: animationTime,

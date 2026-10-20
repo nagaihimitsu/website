@@ -46,11 +46,12 @@ function buildBassGarden(scope: DisposalScope) {
   const silver = surface("#c1c3bb", 0.28, 0.72);
   // Modest metalness keeps the hardware readable in the room's soft light;
   // a near-mirror metal turns almost black without a photographic HDR map.
-  const instrumentChrome = surface("#cbd0d1", 0.32, 0.4);
+  const instrumentChrome = surface("#d0d1d0", 0.28, 0.46);
   const warmMetal = surface("#a7a28e", 0.43, 0.54);
-  const ivory = surface("#f0ece2", 0.39);
-  const maple = surface("#c7a276", 0.47);
-  const rosewood = surface("#382821", 0.58);
+  const ivory = surface("#eee9e1", 0.44);
+  const maple = own(new THREE.MeshPhysicalMaterial({ color: "#bd947b", roughness: 0.46,
+    clearcoat: 0.18, clearcoatRoughness: 0.42 }));
+  const rosewood = surface("#4a3430", 0.58);
   const clay = surface("#b9856b", 0.94);
   const clayLight = surface("#c89478", 0.94);
   const clayDark = surface("#a87460", 0.96);
@@ -102,8 +103,8 @@ function buildBassGarden(scope: DisposalScope) {
     return item;
   }
 
-  // Coordinates traced from the supplied three views share one scale. The
-  // rolled rim adds 6 mm around this .498 m outline, yielding a .51 m body.
+  // The long-scale silhouette keeps the earlier three-view proportions, while
+  // the playing reference supplies the rolled edge and continuous ivory guard.
   const referenceScale = 0.498 / 440;
   const referenceX = (x: number) => (x - 199) * referenceScale;
   const referenceY = (y: number) => (1140 - y) * referenceScale - 0.244;
@@ -141,15 +142,19 @@ function buildBassGarden(scope: DisposalScope) {
   // the triangular patches produced by colouring only outline vertices.
   const woodWidth = 256, woodHeight = 512;
   const woodPixels = new Uint8Array(woodWidth * woodHeight * 4);
-  const amber = new THREE.Color("#95694a"), brown = new THREE.Color("#7d533c");
-  const rim = new THREE.Color("#56372b"), woodColor = new THREE.Color();
+  const amber = new THREE.Color("#8f5c49"), brown = new THREE.Color("#744a3c");
+  const rim = new THREE.Color("#51382f"), woodColor = new THREE.Color();
   for (let row = 0; row < woodHeight; row++) for (let column = 0; column < woodWidth; column++) {
     const x = column / (woodWidth - 1) * 0.44 - 0.22;
     const y = row / (woodHeight - 1) * 0.55 - 0.27;
     const radial = Math.hypot(x / 0.214, (y + 0.035) / 0.36);
-    const grainWarp = x * 342 + Math.sin(y * 5.7 + x * 14) * 1.2 + Math.sin(y * 19 + x * 7) * 0.21;
-    const grain = Math.sin(grainWarp) * 0.017
-      + Math.sin(grainWarp * 2.63 + Math.sin(x * 62 + y * 11)) * 0.009 + Math.sin(x * 980 + y * 6) * 0.003;
+    // Broad flowing fibres and irregular fine lines read as natural wood even
+    // when the held instrument fills the screen; avoid equally spaced stripes.
+    const grainWarp = x * 226 + Math.sin(y * 6.2 + x * 15) * 2.8
+      + Math.sin(y * 17.3 - x * 8) * 0.68 + Math.sin(x * 48 + y * 3) * 0.7;
+    const grain = Math.sin(grainWarp + Math.sin(grainWarp * 0.43)) * 0.043
+      + Math.sin(grainWarp * 3.17 + Math.sin(x * 62 + y * 11)) * 0.014
+      + Math.sin(x * 980 + y * 6) * 0.003;
     woodColor.copy(amber).lerp(brown, THREE.MathUtils.smoothstep(radial, 0.31, 0.94));
     woodColor.lerp(rim, THREE.MathUtils.smoothstep(radial, 0.82, 1.23));
     woodColor.multiplyScalar(1 + grain).convertLinearToSRGB();
@@ -166,10 +171,11 @@ function buildBassGarden(scope: DisposalScope) {
   woodTexture.generateMipmaps = true;
   woodTexture.anisotropy = 4;
   woodTexture.needsUpdate = true;
-  const lacquer = own(new THREE.MeshPhysicalMaterial({ map: woodTexture, roughness: 0.4,
-    metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.38 }));
-  const bodyDepth = 0.036, bodyBevel = 0.006;
-  const body = plate("bass-carved-sunburst-body", bodyOutline, bodyDepth, -0.018, lacquer, instrument, bodyBevel);
+  const lacquer = own(new THREE.MeshPhysicalMaterial({ map: woodTexture, roughness: 0.43,
+    metalness: 0, clearcoat: 0.26, clearcoatRoughness: 0.4 }));
+  // Broader rollover, with the same +/-24 mm face depths as the prior model.
+  const bodyDepth = 0.032, bodyBevel = 0.008;
+  const body = plate("bass-carved-sunburst-body", bodyOutline, bodyDepth, -0.016, lacquer, instrument, bodyBevel);
   const bodyPosition = body.geometry.getAttribute("position");
   // ExtrudeGeometry splits a bevel into facets. Interpolate the contour's
   // normals through the rolled rim while retaining the planar wood faces.
@@ -219,9 +225,12 @@ function buildBassGarden(scope: DisposalScope) {
     [159, 802, 148, 796, 149, 813],
     [159, 850, 154, 890, 143, 919],
     [133, 940, 122, 962, 133, 976],
-    [146, 991, 180, 986, 213, 987],
-    [237, 988, 253, 997, 265, 1000],
-    [286, 992, 292, 977, 290, 958],
+    [146, 991, 180, 986, 209, 989],
+    [229, 993, 245, 1013, 248, 1040],
+    [251, 1073, 257, 1105, 277, 1115],
+    [296, 1123, 321, 1103, 320, 1083],
+    [320, 1056, 300, 1027, 291, 1007],
+    [282, 989, 286, 974, 290, 958],
     [288, 933, 296, 899, 307, 866],
     [317, 836, 315, 806, 304, 801],
     [291, 800, 295, 830, 271, 845],
@@ -290,16 +299,20 @@ function buildBassGarden(scope: DisposalScope) {
   box("bass-nut", [0.0505, 0.006, 0.008], [0, nutY, BASS_DIMENSIONS.nutStringZ - 0.004], ivory, instrument, 0.0007);
 
   // A long, asymmetrical four-in-line headstock, including its dropped front
-  // face, staggered post centres, rear worm gears and separate clover keys.
-  const headY = (y: number) => nutY + (370 - y) / 195 * 0.23;
+  // face, staggered post centres, rear worm gears and rounded oval paddles.
+  const headY = (y: number) => nutY + (370 - y) / 195 * 0.31;
+  // Keep the nut's exact width, then gently open into the wider maple paddle.
+  // Hardware uses the same taper so its posts remain seated inside the wood.
+  const headX = (x: number, y: number) => referenceX(x)
+    * (1 + 0.15 * THREE.MathUtils.smoothstep(370 - y, 0, 32));
   const headstock = new THREE.Shape();
-  headstock.moveTo(referenceX(177), headY(369));
+  headstock.moveTo(headX(177, 369), headY(369));
   for (const [a, b, c, d, e, f] of [
     [159, 359, 150, 349, 153, 333], [164, 304, 173, 276, 179, 242],
     [185, 207, 190, 176, 216, 176], [239, 176, 253, 189, 253, 209],
-    [253, 226, 242, 236, 236, 246], [235, 263, 241, 290, 246, 330],
-    [228, 345, 221, 354, 221, 370],
-  ]) headstock.bezierCurveTo(referenceX(a), headY(b), referenceX(c), headY(d), referenceX(e), headY(f));
+    [253, 226, 242, 236, 236, 246], [235, 263, 240, 295, 240, 322],
+    [240, 340, 221, 346, 221, 370],
+  ]) headstock.bezierCurveTo(headX(a, b), headY(b), headX(c, d), headY(d), headX(e, f), headY(f));
   headstock.closePath();
   const head = plate("bass-offset-maple-headstock", headstock, 0.020, -0.013, maple, instrument, 0.002);
   // Split only triangles that cross the short neck-to-headstock transition.
@@ -359,7 +372,7 @@ function buildBassGarden(scope: DisposalScope) {
   smoothHeadGeometry.setAttribute("normal", new THREE.Float32BufferAttribute(smoothHeadNormals, 3));
   smoothHeadGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(smoothHeadUvs, 2));
   head.geometry = smoothHeadGeometry;
-  const tunerCentres = [[174, 335], [185, 296], [197, 256], [209, 216]].map(([x, y]) => new THREE.Vector2(referenceX(x), headY(y)));
+  const tunerCentres = [[174, 335], [185, 296], [197, 256], [209, 216]].map(([x, y]) => new THREE.Vector2(headX(x, y), headY(y)));
   const tunerKeyMaterial = surface("#a5a0a1", 0.38, 0.32);
   const tunerGearMaterial = surface("#777d82", 0.42, 0.42);
   for (const centre of tunerCentres) {
@@ -383,19 +396,14 @@ function buildBassGarden(scope: DisposalScope) {
     for (const dx of [-0.009, 0.009]) frontDisc("bass-rear-tuner-fixing-screw", 0.0017, 0.001,
       [x + dx, y - 0.012, -0.019], instrumentChrome, instrument);
     rod("bass-tuner-key-shaft", new THREE.Vector3(x - 0.010, y + 0.009, -0.021),
-      new THREE.Vector3(x - 0.045, y + 0.019, -0.021), 0.0033, instrumentChrome, instrument);
-    const keyX = x - 0.053, keyY = y + 0.022;
-    const clover = new THREE.Shape();
-    clover.moveTo(keyX + 0.011, keyY - 0.003);
-    clover.bezierCurveTo(keyX + 0.009, keyY - 0.010, keyX + 0.004, keyY - 0.017, keyX - 0.003, keyY - 0.014);
-    clover.bezierCurveTo(keyX - 0.009, keyY - 0.016, keyX - 0.015, keyY - 0.010, keyX - 0.012, keyY - 0.004);
-    clover.bezierCurveTo(keyX - 0.021, keyY, keyX - 0.018, keyY + 0.013, keyX - 0.009, keyY + 0.013);
-    clover.bezierCurveTo(keyX - 0.008, keyY + 0.023, keyX + 0.007, keyY + 0.024, keyX + 0.010, keyY + 0.014);
-    clover.bezierCurveTo(keyX + 0.014, keyY + 0.009, keyX + 0.014, keyY + 0.004, keyX + 0.011, keyY - 0.003);
-    clover.closePath();
-    plate("bass-cloverleaf-tuning-key", clover, 0.004, -0.023, tunerKeyMaterial, instrument, 0.0016);
+      new THREE.Vector3(x - 0.05175, y + 0.019, -0.021), 0.0033, instrumentChrome, instrument);
+    const keyX = x - 0.06095, keyY = y + 0.022;
+    const paddle = new THREE.Shape();
+    paddle.absellipse(keyX, keyY + 0.002, 0.01725, 0.02415, 0, Math.PI * 2, false, -0.18);
+    paddle.closePath();
+    plate("bass-oval-tuning-paddle", paddle, 0.004, -0.023, tunerKeyMaterial, instrument, 0.0018);
   }
-  const retainer = new THREE.Vector2(referenceX(209), headY(311));
+  const retainer = new THREE.Vector2(headX(209, 311), headY(311));
   frontDisc("bass-two-string-retainer-stem", 0.003, 0.013, [retainer.x, retainer.y, 0.016], instrumentChrome, instrument);
   frontDisc("bass-two-string-retainer-disc", 0.009, 0.003, [retainer.x, retainer.y, 0.025], instrumentChrome, instrument);
   frontDisc("bass-string-retainer-screw", 0.003, 0.001, [retainer.x, retainer.y, 0.027], tunerKeyMaterial, instrument);
@@ -403,8 +411,8 @@ function buildBassGarden(scope: DisposalScope) {
   for (let fret = 1; fret <= fretCount; fret++) {
     const y = bassFretWireY(fret), width = neckWidth(y) - 0.002;
     rod("bass-rounded-fret-wire", new THREE.Vector3(-width / 2, y, fingerboardFrontZ(y) + 0.0008),
-      new THREE.Vector3(width / 2, y, fingerboardFrontZ(y) + 0.0008), 0.0009, warmMetal, instrument, 8);
-    if ([3, 5, 7, 9, 12, 15, 17, 19].includes(fret)) {
+      new THREE.Vector3(width / 2, y, fingerboardFrontZ(y) + 0.0008), 0.0009, instrumentChrome, instrument, 8);
+    if ([3, 5, 7, 9, 12, 15, 17, 19, 21].includes(fret)) {
       const dotY = (bassFretWireY(fret - 1) + y) / 2;
       for (const x of fret === 12 ? [-0.010, 0.010] : [0]) frontDisc("bass-fingerboard-inlay", 0.0023, 0.0005,
         [x, dotY, fingerboardFrontZ(dotY) + 0.0003], ivory, instrument);
@@ -413,8 +421,10 @@ function buildBassGarden(scope: DisposalScope) {
     }
   }
 
-  box("bass-bridge-plate", [0.088, 0.049, 0.004], [0, bridgeY - 0.004, 0.027], instrumentChrome, instrument, 0.0025);
-  box("bass-bridge-folded-lip", [0.088, 0.004, 0.013], [0, bridgeY - 0.026, 0.0335], instrumentChrome, instrument, 0.001);
+  box("bass-bridge-plate", [0.091, 0.052, 0.0024], [0, bridgeY - 0.004, 0.0263], instrumentChrome, instrument, 0.0012);
+  box("bass-bridge-folded-lip", [0.091, 0.004, 0.013], [0, bridgeY - 0.027, 0.0335], instrumentChrome, instrument, 0.0015);
+  for (const side of [-1, 1]) box("bass-bridge-returned-side", [0.0025, 0.043, 0.008],
+    [side * 0.044, bridgeY - 0.004, 0.03], instrumentChrome, instrument, 0.001);
   for (const y of [-0.045, -0.125]) {
     box("bass-magnetic-pickup", [0.095, 0.022, 0.008], [0, y, 0.0325], ink, instrument, 0.003);
     for (let i = 0; i < 4; i++) for (const offset of [-0.0025, 0.0025])
@@ -429,6 +439,16 @@ function buildBassGarden(scope: DisposalScope) {
       new THREE.Vector3(x + 0.006, bridgeY, 0.037), 0.005, instrumentChrome, instrument, 16);
     rod("bass-bridge-adjustment-screw", new THREE.Vector3(x, bridgeY - 0.026, 0.033),
       new THREE.Vector3(x, bridgeY - 0.001, 0.033), 0.0013, warmMetal, instrument);
+    for (const side of [-1, 1]) {
+      frontDisc("bass-saddle-height-screw", 0.0014, 0.0008,
+        [x + side * 0.004, bridgeY, 0.0412], warmMetal, instrument);
+    }
+    const spring = new THREE.CatmullRomCurve3(Array.from({ length: 33 }, (_, index) => {
+      const t = index / 32, angle = t * Math.PI * 8;
+      return new THREE.Vector3(x + Math.cos(angle) * 0.0024,
+        bridgeY - 0.023 + t * 0.013, 0.033 + Math.sin(angle) * 0.0024);
+    }));
+    mesh("bass-saddle-tension-spring", own(new THREE.TubeGeometry(spring, 32, 0.00055, 5, false)), instrumentChrome, instrument);
     const bridge = new THREE.Vector3(x, bridgeY, BASS_DIMENSIONS.bridgeStringZ);
     const nut = new THREE.Vector3(bassStringX(3 - i, nutY), nutY, BASS_DIMENSIONS.nutStringZ);
     rod("bass-bridge-string-tail", bridge, new THREE.Vector3(x, bridgeY - 0.023, 0.031), radius, instrumentChrome, instrument, 5);
@@ -451,42 +471,38 @@ function buildBassGarden(scope: DisposalScope) {
     winding.position.set(centre.x, centre.y, 0.025);
   }
   for (const x of [-0.035, 0.035]) frontDisc("bass-bridge-mounting-screw", 0.0022, 0.001,
-    [x, bridgeY + 0.014, 0.0295], instrumentChrome, instrument);
-  const controlPlate = referenceShape([260, 973], [
-    [270, 965, 282, 965, 290, 979],
-    [301, 994, 315, 1016, 327, 1034],
-    [338, 1051, 332, 1068, 319, 1068],
-    [305, 1065, 288, 1041, 276, 1025],
-    [264, 1010, 251, 997, 253, 986],
-    [253, 980, 256, 976, 260, 973],
-  ]);
-  plate("bass-chrome-control-plate", controlPlate, 0.002, 0.0248, instrumentChrome, instrument, 0.0008);
-  for (const [x, y] of [[0.084, -0.077], [0.111, -0.110]]) {
-    frontDisc("bass-knob-chrome-skirt", 0.0125, 0.002, [x, y, 0.0285], instrumentChrome, instrument);
-    frontDisc("bass-knurled-volume-knob", 0.011, 0.012, [x, y, 0.035], ink, instrument);
-    box("bass-knob-index", [0.0015, 0.005, 0.0008], [x, y + 0.003, 0.0414], ivory, instrument, 0.0002);
-    for (let ridge = 0; ridge < 16; ridge++) {
-      const angle = ridge * Math.PI / 8;
-      rod("bass-knob-fine-knurl", new THREE.Vector3(x + Math.sin(angle) * 0.011, y + Math.cos(angle) * 0.011, 0.031),
-        new THREE.Vector3(x + Math.sin(angle) * 0.011, y + Math.cos(angle) * 0.011, 0.039), 0.0004, rubber, instrument, 5);
-    }
+    [x, bridgeY + 0.014, 0.028], instrumentChrome, instrument);
+  const knobMaterial = own(new THREE.MeshPhysicalMaterial({ color: "#45403c",
+    roughness: 0.32, metalness: 0.22, clearcoat: 0.24, clearcoatRoughness: 0.26 }));
+  const knobGeometry = own(new THREE.LatheGeometry([
+    new THREE.Vector2(0, 0), new THREE.Vector2(0.0105, 0),
+    new THREE.Vector2(0.012, 0.0025), new THREE.Vector2(0.012, 0.006),
+    new THREE.Vector2(0.0108, 0.010), new THREE.Vector2(0.0065, 0.0123),
+    new THREE.Vector2(0, 0.013),
+  ], 24));
+  for (const [x, y] of [[0.087, -0.087], [0.100, -0.134], [0.107, -0.179]]) {
+    frontDisc("bass-knob-chrome-skirt", 0.0127, 0.0012, [x, y, 0.0278], instrumentChrome, instrument);
+    const knob = mesh("bass-rounded-volume-tone-knob", knobGeometry, knobMaterial, instrument);
+    knob.rotation.x = Math.PI / 2;
+    knob.position.set(x, y, 0.0282);
+    sphere("bass-knob-inlaid-marker", [0.001, 0.0024, 0.0005],
+      [x, y + 0.004, 0.0402], ivory, instrument);
   }
-  for (const [x, y] of [[153, 813], [162, 867], [143, 937], [147, 977], [228, 984], [288, 954], [304, 818], [236, 855]]) {
+  for (const [x, y] of [[153, 813], [162, 867], [143, 937], [147, 977],
+    [268, 1087], [304, 1090], [310, 1049], [288, 954], [304, 818], [236, 855]]) {
     frontDisc("bass-pickguard-screw", 0.0019, 0.0008, [referenceX(x), referenceY(y), 0.0276], instrumentChrome, instrument);
     box("bass-pickguard-screw-slot", [0.0024, 0.0005, 0.0003], [referenceX(x), referenceY(y), 0.0281], ink, instrument, 0);
   }
-  for (const [x, y] of [[0.078, -0.062], [0.142, -0.155]]) frontDisc("bass-control-plate-screw", 0.002, 0.0008,
-    [x, y, 0.0278], instrumentChrome, instrument);
   for (const point of [BASS_STRAP_UPPER, BASS_STRAP_TAIL]) {
-    const inside = point.clone().add(point === BASS_STRAP_UPPER ? new THREE.Vector3(0.004, -0.018, 0) : new THREE.Vector3(0, 0.018, 0));
+    const inside = point.clone().add(point === BASS_STRAP_UPPER ? new THREE.Vector3(0, 0, -0.018) : new THREE.Vector3(0, 0.018, 0));
     rod("bass-load-bearing-strap-button", inside, point, 0.0038, instrumentChrome, instrument, 12);
     const cap = mesh("bass-strap-button-cap", own(new THREE.CylinderGeometry(0.007, 0.007, 0.003, 20)), instrumentChrome, instrument);
     cap.position.copy(point);
     cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), point.clone().sub(inside).normalize());
   }
-  // The lead exits the lower end of the front control plate through a real
+  // The lead exits the lower end of the continuous pickguard through a real
   // socket and right-angle plug. Its anchor is the boot's end, never an endpin.
-  const jackX = 0.132, jackY = -0.139, jackZ = 0.060;
+  const jackX = 0.097, jackY = -0.207, jackZ = 0.060;
   frontDisc("bass-output-socket-washer", 0.008, 0.003, [jackX, jackY, 0.029], instrumentChrome, instrument);
   frontDisc("bass-output-socket-opening", 0.0043, 0.002, [jackX, jackY, 0.031], rubber, instrument);
   rod("bass-output-plug", new THREE.Vector3(jackX, jackY, 0.031), new THREE.Vector3(jackX, jackY, jackZ - 0.001), 0.005, instrumentChrome, instrument, 12);
@@ -497,8 +513,8 @@ function buildBassGarden(scope: DisposalScope) {
   cableJack.position.set(jackX, jackY - 0.033, jackZ);
   instrument.add(cableJack);
 
-  const restPosition = new THREE.Vector3(1.65, 0.27, 6.45);
-  const restQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.06, Math.PI, 0.08));
+  const restPosition = new THREE.Vector3(1.65, 0.342, 6.45);
+  const restQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.06, Math.PI, -0.06));
   instrument.position.copy(restPosition);
   instrument.quaternion.copy(restQuaternion);
   // A narrow padded stand stays on the terrace when the bass is picked up.

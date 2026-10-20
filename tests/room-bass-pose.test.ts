@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCharacter } from "../src/room/art/character";
 import { createBassGarden } from "../src/room/art/bassGarden";
-import { BASS_HELD_POSITION, BASS_HELD_ROTATION, BASS_HELD_SCALE } from "../src/room/art/bassPose";
+import { BASS_HELD_POSITION, BASS_HELD_ROTATION, BASS_HELD_SCALE, BASS_REST_FRET } from "../src/room/art/bassPose";
 import type { RoomAvatarAnimation } from "../src/room/types";
 
 describe("the actual bass-performing model", () => {
@@ -95,8 +95,8 @@ describe("the actual bass-performing model", () => {
     const ray = new THREE.Raycaster();
     const direction = new THREE.Vector3(0, 0, 1);
     try {
-      for (const beat of [0, 0.25, 0.5, 0.75, 1]) for (const pluck of [0, 1]) for (const slap of [0, 0.5, 1]) {
-        pose({ lift: 1, pluck, slap, playing: true, beat, string: Math.floor(beat * 4) % 4, fret: 3, fretting: true });
+      for (const fret of [3, BASS_REST_FRET]) for (const beat of [0, 0.25, 0.5, 0.75, 1]) for (const pluck of [0, 1]) for (const slap of [0, 0.5, 1]) {
+        pose({ lift: 1, pluck, slap, playing: true, beat, string: Math.floor(beat * 4) % 4, fret, fretting: true });
         const torsoInverse = character.bassAnchor.matrixWorld.clone().invert();
         let torsoFront = Infinity, bassBack = -Infinity;
         for (const name of ["loose-cotton-body", "sewn-kangaroo-pocket"]) {
