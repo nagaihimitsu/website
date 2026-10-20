@@ -91,6 +91,66 @@ describe("the actual bass-performing model", () => {
     }
   });
 
+  it("matches the resting fretting sleeve's 142% length and limits extension during picking", () => {
+    pose();
+    // Measure the rendered sleeve's centreline, not shoulder-to-wrist distance:
+    // a bent sleeve can become much longer without changing that chord. Keep
+    // the same material landmarks in both poses and exclude the paw/fingers.
+    const armLengths = ["left-arm", "right-arm"].map((name) => {
+      const arm = character.group.getObjectByName(name)!;
+      const sleeve = arm.getObjectByName("rounded-bag-sleeve") as THREE.Mesh;
+      const cuff = arm.children.find((item): item is THREE.Mesh =>
+        item instanceof THREE.Mesh && !(item instanceof THREE.InstancedMesh)
+        && item !== sleeve && item.name !== "sculpted-soft-mitt")!;
+      const parts = [sleeve, cuff].map((mesh) => {
+        const vertices = mesh.geometry.getAttribute("position");
+        // The loft has 48 unique radial samples plus the repeated seam vertex.
+        const rows = Array.from({ length: vertices.count / 49 }, (_, row) => ({
+          y: vertices.getY(row * 49), start: row * 49,
+        }));
+        return () => rows.map(({ y, start }) => {
+          const centre = new THREE.Vector3();
+          for (let i = 0; i < 48; i++) centre.add(point.fromBufferAttribute(vertices, start + i));
+          return { y, centre: centre.divideScalar(48).applyMatrix4(mesh.matrixWorld) };
+        }).sort((a, b) => b.y - a.y);
+      });
+      type Ring = ReturnType<typeof parts[number]>[number];
+      const at = (rows: Ring[], y: number) => {
+        const i = rows.findIndex((row, index) => row.y >= y && rows[index + 1]?.y <= y);
+        if (i < 0) throw new Error(`Missing sleeve landmark ${y}`);
+        return rows[i].centre.clone().lerp(rows[i + 1].centre,
+          (rows[i].y - y) / (rows[i].y - rows[i + 1].y));
+      };
+      const path = (rows: Ring[], from: number, to: number) => [
+        at(rows, from), ...rows.filter((row) => row.y < from && row.y > to).map((row) => row.centre),
+        at(rows, to),
+      ];
+      const measure = () => {
+        const centres = [...path(parts[0](), 0, -0.278), ...path(parts[1](), -0.278, -0.300)];
+        return centres.slice(1).reduce((length, centre, i) => length + centre.distanceTo(centres[i]), 0);
+      };
+      return { measure, normal: measure() };
+    });
+    const held = { lift: 1, playing: false, beat: 0, string: 3, pluckString: 3,
+      fret: BASS_REST_FRET, fretting: true, pluck: 0, slap: 0 };
+    pose(held);
+    const [picking, fretting] = armLengths;
+    const restingRatio = picking.measure() / picking.normal;
+    expect(restingRatio).toBeGreaterThan(1.40);
+    expect(restingRatio).toBeLessThan(1.44);
+    expect(fretting.measure() / fretting.normal).toBeCloseTo(1.42, 2);
+    for (const string of [0, 1, 2, 3]) for (const pluck of [0, 1]) for (const slap of [0, 0.5, 1]) {
+      pose({ ...held, playing: true, beat: string / 4, string, pluckString: string, pluck, slap });
+      const ratio = picking.measure() / picking.normal;
+      const stroke = JSON.stringify({ string, pluck, slap, ratio });
+      // Reaching across all four strings changes the sleeve's path slightly;
+      // it must stay below the previous playing range of 170–183%.
+      expect(ratio, stroke).toBeGreaterThan(1.39);
+      expect(ratio, stroke).toBeLessThan(1.58);
+    }
+    pose();
+  });
+
   it("keeps the torso, sleeves, paws and actual fingers outside the wooden body and neck at every stroke extreme", () => {
     const bassBody = garden.instrument.getObjectByName("bass-carved-sunburst-body") as THREE.Mesh;
     const fingerboard = garden.instrument.getObjectByName("bass-tapered-rosewood-fingerboard") as THREE.Mesh;

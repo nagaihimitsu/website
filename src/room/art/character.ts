@@ -778,14 +778,16 @@ function buildCharacter(scope: DisposalScope) {
                 : -0.70 * THREE.MathUtils.smoothstep(fingerboardY, 0.42, 0.61))));
           sleeveCurve.v0.set(0, 0.012, 0);
           wrist.copy(handTarget).sub(arm.position);
-          // Both sleeves have a broad upper arm beside the ribs, a lowered
-          // elbow, and a separate, short padded forearm. The cuff meets the
-          // proximal edge of the paw instead of reaching its centre.
-          elbow.set(side * (picking ? 0.10 : 0.055),
-            picking ? -0.14 + slap * 0.012 : -0.075 + Math.max(0, wrist.y) * 0.30,
-            picking ? -0.13 : -0.110);
-          elbowTangent.set(picking ? 0.06 : side * 0.010,
-            picking ? 0.015 : 0.022 + Math.max(0, wrist.y) * 0.10, picking ? -0.10 : -0.063);
+          // The picking elbow folds forward along the bass's outer edge, with
+          // a short turn into the cuff instead of a wide lateral loop. Its
+          // measured resting sleeve length matches the fretting side (~142%
+          // of the walking sleeve). Keep the shoulder and fingertip contacts
+          // fixed; the cuff meets the proximal edge of the paw.
+          elbow.set(side * 0.055,
+            picking ? -0.070 + slap * 0.012 : -0.075 + Math.max(0, wrist.y) * 0.30,
+            picking ? -0.20 : -0.110);
+          elbowTangent.set(picking ? 0.025 : side * 0.010,
+            picking ? -0.005 : 0.022 + Math.max(0, wrist.y) * 0.10, picking ? -0.07 : -0.063);
           if (!picking) {
             const reach = THREE.MathUtils.smoothstep(fingerboardY, 0.42, 0.61);
             // Only a high reach needs the full detour around the neck.
@@ -800,7 +802,7 @@ function buildCharacter(scope: DisposalScope) {
           forearmCurve.v1.copy(elbow).add(elbowTangent);
           direction.set(0, 1, 0).applyQuaternion(palmRotation);
           forearmCurve.v3.copy(wrist).addScaledVector(direction, 0.027);
-          forearmCurve.v2.copy(forearmCurve.v3).addScaledVector(direction, picking ? 0.13 : 0.045);
+          forearmCurve.v2.copy(forearmCurve.v3).addScaledVector(direction, picking ? 0.050 : 0.045);
           // Every ring shares a centre and tangent. Evaluate each section once,
           // rather than repeating curve sampling for its 49 surface vertices.
           for (const section of rig.sections.values()) {
