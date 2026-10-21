@@ -76,21 +76,16 @@ function north(context: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 /** Printed with the same real country boundaries and achievement IDs as the atlas. */
-export function createWorldMapTexture(achieved: Set<string>): CanvasTexture {
-  const { canvas, context } = surface(1536, 900);
-  label(context, "PERSONAL COLLECTION  /  01", 78, 67, 18);
-  context.font = "400 78px Georgia, serif";
-  context.fillStyle = ink;
-  context.fillText("WORLD ATLAS", 73, 153);
-  context.textAlign = "right";
-  label(context, `${achieved.size} VISITED`, 1458, 145, 22);
-  context.textAlign = "left";
-  line(context, 78, 179, 1458, 179);
-
+export function createWorldMapTexture(achieved: Set<string>, aspect = 9 / 4): CanvasTexture {
+  // Match the wall's aspect before projecting. Enlarging the old portrait-ish
+  // poster UVs would widen countries and lettering; the mural uses its empty
+  // polar corners for compact headings instead of reserving a tall title band.
+  const width = 2304, height = Math.round(width / aspect);
+  const { canvas, context } = surface(width, height);
   const projection = geoNaturalEarth1().fitExtent(
     [
-      [85, 220],
-      [1451, 770],
+      [50, 28],
+      [width - 50, height - 70],
     ],
     { type: "Sphere" },
   );
@@ -116,11 +111,18 @@ export function createWorldMapTexture(achieved: Set<string>): CanvasTexture {
     context.lineWidth = 0.8;
     context.stroke();
   }
-  north(context, 1405, 245);
-  line(context, 78, 818, 1458, 818);
-  label(context, "NATURAL EARTH", 78, 857, 16, "#778174");
+  label(context, "PERSONAL COLLECTION  /  01", 64, 58, 15);
+  context.font = "400 48px Georgia, serif";
+  context.fillStyle = ink;
+  context.fillText("WORLD ATLAS", 61, 118);
   context.textAlign = "right";
-  label(context, "NATURAL EARTH PROJECTION", 1458, 857, 16, "#778174");
+  label(context, `${achieved.size} VISITED`, width - 64, 104, 24);
+  context.textAlign = "left";
+  north(context, width - 110, 190);
+  line(context, 64, height - 47, width - 64, height - 47);
+  label(context, "NATURAL EARTH", 64, height - 18, 15, "#778174");
+  context.textAlign = "right";
+  label(context, "NATURAL EARTH PROJECTION", width - 64, height - 18, 15, "#778174");
   return texture(canvas);
 }
 

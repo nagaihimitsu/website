@@ -535,20 +535,24 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     furnitureObstacle("bed-headboard", bed, bedLayout.headboard),
   );
 
-  // Atlas prints, real geography and achieved state, sit inside thin oak frames.
+  // The rear wall belongs to the world atlas; Japan has its own print above
+  // the desk on the right wall. Keep geometry, texture and portal transforms
+  // together so neither geography nor the opening target is stretched/misplaced.
   const print = (
     section: "world" | "japan",
-    x: number,
-    y: number,
+    position: readonly [number, number, number],
     w: number,
     h: number,
+    rotationY = 0,
   ) => {
-    const g = group(x, y, -3.86);
+    const g = group(...position);
+    g.name = `${section}-atlas-print`;
+    g.rotation.y = rotationY;
     rounded(w + 0.15, h + 0.15, 0.09, woodDark, 0.025, g);
     box(w + 0.04, h + 0.04, 0.045, white, g, 0, 0, 0.06);
     const texture =
       section === "world"
-        ? createWorldMapTexture(archive.achieved.world)
+        ? createWorldMapTexture(archive.achieved.world, w / h)
         : createJapanMapTexture(archive.achieved.japan);
     scope.own(texture);
     const paper = new THREE.MeshStandardMaterial({
@@ -567,14 +571,14 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
       g,
       furniturePoint(g, [
         0,
-        section === "world" ? h / 2 + 0.12 : -h / 2 - 0.2,
+        section === "world" ? h / 2 - 0.2 : -h / 2 - 0.2,
         0.21,
       ]),
       furniturePoint(g, [0, 0, 0.16]),
     );
   };
-  print("world", 0.35, 3.05, 4.0, 2.34);
-  print("japan", -3.35, 3.16, 1.12, 1.6);
+  print("world", [0, 2.4, -3.86], 9.0, 4.0);
+  print("japan", [4.86, 3.05, -2.4], 1.26, 1.8, -Math.PI / 2);
 
   // Slim work desk and a clearly legible, original phone screen.
   const deskLayout = furnitureLayout.desk;
