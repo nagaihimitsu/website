@@ -125,7 +125,10 @@ test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆
     "aria-expanded",
     "false",
   );
-  await expect(page.locator(".room-crosshair")).toHaveCSS("opacity", "0");
+  // The wall-sized atlas now reaches the starting sightline. Its small
+  // contextual target should appear; the permanent menu/headings stay hidden.
+  await expect(page.getByRole("button", { name: destinations.world, exact: true })).toBeVisible();
+  await expect(page.locator(".room-crosshair")).toHaveCSS("opacity", "1");
   const canvas = page.locator(".room-canvas canvas");
   const box = await canvas.boundingBox();
   expect(box!.width).toBeGreaterThanOrEqual(page.viewportSize()!.width * 0.95);
