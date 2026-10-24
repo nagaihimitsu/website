@@ -409,7 +409,8 @@ function initializeRoomEngine(
       near && !bassNeedsExit && !opening && !opened && !pinchControlsLocked());
     for (const contact of bassContacts.values()) {
       const note = bassState.notes.find(note => note.id === contact.noteId);
-      if (note?.kind === "slide" && note.state !== "sliding" && note.state !== "pending") bassAudio.releaseMidi(contact.id);
+      if ((note?.kind === "slide" && note.state !== "sliding" && note.state !== "pending") ||
+        (note?.kind === "hold" && note.state !== "holding" && note.state !== "pending")) bassAudio.releaseMidi(contact.id);
     }
     if (bassState.phase === "result") bassContacts.clear();
     if (phase === "idle" && bassState.phase === "approaching") void bassAudio.preload();
@@ -517,6 +518,7 @@ function initializeRoomEngine(
       if (!result) { bassContacts.end(input, inputTime); return; }
       bassContacts.get(input.id)!.noteId = result.noteId;
       const note = bassState.notes.find(note => note.id === result.noteId);
+      bassContacts.get(input.id)!.expectedKind = note?.kind ?? null;
       bassAudio.playMidi(input.id, input.midi, result.technique, note?.kind === "hold" || note?.kind === "slide");
       bassPluckPulse = 1;
       bassPluckString = input.string;

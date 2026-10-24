@@ -258,7 +258,7 @@ describe("奏法練習の完全版と3難易度", () => {
     expect(game.snapshot().notes).toHaveLength(102);
     game.selectSong("garden-party"); expect(game.snapshot().difficulty).toBe("hard");
     game.setDifficulty("normal"); game.selectSong("technique-study"); expect(game.snapshot().difficulty).toBe("hard");
-    game.selectSong("final-hit"); expect(game.setDifficulty("easy")).toBe(false);
+    game.selectSong("final-hit"); expect(game.setDifficulty("easy")).toBe(true);
     game.selectSong("garden-party"); expect(game.snapshot().difficulty).toBe("normal");
   });
 });

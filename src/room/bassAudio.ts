@@ -3,6 +3,7 @@ import finalHitUrl from "../assets/audio/final-hit.mp3?url";
 import bassUrl from "../assets/audio/garden-party-bass.mp3?url";
 import { BASS_SONGS, type BassGameSnapshot, type BassTechnique, type BassSongId } from "./bassGame";
 import { BASS_GESTURE_CONFIG } from "./bassGesture";
+import { createBassSustainBuffer, BASS_SUSTAIN_CONFIG } from "./bassSustain";
 
 export type BassAudioStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
 type Stems = readonly [AudioBuffer, AudioBuffer];
@@ -22,6 +23,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   let generation = 0;
   let songId: BassSongId = "garden-party";
   const cache = new Map<BassSongId, { bytes?: Bytes; stems?: Stems }>();
+  const sustainBuffers = new WeakMap<AudioBuffer, ReturnType<typeof createBassSustainBuffer>>();
   let bytes: Bytes | null = null;
   let stems: Stems | null = null;
   let loading: Promise<boolean> | null = null;
@@ -137,6 +139,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
         stems = decoded as unknown as Stems;
         cache.set(songId, { ...cache.get(songId), stems });
       }
+      if (!sustainBuffers.has(stems[1])) sustainBuffers.set(stems[1], createBassSustainBuffer(audio, stems[1]));
       if (audio.state !== "running") { setStatus("unavailable"); return false; }
       setStatus("ready");
       return true;
@@ -325,14 +328,16 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
    * gesture confirmation never starts a second source. */
   function playMidi(id: number, midi: number, technique: BassTechnique, hold: boolean) {
     if (disposed || !context || !master || !stems || context.state !== "running" || heldVoices.has(id)) return;
+    const sustain = sustainBuffers.get(stems[1]);
+    if (!sustain) return;
     const source = context.createBufferSource();
     const gain = context.createGain();
     const now = context.currentTime;
-    source.buffer = stems[1];
+    source.buffer = sustain.buffer;
     source.playbackRate.value = 2 ** ((midi - 31) / 12);
     source.loop = true;
-    source.loopStart = 0.39;
-    source.loopEnd = 0.55;
+    source.loopStart = sustain.loopStart;
+    source.loopEnd = sustain.loopEnd;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime((technique === "slap" ? 1.8 : 1.35) * (songId === "final-hit" ? 0.45 : 1), now + 0.004);
     if (!hold) gain.gain.linearRampToValueAtTime(0, now + 0.35);
@@ -345,7 +350,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
       source.disconnect();
       gain.disconnect();
     };
-    source.start(now, 0.317);
+    source.start(now, BASS_SUSTAIN_CONFIG.attackOffset);
     source.stop(now + (hold ? 30 : 0.36));
   }
   /** 同じサンプラーの再生率だけを補間し、通過フレットでは再発音しない。 */

@@ -73,7 +73,8 @@ describe("bass picking gestures", () => {
     gesture.begin(start);
     expect(gesture.end(point(112, 200, 150))).toEqual({ string: 2, technique: "pick" });
     gesture.begin(start);
-    expect(gesture.move(point(120, 173, 150))).toEqual({ string: 2, technique: "slap" });
+    expect(gesture.move(point(120, 173, 150))).toBeNull(); // 1.6未満の斜め入力はまだ確定しない
+    expect(gesture.move(point(120, 166, 160))).toEqual({ string: 2, technique: "slap" });
   });
 
   it.each(["cancel", "reset"] as const)("%s abandons a contact and permits a fresh one", (action) => {

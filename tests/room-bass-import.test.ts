@@ -87,7 +87,7 @@ describe("曲選択と共通楽曲時計", () => {
     const garden = game.snapshot();
     game.selectSong("final-hit");
     expect(game.snapshot()).toMatchObject({ songId: "final-hit", songTitle: "最終のヒット", duration: FINAL_HIT_AUDIO_DURATION, importSummary: { playableCount: finalHitSong().notes.length } });
-    expect(game.setDifficulty("easy")).toBe(false);
+    expect(game.setDifficulty("easy")).toBe(true);
     game.selectSong("garden-party");
     expect(game.snapshot().notes).toEqual(garden.notes);
     expect(game.snapshot().difficulty).toBe("hard");
@@ -97,8 +97,9 @@ describe("曲選択と共通楽曲時計", () => {
     expect(game.setAudioOffset(0.1)).toBe(false);
   });
   it("全315音を同時刻を含めて音声時刻で判定し、元音源の余韻まで完走する", () => {
-    const game = playing();
-    const song = finalHitSong();
+    const raw = importMidiChart(master, candidates);
+    const game = createBassGame(raw.notes); game.tick(4.1, true); game.selectSong("final-hit"); game.start(); game.tick(2, true);
+    const song = { ...finalHitSong(), notes: raw.notes };
     const events = song.notes.flatMap(note => [
       { time: note.time, note, action: "down" },
       { time: note.endTime ?? note.time, note, action: "up" },
@@ -125,7 +126,9 @@ describe("曲選択と共通楽曲時計", () => {
     expect(seeked.notes.some(n => n.state === "skipped")).toBe(true);
     game.tick(0, true);
     const next = game.snapshot().notes.find(n => n.state === "pending" && n.time >= 30)!;
-    game.tick(next.time - 30, true); game.beginInput(1, next.midi); game.endInput(1);
+    game.tick(next.time - 30, true); game.beginInput(1, next.midi);
+    if (next.kind === "slap") game.slapInput(1);
+    game.endInput(1);
     expect(game.snapshot().hits).toBe(1);
     expect(game.seek(0)).toBe(true);
     expect(game.snapshot().notes.every(n => n.state === "pending")).toBe(true);

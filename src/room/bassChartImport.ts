@@ -14,7 +14,7 @@ export interface MidiMaster { schemaVersion: string; kind: string; songId: strin
 export interface MidiCandidates { schemaVersion: string; kind: string; songId: string; durationSec: number; audioOffsetSec: number; audioSyncVerified: boolean; candidateNotesCount: number; notes: CandidateNote[] }
 export interface ChartPatch { stringNumber?: number; fret?: number; technique?: string | null; kind?: BassNoteKind; endTimeSec?: number; endStringNumber?: number; endFret?: number; positionVerified?: boolean; techniqueVerified?: boolean; excluded?: boolean }
 export interface ChartOverrides { schemaVersion: string; audioOffsetSec?: number; audioSyncVerified?: boolean; notes: Record<string, ChartPatch> }
-export interface ImportExclusion { sourceId: string; timeSec: number; midiNote: number; reason: "not-in-candidates" | "outside-current-fretboard" | "manually-excluded" }
+export interface ImportExclusion { sourceId: string; timeSec: number; midiNote: number; reason: "not-in-candidates" | "outside-current-fretboard" | "manually-excluded" | "arrangement-omitted" }
 export interface ImportedChart {
   notes: BassNote[];
   excluded: ImportExclusion[];

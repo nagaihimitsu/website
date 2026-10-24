@@ -1,4 +1,5 @@
 import { BASS_GESTURE_CONFIG as CONFIG } from "./bassGesture";
+import type { BassNoteKind } from "./bassGame";
 
 export interface BassPointerInput {
   id: number;
@@ -27,6 +28,9 @@ export interface BassContact extends BassPointerInput {
   lastTime: number;
   cancelled: boolean;
   noteId?: number | null;
+  expectedKind?: BassNoteKind | null;
+  speedX: number;
+  speedY: number;
 }
 /** Pointer capture keeps the starting button and pitch across every crossed cell. */
 export function createBassContacts() {
@@ -35,7 +39,7 @@ export function createBassContacts() {
     begin(input: BassPointerInput, songTime: number) {
       if (active.has(input.id) || ![input.id, input.x, input.y, input.time, songTime].every(Number.isFinite)) return null;
       const contact: BassContact = { ...input, songTime, dx: 0, dy: 0, duration: 0, slap: false,
-        gesture: "pending", currentFret: input.fret, currentMidi: input.midi, lastTime: input.time, cancelled: false };
+        gesture: "pending", currentFret: input.fret, currentMidi: input.midi, lastTime: input.time, cancelled: false, speedX: 0, speedY: 0 };
       active.set(input.id, contact);
       return contact;
     },
@@ -49,19 +53,26 @@ export function createBassContacts() {
       contact.dx = input.x - contact.x;
       contact.dy = input.y - contact.y;
       contact.duration = input.time - contact.time;
+      contact.speedX = contact.dx / Math.max(1, contact.duration);
+      contact.speedY = contact.dy / Math.max(1, contact.duration);
       const horizontal = Math.abs(contact.dx), vertical = Math.abs(contact.dy);
+      const height = Math.max(1, (contact.rowBottom ?? contact.y + 24) - (contact.rowTop ?? contact.y - 24));
+      const tolerance = Math.max(4, Math.min(10, height * CONFIG.rowToleranceRatio));
+      const sameRow = input.y >= (contact.rowTop ?? contact.y - 24) - tolerance && input.y <= (contact.rowBottom ?? contact.y + 24) + tolerance;
+      const slapDistance = contact.rowTop === undefined ? CONFIG.slapMinDistance : Math.max(18, Math.min(32, height * CONFIG.slapHeightRatio));
+      const slideDistance = contact.fretWidth === undefined ? CONFIG.slideMinDistance : Math.max(10, Math.min(20, contact.fretWidth * CONFIG.slideWidthRatio));
       if (contact.gesture === "pending" && contact.duration <= CONFIG.slapMaxMs &&
-        vertical >= CONFIG.slapMinDistance && vertical >= horizontal * CONFIG.directionRatio &&
+        vertical >= slapDistance && vertical >= horizontal * CONFIG.directionRatio &&
         vertical / Math.max(1, contact.duration) >= CONFIG.slapMinSpeed) {
         contact.gesture = "slap";
         contact.slap = true;
         return true;
       }
-      if (contact.gesture === "pending" && horizontal >= CONFIG.slideMinDistance && horizontal >= vertical * CONFIG.directionRatio) {
+      if (contact.gesture === "pending" && sameRow && horizontal >= slideDistance && horizontal >= vertical * CONFIG.directionRatio) {
         contact.gesture = contact.fret >= 1 ? "slide" : "invalid";
       }
       if (contact.gesture === "slide") {
-        if (input.y < (contact.rowTop ?? contact.y - 24) - CONFIG.rowTolerance || input.y > (contact.rowBottom ?? contact.y + 24) + CONFIG.rowTolerance) {
+        if (!sameRow) {
           contact.gesture = "invalid"; contact.cancelled = true;
         } else {
           contact.currentFret = Math.max(1, Math.min(5, contact.fret + contact.dx / Math.max(1, contact.fretWidth ?? 55)));

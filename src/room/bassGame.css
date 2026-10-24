@@ -34,6 +34,9 @@
 .bass-offset input { width:90px; min-height:32px; padding:3px 8px; border:1px solid #a1ae8b70; border-radius:8px; background:#fffdf5; color:#455b3d; font:inherit; }
 .bass-offset { justify-content:center; }
 .bass-draft-summary { line-height:1.5; }
+.bass-setup.is-imported { gap:6px; padding:10px; }
+.bass-chart-meta { display:flex; justify-content:space-between; align-items:center; gap:6px; }
+.bass-chart-meta .bass-offset { gap:4px; font-size:10px; }.bass-chart-meta .bass-offset input { width:54px; padding-inline:4px; box-sizing:border-box; }
 
 .bass-result-backdrop { position:absolute; inset:0; display:grid; place-items:center; padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); box-sizing:border-box; background:#eeeaddc9; pointer-events:auto; touch-action:none; }
 .bass-result { width:min(400px,100%); max-height:100%; overflow:auto; box-sizing:border-box; padding:22px 20px 18px; border:1px solid #fffdf2; border-radius:22px; background:#faf7ee; box-shadow:0 8px 32px #66573b1a; text-align:center; animation:bass-result-appear .18s ease-out; outline:none; }

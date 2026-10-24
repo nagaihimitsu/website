@@ -1,0 +1,1079 @@
+{
+  "schemaVersion": "1.0.0",
+  "songId": "final-hit",
+  "difficulty": "hard",
+  "audioOffsetSec": 0,
+  "audioSyncVerified": false,
+  "source": "原MIDIとKUIELab推定ベースを照合したゲーム用編曲。運指・奏法は推定。耳で確認済みではない。",
+  "sourceSha256": "8502b7d6ce574ea8a38681962997bca96ec7b5c54e3c114f2d3abc54968e2aa2",
+  "sections": [
+    {
+      "start": 0,
+      "end": 8.6,
+      "label": "導入・E/Bの応答"
+    },
+    {
+      "start": 8.6,
+      "end": 16.6,
+      "label": "C/Gの変化"
+    },
+    {
+      "start": 16.6,
+      "end": 24.2,
+      "label": "BとF#の反復"
+    },
+    {
+      "start": 24.2,
+      "end": 32.2,
+      "label": "高音の応答からEへ"
+    },
+    {
+      "start": 32.2,
+      "end": 40.7,
+      "label": "E/BとGの変奏"
+    },
+    {
+      "start": 40.7,
+      "end": 48.2,
+      "label": "C/Bのアクセント"
+    },
+    {
+      "start": 48.2,
+      "end": 52.2,
+      "label": "間奏・入力を休ませる"
+    },
+    {
+      "start": 52.2,
+      "end": 60.0135,
+      "label": "D/Eの応答と終止"
+    }
+  ],
+  "notes": [
+    {
+      "id": 2,
+      "sourceId": "n0003",
+      "timeSec": 1.126042,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 8,
+      "sourceId": "n0009",
+      "timeSec": 2.207292,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 20,
+      "sourceId": "n0021",
+      "timeSec": 3.182292,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 23,
+      "sourceId": "n0024",
+      "timeSec": 3.925,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 30,
+      "sourceId": "n0031",
+      "timeSec": 4.321875,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 36,
+      "sourceId": "n0037",
+      "timeSec": 4.751042,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 37,
+      "sourceId": "n0038",
+      "timeSec": 5.076042,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "tap"
+    },
+    {
+      "id": 40,
+      "sourceId": "n0041",
+      "timeSec": 5.389583,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 46,
+      "sourceId": "n0047",
+      "timeSec": 5.761458,
+      "midi": 36,
+      "string": 2,
+      "fret": 3,
+      "kind": "tap"
+    },
+    {
+      "id": 48,
+      "sourceId": "n0049",
+      "timeSec": 6.586458,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 54,
+      "sourceId": "n0055",
+      "timeSec": 7.294792,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 57,
+      "sourceId": "n0058",
+      "timeSec": 7.666667,
+      "midi": 46,
+      "string": 0,
+      "fret": 3,
+      "kind": "slap"
+    },
+    {
+      "id": 65,
+      "sourceId": "n0066",
+      "timeSec": 7.958333,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 71,
+      "sourceId": "n0072",
+      "timeSec": 8.3875,
+      "midi": 44,
+      "string": 0,
+      "fret": 1,
+      "kind": "tap"
+    },
+    {
+      "id": 80,
+      "sourceId": "n0081",
+      "timeSec": 9.142708,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 85,
+      "sourceId": "n0086",
+      "timeSec": 9.583333,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 89,
+      "sourceId": "n0090",
+      "timeSec": 10.107292,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 94,
+      "sourceId": "n0095",
+      "timeSec": 10.780208,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 100,
+      "sourceId": "n0101",
+      "timeSec": 11.280208,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 108,
+      "sourceId": "n0109",
+      "timeSec": 11.8375,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 117,
+      "sourceId": "n0118",
+      "timeSec": 12.244792,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 126,
+      "sourceId": "n0127",
+      "timeSec": 12.569792,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 134,
+      "sourceId": "n0135",
+      "timeSec": 12.998958,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 139,
+      "sourceId": "n0140",
+      "timeSec": 13.429167,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 152,
+      "sourceId": "n0153",
+      "timeSec": 13.88125,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 159,
+      "sourceId": "n0160",
+      "timeSec": 14.382292,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 166,
+      "sourceId": "n0167",
+      "timeSec": 14.8,
+      "midi": 42,
+      "string": 1,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 173,
+      "sourceId": "n0174",
+      "timeSec": 15.160417,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 179,
+      "sourceId": "n0180",
+      "timeSec": 15.473958,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 186,
+      "sourceId": "n0187",
+      "timeSec": 15.927083,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 194,
+      "sourceId": "n0195",
+      "timeSec": 17.054167,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 199,
+      "sourceId": "n0200",
+      "timeSec": 17.425,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 206,
+      "sourceId": "n0207",
+      "timeSec": 17.727083,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 214,
+      "sourceId": "n0215",
+      "timeSec": 18.772917,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 217,
+      "sourceId": "n0218",
+      "timeSec": 19.097917,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 218,
+      "sourceId": "n0219",
+      "timeSec": 19.388542,
+      "midi": 42,
+      "string": 1,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 225,
+      "sourceId": "n0226",
+      "timeSec": 19.783333,
+      "midi": 42,
+      "string": 1,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 228,
+      "sourceId": "n0229",
+      "timeSec": 20.097917,
+      "midi": 42,
+      "string": 1,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 234,
+      "sourceId": "n0235",
+      "timeSec": 20.817708,
+      "midi": 42,
+      "string": 1,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 237,
+      "sourceId": "n0238",
+      "timeSec": 21.363542,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 239,
+      "sourceId": "n0240",
+      "timeSec": 21.688542,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 241,
+      "sourceId": "n0242",
+      "timeSec": 22.630208,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 247,
+      "sourceId": "n0248",
+      "timeSec": 22.94375,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 254,
+      "sourceId": "n0255",
+      "timeSec": 23.501042,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 258,
+      "sourceId": "n0259",
+      "timeSec": 23.8375,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 261,
+      "sourceId": "n0262",
+      "timeSec": 24.35,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 270,
+      "sourceId": "n0271",
+      "timeSec": 24.790625,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 274,
+      "sourceId": "n0275",
+      "timeSec": 25.209375,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 280,
+      "sourceId": "n0281",
+      "timeSec": 25.766667,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 284,
+      "sourceId": "n0285",
+      "timeSec": 26.092708,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 288,
+      "sourceId": "n0289",
+      "timeSec": 26.383333,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "tap"
+    },
+    {
+      "id": 292,
+      "sourceId": "n0293",
+      "timeSec": 26.719792,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 298,
+      "sourceId": "n0299",
+      "timeSec": 27.033333,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 302,
+      "sourceId": "n0303",
+      "timeSec": 27.369792,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "tap"
+    },
+    {
+      "id": 304,
+      "sourceId": "n0305",
+      "timeSec": 27.683333,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "tap"
+    },
+    {
+      "id": 307,
+      "sourceId": "n0308",
+      "timeSec": 27.952083,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 319,
+      "sourceId": "n0320",
+      "timeSec": 28.520833,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 321,
+      "sourceId": "n0322",
+      "timeSec": 29.530208,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 325,
+      "sourceId": "n0326",
+      "timeSec": 30.35625,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 328,
+      "sourceId": "n0329",
+      "timeSec": 30.785417,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 330,
+      "sourceId": "n0331",
+      "timeSec": 31.134375,
+      "midi": 38,
+      "string": 1,
+      "fret": 0,
+      "kind": "slap"
+    },
+    {
+      "id": 337,
+      "sourceId": "n0338",
+      "timeSec": 31.65625,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 340,
+      "sourceId": "n0341",
+      "timeSec": 32.064583,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 345,
+      "sourceId": "n0346",
+      "timeSec": 32.49375,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 349,
+      "sourceId": "n0350",
+      "timeSec": 32.830208,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 355,
+      "sourceId": "n0356",
+      "timeSec": 33.155208,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 360,
+      "sourceId": "n0361",
+      "timeSec": 33.771875,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 368,
+      "sourceId": "n0369",
+      "timeSec": 34.735417,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 373,
+      "sourceId": "n0374",
+      "timeSec": 35.211458,
+      "midi": 33,
+      "string": 2,
+      "fret": 0,
+      "kind": "slap"
+    },
+    {
+      "id": 382,
+      "sourceId": "n0383",
+      "timeSec": 36.048958,
+      "midi": 33,
+      "string": 2,
+      "fret": 0,
+      "kind": "slap"
+    },
+    {
+      "id": 387,
+      "sourceId": "n0388",
+      "timeSec": 36.640625,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 391,
+      "sourceId": "n0392",
+      "timeSec": 37.09375,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 394,
+      "sourceId": "n0395",
+      "timeSec": 37.522917,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 401,
+      "sourceId": "n0402",
+      "timeSec": 37.954167,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 407,
+      "sourceId": "n0408",
+      "timeSec": 38.220833,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 408,
+      "sourceId": "n0409",
+      "timeSec": 38.708333,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 417,
+      "sourceId": "n0418",
+      "timeSec": 39.254167,
+      "midi": 43,
+      "string": 0,
+      "fret": 0,
+      "kind": "slap"
+    },
+    {
+      "id": 423,
+      "sourceId": "n0424",
+      "timeSec": 39.684375,
+      "midi": 43,
+      "string": 0,
+      "fret": 0,
+      "kind": "slap"
+    },
+    {
+      "id": 430,
+      "sourceId": "n0431",
+      "timeSec": 40.103125,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 432,
+      "sourceId": "n0433",
+      "timeSec": 40.416667,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 437,
+      "sourceId": "n0438",
+      "timeSec": 40.9625,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 445,
+      "sourceId": "n0446",
+      "timeSec": 41.403125,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 449,
+      "sourceId": "n0450",
+      "timeSec": 41.716667,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap"
+    },
+    {
+      "id": 452,
+      "sourceId": "n0453",
+      "timeSec": 42.136458,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 458,
+      "sourceId": "n0459",
+      "timeSec": 42.554167,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 464,
+      "sourceId": "n0465",
+      "timeSec": 42.879167,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "tap"
+    },
+    {
+      "id": 469,
+      "sourceId": "n0470",
+      "timeSec": 43.34375,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 477,
+      "sourceId": "n0478",
+      "timeSec": 43.728125,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 487,
+      "sourceId": "n0488",
+      "timeSec": 44.064583,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 495,
+      "sourceId": "n0496",
+      "timeSec": 44.378125,
+      "midi": 38,
+      "string": 2,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 502,
+      "sourceId": "n0503",
+      "timeSec": 44.808333,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 509,
+      "sourceId": "n0510",
+      "timeSec": 45.133333,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 517,
+      "sourceId": "n0518",
+      "timeSec": 45.5625,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 528,
+      "sourceId": "n0529",
+      "timeSec": 45.99375,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 543,
+      "sourceId": "n0544",
+      "timeSec": 46.783333,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 548,
+      "sourceId": "n0549",
+      "timeSec": 47.165625,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 551,
+      "sourceId": "n0552",
+      "timeSec": 47.607292,
+      "midi": 36,
+      "string": 2,
+      "fret": 3,
+      "kind": "slap"
+    },
+    {
+      "id": 557,
+      "sourceId": "n0558",
+      "timeSec": 48.014583,
+      "midi": 33,
+      "string": 2,
+      "fret": 0,
+      "kind": "slap"
+    },
+    {
+      "id": 561,
+      "sourceId": "n0562",
+      "timeSec": 48.548958,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 565,
+      "sourceId": "n0566",
+      "timeSec": 49.315625,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 568,
+      "sourceId": "n0569",
+      "timeSec": 49.711458,
+      "midi": 38,
+      "string": 2,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 573,
+      "sourceId": "n0574",
+      "timeSec": 50.198958,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 576,
+      "sourceId": "n0577",
+      "timeSec": 51.359375,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 580,
+      "sourceId": "n0581",
+      "timeSec": 52.127083,
+      "midi": 38,
+      "string": 2,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 585,
+      "sourceId": "n0586",
+      "timeSec": 52.65,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 588,
+      "sourceId": "n0589",
+      "timeSec": 52.963542,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 594,
+      "sourceId": "n0595",
+      "timeSec": 53.277083,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 602,
+      "sourceId": "n0603",
+      "timeSec": 54.148958,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 606,
+      "sourceId": "n0607",
+      "timeSec": 54.683333,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "slap"
+    },
+    {
+      "id": 618,
+      "sourceId": "n0619",
+      "timeSec": 55.4375,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    },
+    {
+      "id": 628,
+      "sourceId": "n0629",
+      "timeSec": 56.669792,
+      "midi": 39,
+      "string": 1,
+      "fret": 1,
+      "kind": "tap"
+    },
+    {
+      "id": 638,
+      "sourceId": "n0639",
+      "timeSec": 57.83125,
+      "midi": 39,
+      "string": 1,
+      "fret": 1,
+      "kind": "slap"
+    },
+    {
+      "id": 640,
+      "sourceId": "n0641",
+      "timeSec": 58.203125,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap"
+    },
+    {
+      "id": 644,
+      "sourceId": "n0645",
+      "timeSec": 58.795833,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap"
+    }
+  ]
+}

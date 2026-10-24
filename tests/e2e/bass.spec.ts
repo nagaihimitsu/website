@@ -55,10 +55,10 @@ function pad(page: Page, midi: number, alternative = false) {
   const cells = page.locator(`[data-bass-fret][data-midi="${midi}"]`);
   return alternative ? cells.last() : cells.first();
 }
-async function hit(page: Page, midi: number, id = 1, action: "down" | "up" | "move" | "cancel" = "down", dy = 0) {
+async function hit(page: Page, midi: number, id = 1, action: "down" | "up" | "move" | "cancel" = "down", dy = 0, dx = 0) {
   const control = pad(page, midi);
   const box = (await control.boundingBox())!;
-  await control.dispatchEvent(`pointer${action}`, { pointerId: id, pointerType: "touch", button: 0, buttons: action === "up" ? 0 : 1, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 + dy });
+  await control.dispatchEvent(`pointer${action}`, { pointerId: id, pointerType: "touch", button: 0, buttons: action === "up" ? 0 : 1, clientX: box.x + box.width / 2 + dx, clientY: box.y + box.height / 2 + dy });
 }
 async function samplerStarts(page: Page) {
   return page.evaluate(() => ((window as any).bassStarts as { rate: number; offset: number }[]).filter(voice => voice.offset === 0.317));
@@ -231,7 +231,7 @@ test("新曲を選び、オフセット付き譜面・原曲音源・停止再�
   const room = await prepare(page);
   await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
   await expect(room).toHaveAttribute("data-bass-song", "final-hit");
-  await expect(page.locator(".bass-draft-summary")).toContainText("315音");
+  await expect(page.locator(".bass-draft-summary")).toContainText("53音");
   await expect(page.locator("[data-bass-fret]")).toHaveCount(24);
   await page.getByRole("spinbutton", { name: "新曲の譜面オフセット（ミリ秒）" }).fill("120");
   await expect(room).toHaveAttribute("data-bass-audio-offset", "0.12");
@@ -247,7 +247,9 @@ test("新曲を選び、オフセット付き譜面・原曲音源・停止再�
   };
   await advance(first.time);
   await expect(page.locator(`[data-bass-note="${first.id}"]`)).toHaveAttribute("data-midi", String(first.midi));
-  await hit(page, first.midi); await hit(page, first.midi, 1, "up");
+  await hit(page, first.midi);
+  if (first.kind === "slap") await hit(page, first.midi, 1, "move", -35);
+  await hit(page, first.midi, 1, "up");
   await expect(room).toHaveAttribute("data-bass-hits", "1");
   const sources = await page.evaluate(() => (window as any).bassStarts as { rate: number; offset: number; duration: number }[]);
   const mix = sources.find(n => n.offset === 0 && n.duration > 59)!;
@@ -320,6 +322,80 @@ async function studyStart(page: Page) {
   return page.evaluate(() => performance.now());
 }
 
+for (const [difficulty, width, height] of [["easy", 375, 667], ["normal", 390, 844], ["hard", 430, 932]] as const) {
+  test(`最終のヒット ${difficulty} ${width}px 全音入力・上下スラップ・音源同期・SSリザルト`, { tag: "@bass" }, async ({ page }) => {
+    test.setTimeout(240_000); // 全114音を実3D上で入力するため、通常の部分操作テストより長い。
+    const errors = collectPageErrors(page);
+    await page.setViewportSize({ width, height });
+    const room = await prepare(page);
+    await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
+    const { finalHitSong } = await import("../../src/room/finalHitTrack");
+    const song = finalHitSong(0, difficulty);
+    await page.locator(`button[data-bass-difficulty=${difficulty}]`).click();
+    await expect(page.locator(".bass-draft-summary")).toContainText(`${song.notes.length}音`);
+    await expect(page.locator(".bass-title")).toContainText(difficulty.toUpperCase());
+    const header = (await page.locator(".bass-top-hud").boundingBox())!;
+    const setup = (await page.locator(".bass-setup").boundingBox())!;
+    expect(setup.y).toBeGreaterThanOrEqual(header.y + header.height);
+    for (const selector of [".bass-setup", ".bass-fretboard", ".bass-offset", ".bass-difficulty-selector"]) {
+      const box = (await page.locator(selector).boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(height);
+    }
+    await page.screenshot({ path: `/tmp/final-hit-${difficulty}-ready.png` });
+    await page.getByRole("button", { name: "演奏する", exact: true }).click();
+    await expect(room).toHaveAttribute("data-bass-phase", "countdown");
+    const started = await page.evaluate(() => performance.now());
+    for (const [index, note] of song.notes.entries()) {
+      const now = await page.evaluate(() => performance.now());
+      const delta = started + (song.countdownSeconds + note.time) * 1000 - now;
+      if (delta > 0) await page.clock.fastForward(delta);
+      await hit(page, note.midi, index + 1);
+      if (note.kind === "slap") await hit(page, note.midi, index + 1, "move", index % 2 ? 35 : -35, index % 2 ? -7 : 7);
+      await hit(page, note.midi, index + 1, "up");
+    }
+    await expect(room).toHaveAttribute("data-bass-hits", String(song.notes.length));
+    expect(await samplerStarts(page)).toHaveLength(song.notes.length);
+    const mix = await page.evaluate(() => ((window as any).bassStarts as { rate: number; offset: number; duration: number }[]).find(n => n.offset === 0 && n.duration > 59));
+    expect(mix?.rate).toBe(1); expect(mix?.duration).toBeCloseTo(60.0135, 2);
+    await page.clock.fastForward(2000);
+    await expect(room).toHaveAttribute("data-bass-phase", "result");
+    await expect(page.locator(".bass-result-rank")).toHaveText("SS");
+    await expect(page.locator(".bass-result-achievement")).toHaveText("100.00%");
+    await expect(page.locator('[data-bass-result-count="excellent"] dd')).toHaveText(String(song.notes.length));
+    await expect(page.locator('[data-bass-result-count="miss"] dd')).toHaveText("0");
+    expect(await page.evaluate(() => scrollY)).toBe(0); expect(errors).toEqual([]);
+  });
+}
+
+test("実MP3から作る持続音を1・2・4秒レンダリングし、周期的再アタックと停止後の残音を検査", { tag: "@bass" }, async ({ page }) => {
+  await page.goto("/");
+  const results = await page.evaluate(async () => {
+    const modulePath = "/src/room/bassSustain.ts";
+    const { createBassSustainBuffer } = await import(modulePath) as typeof import("../../src/room/bassSustain");
+    const bytes = await (await fetch("/src/assets/audio/garden-party-bass.mp3")).arrayBuffer();
+    const results = [];
+    for (const seconds of [1, 2, 4]) {
+      const context = new OfflineAudioContext(1, Math.ceil((seconds + 0.15) * 48000), 48000);
+      const original = await context.decodeAudioData(bytes.slice(0));
+      const sustain = createBassSustainBuffer(context, original);
+      const source = context.createBufferSource(), gain = context.createGain();
+      source.buffer = sustain.buffer; source.loop = true; source.loopStart = sustain.loopStart; source.loopEnd = sustain.loopEnd;
+      source.connect(gain).connect(context.destination); gain.gain.setValueAtTime(1, 0);
+      gain.gain.setValueAtTime(1, seconds); gain.gain.linearRampToValueAtTime(0, seconds + 0.025);
+      source.start(0, 0.317); source.stop(seconds + 0.03);
+      const rendered = (await context.startRendering()).getChannelData(0);
+      const window = Math.round((sustain.loopEnd - sustain.loopStart) * 48000);
+      const rms = (start: number, count: number) => Math.sqrt(rendered.slice(start, start + count).reduce((sum, n) => sum + n * n, 0) / count);
+      const levels = [];
+      for (let sample = 24000; sample + window < seconds * 48000; sample += window) levels.push(rms(sample, window));
+      results.push({ seconds, min: Math.min(...levels), ratio: Math.max(...levels) / Math.min(...levels), released: rms(Math.round((seconds + 0.06) * 48000), 2000) });
+    }
+    return results;
+  });
+  for (const result of results) { expect(result.min).toBeGreaterThan(0.01); expect(result.ratio).toBeLessThan(1.01); expect(result.released).toBeLessThan(0.000001); }
+});
+
 for (const [width, height] of [[375, 667], [390, 844], [430, 932]]) {
   test(`リザルト ${width}px 全判定・固定結果・続ける・やめる`, { tag: "@bass" }, async ({ page }) => {
     const errors = collectPageErrors(page);
@@ -384,14 +460,14 @@ for (const [width, height] of [[375, 667], [390, 844], [430, 932]]) {
   });
 }
 
-async function slidePointer(page: Page, string: number, startFret: number, currentFret: number, id: number, action: "down" | "move" | "up" | "cancel") {
+async function slidePointer(page: Page, string: number, startFret: number, currentFret: number, id: number, action: "down" | "move" | "up" | "cancel", dy = 0) {
   const startControl = page.locator(`[data-bass-fret="${string}-${startFret}"]`);
   const a = (await startControl.boundingBox())!;
   const b = (await page.locator(`[data-bass-fret="${string}-${Math.floor(currentFret)}"]`).boundingBox())!;
   const next = currentFret % 1;
   await startControl.dispatchEvent(`pointer${action}`, { pointerId: id, pointerType: "touch", button: 0,
     buttons: action === "up" || action === "cancel" ? 0 : 1,
-    clientX: b.x + b.width / 2 + next * (a.width + 6), clientY: a.y + a.height / 2 });
+    clientX: b.x + b.width / 2 + next * (a.width + 6), clientY: a.y + a.height / 2 + dy });
 }
 
 test("奏法練習の完全版3難易度を375pxで選択し、終止音・結果・再選択まで演奏する", { tag: "@bass" }, async ({ page }) => {
@@ -470,7 +546,7 @@ test("V2.1 左右スライド・連続音程・上下スラップ・保持と高
   await expect(room).toHaveAttribute("data-bass-hits", "0");
   await expect(page.locator('[data-bass-slide-path="1"]')).toHaveAttribute("data-state", "sliding");
   await seek(page, started, 2.5);
-  await slidePointer(page, 2, 2, 3.5, 51, "move");
+  await slidePointer(page, 2, 2, 3.5, 51, "move", 8);
   await expect(page.locator('[data-slide-end="1"]')).toHaveAttribute("data-end-progress", "0.500");
   await page.clock.runFor(16);
   await page.screenshot({ path: "/tmp/bass-v21-slide.png" });

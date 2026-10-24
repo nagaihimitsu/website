@@ -39,7 +39,7 @@ const scopes = {
     browser: [roomSpecs[0], roomSpecs[2], roomSpecs[3], "--grep", "@outdoors|@movement|@npc|@visual"],
   },
   music: {
-    units: ["tests/room-bass-game.test.ts", "tests/room-bass-v21.test.ts", "tests/room-bass-result.test.ts", "tests/room-bass-import.test.ts", "tests/room-bass-fretboard.test.ts", "tests/room-bass-gesture.test.ts", "tests/room-bass-audio.test.ts", "tests/room-bass-pose.test.ts", "tests/room-engine-lifecycle.test.ts", "tests/room-model-lifecycle.test.ts"],
+    units: ["tests/room-bass-game.test.ts", "tests/room-bass-v21.test.ts", "tests/room-bass-result.test.ts", "tests/room-bass-import.test.ts", "tests/room-final-hit-arrangement.test.ts", "tests/room-bass-sustain.test.ts", "tests/room-bass-fretboard.test.ts", "tests/room-bass-gesture.test.ts", "tests/room-bass-audio.test.ts", "tests/room-bass-pose.test.ts", "tests/room-engine-lifecycle.test.ts", "tests/room-model-lifecycle.test.ts"],
     browser: [roomSpecs[0], roomSpecs[3], roomSpecs[4], "--grep", "@bass|@outdoors|@visual"],
   },
   full: { units: [], browser: [], subpath: true },

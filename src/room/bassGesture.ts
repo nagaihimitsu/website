@@ -4,10 +4,11 @@ export const BASS_TAP_MAX_MS = 220;
 export const BASS_TAP_MAX_MOVEMENT = 12;
 export const BASS_SLAP_MAX_MS = 250;
 export const BASS_SLAP_MIN_DISTANCE = 24;
-export const BASS_SLAP_DIRECTION_RATIO = 1.35;
+export const BASS_SLAP_DIRECTION_RATIO = 1.6;
 export const BASS_GESTURE_CONFIG = Object.freeze({ slapMaxMs: BASS_SLAP_MAX_MS,
   slapMinDistance: BASS_SLAP_MIN_DISTANCE, slapMinSpeed: 0.09, directionRatio: BASS_SLAP_DIRECTION_RATIO,
-  slideMinDistance: 12, slideArrivalTolerance: 0.28, rowTolerance: 3, pitchRampSeconds: 0.018 });
+  slideMinDistance: 12, slideWidthRatio: 0.24, slapHeightRatio: 0.42,
+  slideArrivalTolerance: 0.28, rowToleranceRatio: 0.18, pitchRampSeconds: 0.018 });
 
 export interface BassGesturePoint {
   pointerId: number;

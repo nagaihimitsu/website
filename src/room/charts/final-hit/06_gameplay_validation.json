@@ -1,0 +1,73 @@
+{
+  "analysisPath": "docs/analysis/final-hit-audio.json",
+  "limits": {
+    "easy": {
+      "maxPerSecond": 2,
+      "minInterval": 0.55,
+      "reachSeconds": 0.15,
+      "slapRatio": 0.68
+    },
+    "normal": {
+      "maxPerSecond": 3,
+      "minInterval": 0.36,
+      "reachSeconds": 0.075,
+      "slapRatio": 0.74
+    },
+    "hard": {
+      "maxPerSecond": 4,
+      "minInterval": 0.26,
+      "reachSeconds": 0.045,
+      "slapRatio": 0.8
+    }
+  },
+  "reports": {
+    "easy": {
+      "total": 53,
+      "maxPerSecond": 2,
+      "minInterval": 0.5572920000000003,
+      "kinds": {
+        "tap": 17,
+        "hold": 0,
+        "slap": 36,
+        "slide": 0
+      },
+      "slapRatio": 0.6792452830188679,
+      "minMidi": 33,
+      "maxMidi": 48,
+      "start": 2.207292,
+      "end": 58.795833
+    },
+    "normal": {
+      "total": 81,
+      "maxPerSecond": 3,
+      "minInterval": 0.3708330000000011,
+      "kinds": {
+        "tap": 21,
+        "hold": 0,
+        "slap": 60,
+        "slide": 0
+      },
+      "slapRatio": 0.7407407407407407,
+      "minMidi": 33,
+      "maxMidi": 48,
+      "start": 2.207292,
+      "end": 58.795833
+    },
+    "hard": {
+      "total": 114,
+      "maxPerSecond": 4,
+      "minInterval": 0.26666600000000074,
+      "kinds": {
+        "tap": 23,
+        "hold": 0,
+        "slap": 91,
+        "slide": 0
+      },
+      "slapRatio": 0.7982456140350878,
+      "minMidi": 33,
+      "maxMidi": 48,
+      "start": 1.126042,
+      "end": 58.795833
+    }
+  }
+}

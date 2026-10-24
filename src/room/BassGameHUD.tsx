@@ -176,7 +176,7 @@ export function BassGameHUD({ snapshot, paused, onStart, onContinue, onSong, onO
   return <section className={`bass-hud bass-phase-${phase}`} data-bass-phase={phase} data-selected-difficulty={snapshot.difficulty} aria-label="ベース演奏"
     onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()} onContextMenu={event => event.preventDefault()}>
     <header className="bass-top-hud">
-      <div className="bass-title"><strong>{snapshot.songTitle}</strong><span>{snapshot.importSummary ? "MIDI仮譜面" : BASS_SONGS[snapshot.difficulty].label}</span></div>
+      <div className="bass-title"><strong>{snapshot.songTitle}</strong><span>{BASS_SONGS[snapshot.difficulty].label}</span></div>
       <button className="bass-pause" type="button" onClick={onPause} aria-label="演奏をポーズ">Ⅱ</button>
       <div className="bass-live-score"><span>SCORE <strong>{snapshot.score.toLocaleString()}</strong></span><span>COMBO <strong>{snapshot.combo}</strong></span></div>
       <div className="bass-playback-progress" role="progressbar" aria-label="曲の進行" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}><span style={{ transform: `scaleX(${progress})` }} /></div>
@@ -205,7 +205,8 @@ export function BassGameHUD({ snapshot, paused, onStart, onContinue, onSong, onO
               if (event.button !== 0 || !enabled) return;
               event.preventDefault();
               const rect = event.currentTarget.getBoundingClientRect();
-              const input: BassPointerInput = { fretWidth: rect.width + 6, rowTop: rect.top, rowBottom: rect.bottom, id: event.pointerId, action: "down", midi: cell.midi, string: cell.string, fret: cell.fret, x: event.clientX, y: event.clientY, time: event.timeStamp };
+              const boardWidth = event.currentTarget.parentElement!.getBoundingClientRect().width;
+              const input: BassPointerInput = { fretWidth: (boardWidth - rect.width) / 5, rowTop: rect.top, rowBottom: rect.bottom, id: event.pointerId, action: "down", midi: cell.midi, string: cell.string, fret: cell.fret, x: event.clientX, y: event.clientY, time: event.timeStamp };
               contacts.current.set(event.pointerId, input);
               if (event.isTrusted) event.currentTarget.setPointerCapture(event.pointerId);
               onInput(input);
@@ -235,12 +236,13 @@ export function BassGameHUD({ snapshot, paused, onStart, onContinue, onSong, onO
         })}
         <SlidePaths snapshot={snapshot} time={time} />
       </div>
-      {phase === "ready" && <div className="bass-setup">
+      {phase === "ready" && <div className={`bass-setup${snapshot.importSummary ? " is-imported" : ""}`}>
         <label className="bass-song-select">曲<select aria-label="曲を選択" value={snapshot.songId} onChange={event => onSong(event.target.value as BassSongId)}>{BASS_TRACKS.map(track => <option key={track.id} value={track.id}>{track.title}{track.draft ? "（仮譜面）" : ""}</option>)}</select></label>
-        {snapshot.importSummary ? <>
-          <p className="bass-draft-summary">仮譜面 · {snapshot.importSummary.playableCount}音（0〜5F）<br />運指・奏法・原曲との一致は未確認</p>
+        <div className="bass-difficulty-selector" role="group" aria-label="難易度">{(["easy", "normal", "hard"] as const).map(value => <button key={value} data-bass-difficulty={value} aria-pressed={value === snapshot.difficulty} onClick={() => onDifficulty(value)}>{BASS_SONGS[value].label}</button>)}</div>
+        {snapshot.importSummary && <div className="bass-chart-meta">
+          <p className="bass-draft-summary">推定編曲 · {snapshot.importSummary.playableCount}音</p>
           <label className="bass-offset">譜面調整<input aria-label="新曲の譜面オフセット（ミリ秒）" type="number" min="-750" max="5000" step="10" value={Math.round(snapshot.audioOffsetSec * 1000)} onChange={event => { const ms = Math.round(Number(event.target.value)); if (event.target.value !== "" && ms >= -750 && ms <= 5000) onOffset(ms / 1000); }} />ms</label>
-        </> : <div className="bass-difficulty-selector" role="group" aria-label="難易度">{(["easy", "normal", "hard"] as const).map(value => <button key={value} data-bass-difficulty={value} aria-pressed={value === snapshot.difficulty} onClick={() => onDifficulty(value)}>{BASS_SONGS[value].label}</button>)}</div>}
+        </div>}
         {!snapshot.importSummary && <p>{snapshot.songId === "technique-study" ? "タップ · 長押し · ↕フリック · ↔同じ弦をスライド" : "音名をタップ · 帯は長押し · ↕は上下フリック"}</p>}
         <button className="bass-start" onClick={onStart} disabled={busy}>{busy ? "曲を準備中…" : audioStatus === "error" ? "曲の読み込みを再試行" : audioStatus === "unavailable" ? "音声を再試行" : "演奏する"}</button>
       </div>}

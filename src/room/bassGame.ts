@@ -22,7 +22,7 @@ export type BassDifficulty = "easy" | "normal" | "hard";
 export type BassSongId = "garden-party" | "final-hit" | "technique-study";
 export const BASS_TRACKS = [
   { id: "garden-party", title: GARDEN_TRACK.title, draft: false },
-  { id: "final-hit", title: "最終のヒット", draft: true },
+  { id: "final-hit", title: "最終のヒット", draft: false },
   { id: "technique-study", title: "奏法練習 · Garden-Party", draft: false },
 ] as const;
 export type BassTechnique = "pick" | "slap" | "slide";
@@ -258,6 +258,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
   let phase: BassPhase = "idle";
   let gardenDifficulty: BassDifficulty = "easy";
   let studyDifficulty: BassDifficulty = "normal";
+  let finalHitDifficulty: BassDifficulty = "easy";
   let activeSong: BassSong = BASS_SONGS[gardenDifficulty];
   const song = () => activeSong;
   let proximityTime = 0;
@@ -499,7 +500,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
 
   function selectSong(id: BassSongId) {
     if (isPaused || !["ready", "result"].includes(phase) || !BASS_TRACKS.some(track => track.id === id)) return false;
-    activeSong = id === "garden-party" ? BASS_SONGS[gardenDifficulty] : id === "technique-study" ? BASS_TECHNIQUE_STUDIES[studyDifficulty] : finalHitSong();
+    activeSong = id === "garden-party" ? BASS_SONGS[gardenDifficulty] : id === "technique-study" ? BASS_TECHNIQUE_STUDIES[studyDifficulty] : finalHitSong(undefined, finalHitDifficulty);
     resetScore(); phase = "ready"; return true;
   }
   function continueFromResult() {
@@ -508,7 +509,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
   }
   function setAudioOffset(offset: number) {
     if (isPaused || !["ready", "result"].includes(phase) || song().id !== "final-hit" || !Number.isFinite(offset)) return false;
-    try { activeSong = finalHitSong(offset); } catch { return false; }
+    try { activeSong = finalHitSong(offset, finalHitDifficulty); } catch { return false; }
     resetScore(); phase = "ready"; return true;
   }
   function seek(time: number) {
@@ -519,9 +520,10 @@ export function createBassGame(chart?: readonly BassNote[]) {
   }
 
   function setDifficulty(value: BassDifficulty) {
-    if (song().id === "final-hit" || isPaused || (phase !== "ready" && phase !== "result") ||
+    if (isPaused || (phase !== "ready" && phase !== "result") ||
       typeof value !== "string" || !Object.hasOwn(BASS_SONGS, value)) return false;
-    if (song().id === "technique-study") { studyDifficulty = value; activeSong = BASS_TECHNIQUE_STUDIES[value]; }
+    if (song().id === "final-hit") { activeSong = finalHitSong(song().importInfo?.audioOffsetSec, value); finalHitDifficulty = value; }
+    else if (song().id === "technique-study") { studyDifficulty = value; activeSong = BASS_TECHNIQUE_STUDIES[value]; }
     else { gardenDifficulty = value; activeSong = BASS_SONGS[value]; }
     resetScore();
     phase = "ready";

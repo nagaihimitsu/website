@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBassAudio, type BassAudioStatus } from "../src/room/bassAudio";
 import { BASS_SONGS, createBassGame, type BassGameSnapshot } from "../src/room/bassGame";
 
+function audioBuffer(duration = 56.14, length = 24000, sampleRate = 24000, channels = 1) {
+  const data = Array.from({ length: channels }, () => Float32Array.from({ length }, (_, i) => 0.1 * Math.sin(2 * Math.PI * 49 * i / sampleRate)));
+  return { duration, length, sampleRate, numberOfChannels: channels, getChannelData: (index: number) => data[index] } as AudioBuffer;
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error?: unknown) => void;
@@ -24,7 +29,8 @@ function installAudio() {
     createGain: () => { const gain = { ...node(), gain: parameter() }; gains.push(gain); return gain; },
     createBufferSource: () => { const voice = source("recording"); sources.push(voice); return voice; },
     createOscillator: () => { const voice = source("tone"); sources.push(voice); return voice; },
-    decodeAudioData: vi.fn(async () => ({ duration: 56.14 } as AudioBuffer)),
+    decodeAudioData: vi.fn(async () => audioBuffer()),
+    createBuffer: (channels: number, length: number, sampleRate: number) => audioBuffer(length / sampleRate, length, sampleRate, channels),
     resume: vi.fn(async () => { context.state = "running"; }), close: vi.fn(async () => { context.state = "closed"; }),
   };
   const constructor = vi.fn(function () { return context; });
@@ -221,7 +227,7 @@ describe("recorded bass transport", () => {
   it("reports corrupt or unaligned recordings without starting a partial band", async () => {
     const { context, recordings } = installAudio();
     const audio = createBassAudio();
-    context.decodeAudioData.mockResolvedValueOnce({ duration: 55 } as AudioBuffer);
+    context.decodeAudioData.mockResolvedValueOnce(audioBuffer(55));
     audio.unlock();
     expect(await audio.prepare()).toBe(false);
     expect(audio.status()).toBe("error");
@@ -241,7 +247,7 @@ describe("recorded bass transport", () => {
     const preparation = audio.prepare();
     await vi.waitFor(() => expect(context.decodeAudioData).toHaveBeenCalledTimes(2));
     audio.dispose();
-    pending.resolve({ duration: 56.14 } as AudioBuffer);
+    pending.resolve(audioBuffer());
     expect(await preparation).toBe(false);
     audio.sync(snapshot());
     expect(statuses).not.toContain("ready");
@@ -352,7 +358,7 @@ describe("recorded bass transport", () => {
     const preparation = audio.prepare();
     await vi.waitFor(() => expect(context.decodeAudioData).toHaveBeenCalledTimes(2));
     context.state = "interrupted";
-    pending.resolve({ duration: 56.14 } as AudioBuffer);
+    pending.resolve(audioBuffer());
     expect(await preparation).toBe(false);
     expect(audio.status()).toBe("unavailable");
     expect(statuses).not.toContain("ready");
@@ -381,6 +387,20 @@ describe("recorded bass transport", () => {
 
 describe("direct MIDI sampler", () => {
   afterEach(() => vi.unstubAllGlobals());
+  it.each([1, 2, 4])("%i秒のフレーム更新でもアタックは1回、解除と次の通常音を分離", async seconds => {
+    const { audio, recordings, context } = await ready();
+    audio.sync({ ...snapshot(0), directInput: true }); // 実入力と同じく、共通トランスポート開始後に発音する。
+    audio.playMidi(1, 35, "pick", true);
+    for (let frame = 0; frame <= seconds * 60; frame++) {
+      context.currentTime = 10 + frame / 60;
+      audio.sync({ ...snapshot(frame / 60), directInput: true });
+    }
+    const sampler = () => recordings().filter(voice => voice.start.mock.calls[0]?.[1] === 0.317);
+    expect(sampler()).toHaveLength(1); expect(sampler()[0].start).toHaveBeenCalledTimes(1);
+    audio.releaseMidi(1); expect(sampler()[0].stop).toHaveBeenLastCalledWith(10 + seconds + 0.03);
+    audio.playMidi(2, 38, "pick", false); expect(sampler()).toHaveLength(2);
+    audio.stop();
+  });
   it("uses the existing stem and correct pitch rates, including wrong pitches, once per contact", async () => {
     const { audio, recordings } = await ready();
     for (let midi = 28; midi <= 48; midi++) {
@@ -423,8 +443,8 @@ describe("複数曲の音声時計", () => {
   it("新曲は原曲ミックス1本を原速で再生し、入力音には既存サンプラーを使う", async () => {
     const { audio, context, recordings, gains } = await ready();
     audio.selectSong("final-hit");
-    context.decodeAudioData.mockResolvedValueOnce({ duration: 60.0135 } as AudioBuffer);
-    context.decodeAudioData.mockResolvedValueOnce({ duration: 56.14 } as AudioBuffer);
+    context.decodeAudioData.mockResolvedValueOnce(audioBuffer(60.0135));
+    context.decodeAudioData.mockResolvedValueOnce(audioBuffer());
     expect(await audio.prepare()).toBe(true);
     const state: BassGameSnapshot = { ...snapshot(1), songId: "final-hit", songTitle: "最終のヒット", duration: 60.0135, countdownSeconds: 2, beatSeconds: 0.5 };
     audio.sync(state);
@@ -432,7 +452,10 @@ describe("複数曲の音声時計", () => {
     expect(recordings()[0].start).toHaveBeenCalledWith(10, 1);
     expect(gains.at(-1)!.gain.linearRampToValueAtTime).not.toHaveBeenCalled();
     audio.playMidi(1, 40, "pick", false);
-    expect(recordings().at(-1)!.buffer).toMatchObject({ duration: 56.14 });
+    const sampler = recordings().at(-1)!;
+    expect(sampler.buffer).toMatchObject({ duration: sampler.loopEnd });
+    expect(sampler.loopStart).toBeGreaterThan(0.45);
+    expect(sampler.loopEnd).toBeLessThan(0.6);
     expect(recordings().at(-1)!.playbackRate.value).toBeCloseTo(2 ** ((40 - 31) / 12));
     audio.releaseMidi(1);
     const count = context.decodeAudioData.mock.calls.length;
@@ -464,7 +487,7 @@ describe("複数曲の音声時計", () => {
     await vi.waitFor(() => expect(context.decodeAudioData).toHaveBeenCalled());
     audio.selectSong("final-hit");
     expect(await audio.prepare()).toBe(true);
-    old.resolve({ duration: 56.14 } as AudioBuffer);
+    old.resolve(audioBuffer());
     expect(await preparation).toBe(false);
     expect(audio.status()).toBe("ready");
     const state: BassGameSnapshot = { ...snapshot(), songId: "final-hit" };
