@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import type { BassGameSnapshot } from "../bassGame";
+import { createBassPerformanceEffects, bassComboTier, successfulBassEvent } from "./bassPerformanceEffects";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { withDisposalScope, type DisposalScope } from "../disposal";
@@ -11,6 +13,7 @@ export const BASS_GARDEN_LAYOUT = {
 } as const;
 
 export type BassGardenPerformance = {
+  snapshot?: BassGameSnapshot;
   playing: boolean;
   /** Fractional beats elapsed in the current song, independent of render rate. */
   beat: number;
@@ -876,10 +879,10 @@ function buildBassGarden(scope: DisposalScope) {
     effectSeed = (Math.imul(effectSeed, 1664525) + 1013904223) >>> 0;
     return effectSeed / 0x100000000;
   };
-  function launchSuccess(time: number, slapAccent = 0) {
+  function launchSuccess(time: number, slapAccent = 0, tier = 0) {
     for (const pool of [petalPool, notePool]) {
       const isNote = pool === notePool;
-      for (let i = 0; i < (isNote ? 2 : 5) + (slapAccent > 0.35 ? (isNote ? 1 : 2) : 0); i++) {
+      for (let i = 0; i < (isNote ? 1 : 2) + tier + (slapAccent > 0.35 ? (isNote ? 1 : 2) : 0); i++) {
         const particle = pool.particles[pool.cursor];
         pool.cursor = (pool.cursor + 1) % pool.particles.length;
         const flower = flowers[(flourishCount * 3 + i * 3 + (isNote ? 2 : 0)) % flowers.length];
@@ -928,6 +931,8 @@ function buildBassGarden(scope: DisposalScope) {
     }
   }
 
+  const performanceEffects = createBassPerformanceEffects(scope, instrument);
+  let lastFlourishSerial = 0;
   let previousTime = 0, performanceAmount = 0, previousSuccess = 0;
   pollenMaterial.emissive.set("#6b4b20");
   pollenMaterial.emissiveIntensity = 0;
@@ -940,12 +945,22 @@ function buildBassGarden(scope: DisposalScope) {
     // A wrong slap moves the player's hand only. The engine clears success on
     // each miss, so a preceding correct note cannot lend it a success flourish.
     const pulse = slap > 0 ? inputPulse * success : inputPulse;
+    const tier = bassComboTier(performance?.snapshot?.combo ?? 0);
     const flowerPulse = success * (1 + slap * 0.35);
     const delta = Math.max(0, Math.min(0.1, timeSeconds - previousTime));
     previousTime = timeSeconds;
     performanceAmount = THREE.MathUtils.damp(performanceAmount, performance?.playing ? 1 : 0, 7, delta);
     const beat = performance?.beat ?? 0;
-    if (!reducedMotion && performance?.playing && success > 0.35 && success > previousSuccess + 0.2) launchSuccess(timeSeconds, slapAccent);
+    const songTime = performance?.snapshot?.elapsed ?? timeSeconds;
+    if (performance?.snapshot) {
+      performanceEffects.update(performance.snapshot, reducedMotion);
+      for (const event of performance.snapshot.performanceEvents) {
+        if (event.serial <= lastFlourishSerial) continue;
+        lastFlourishSerial = event.serial;
+        if (!reducedMotion && performance.playing && successfulBassEvent(event) && songTime - event.time < 0.3)
+          launchSuccess(event.time, event.kind === "slap" ? 1 : 0, bassComboTier(event.combo) + (event.grade === "perfect" ? 1 : 0));
+      }
+    } else if (!reducedMotion && performance?.playing && success > 0.35 && success > previousSuccess + 0.2) launchSuccess(timeSeconds, slapAccent);
     previousSuccess = success;
     for (let i = 0; i < flowers.length; i++) {
       const flower = flowers[i];
@@ -953,7 +968,7 @@ function buildBassGarden(scope: DisposalScope) {
       const nod = Math.sin(beat * Math.PI * 2 + i * 0.34);
       flower.stem.rotation.z = reducedMotion ? 0 :
         Math.sin(timeSeconds * 1.25 + flower.phase) * 0.016 * (1 - performanceAmount)
-        + sway * 0.13 * performanceAmount + Math.sin(flower.phase) * flowerPulse * 0.09;
+        + sway * (0.13 + tier * 0.015) * performanceAmount + Math.sin(flower.phase) * flowerPulse * 0.09;
       flower.stem.rotation.x = reducedMotion ? 0 : (nod * 0.045 * performanceAmount + flowerPulse * 0.035);
       flower.crown.rotation.copy(flower.crownRotation);
       if (!reducedMotion) {
@@ -986,7 +1001,7 @@ function buildBassGarden(scope: DisposalScope) {
     }
     emissive.emissiveIntensity = 0.35 + pulse * (reducedMotion ? 0.08 : 0.35);
     pollenMaterial.emissiveIntensity = success * (reducedMotion ? 0.08 : 0.14 * (1 + slap * 0.2));
-    animateParticles(timeSeconds, reducedMotion);
+    animateParticles(songTime, reducedMotion || Boolean(performance?.snapshot && !performance.playing));
     updateCable();
   }
   animate(0);

@@ -473,3 +473,50 @@ describe("複数曲の音声時計", () => {
     audio.dispose();
   });
 });
+
+describe("スライドの連続音高", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([[35, 38], [38, 35]])("MIDI%iから%iへ1つの音声を補間し、終点音高とリリースを保つ", async (start, end) => {
+    const { audio, context, recordings } = await ready();
+    audio.playMidi(1, start, "slide", true);
+    const voice = recordings()[0];
+    for (let step = 1; step <= 12; step++) {
+      context.currentTime += 0.05;
+      expect(audio.bendMidi(1, start + (end - start) * step / 12)).toBe(true);
+    }
+    expect(recordings()).toHaveLength(1);
+    expect(voice.start).toHaveBeenCalledTimes(1);
+    expect(voice.playbackRate.linearRampToValueAtTime).toHaveBeenCalledTimes(12);
+    expect(voice.playbackRate.linearRampToValueAtTime.mock.calls.at(-1)![0]).toBeCloseTo(2 ** ((end - 31) / 12));
+    expect(voice.stop).toHaveBeenCalledTimes(1); // 継続中は音源を止めない
+    audio.releaseMidi(1);
+    expect(audio.bendMidi(1, 36)).toBe(false);
+    expect(voice.stop).toHaveBeenCalledTimes(2);
+    audio.dispose();
+  });
+  it("指ごとの音程を独立制御し、キャンセルとポーズで音を残さない", async () => {
+    const { audio, recordings } = await ready();
+    audio.playMidi(1, 35, "slide", true); audio.playMidi(2, 45, "slide", true);
+    audio.bendMidi(1, 36.4); audio.bendMidi(2, 46.7);
+    expect(recordings()[0].playbackRate.linearRampToValueAtTime.mock.calls[0][0]).toBeCloseTo(2 ** ((36.4 - 31) / 12));
+    expect(recordings()[1].playbackRate.linearRampToValueAtTime.mock.calls[0][0]).toBeCloseTo(2 ** ((46.7 - 31) / 12));
+    audio.releaseMidi(1); expect(audio.bendMidi(1, 38)).toBe(false); expect(audio.bendMidi(2, 48)).toBe(true);
+    audio.stop(); expect(audio.bendMidi(2, 48)).toBe(false);
+    expect(recordings().every(voice => voice.disconnect.mock.calls.length > 0)).toBe(true);
+  });
+  it("通常アタックから横移動した場合も同じ発音を保持へ延長", async () => {
+    const { audio, recordings } = await ready();
+    audio.playMidi(1, 35, "pick", false); audio.bendMidi(1, 35.5); audio.bendMidi(1, 36.2);
+    expect(recordings()).toHaveLength(1); expect(recordings()[0].stop).toHaveBeenLastCalledWith(40);
+    audio.releaseMidi(1); expect(audio.bendMidi(1, NaN)).toBe(false); audio.dispose();
+  });
+  it("練習譜面は既存録音と時計を再利用し、選択で再読込ループを作らない", async () => {
+    const { audio, context, recordings } = await ready();
+    expect(audio.selectSong("technique-study")).toBe(true);
+    audio.sync({ ...snapshot(1), songId: "technique-study", directInput: true });
+    context.currentTime += 1;
+    audio.sync({ ...snapshot(2), songId: "technique-study", directInput: true });
+    expect(recordings()).toHaveLength(2); expect(audio.playbackTime()).toBeCloseTo(2);
+    expect(context.decodeAudioData).toHaveBeenCalledTimes(2); audio.dispose();
+  });
+});

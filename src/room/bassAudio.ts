@@ -2,6 +2,7 @@ import backingUrl from "../assets/audio/garden-party-backing.mp3?url";
 import finalHitUrl from "../assets/audio/final-hit.mp3?url";
 import bassUrl from "../assets/audio/garden-party-bass.mp3?url";
 import { BASS_SONGS, type BassGameSnapshot, type BassTechnique, type BassSongId } from "./bassGame";
+import { BASS_GESTURE_CONFIG } from "./bassGesture";
 
 export type BassAudioStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
 type Stems = readonly [AudioBuffer, AudioBuffer];
@@ -29,7 +30,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   let controller: AbortController | null = null;
   let transport: { sources: AudioBufferSourceNode[]; gains: GainNode[]; anchor: number; difficulty: string } | null = null;
   let windows: Window[] = [];
-  const heldVoices = new Map<number, { source: AudioBufferSourceNode; gain: GainNode; start: number }>();
+  const heldVoices = new Map<number, { source: AudioBufferSourceNode; gain: GainNode; start: number; midi: number; sustained: boolean; volume: number }>();
   const seenHits = new Set<number>();
   const countTicks = new Set<number>();
   const voices = new Map<AudioScheduledSourceNode, AudioNode[]>();
@@ -41,7 +42,8 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   }
 
   function selectSong(id: BassSongId) {
-    if (disposed || !["garden-party", "final-hit"].includes(id)) return false;
+    if (disposed || !["garden-party", "final-hit", "technique-study"].includes(id)) return false;
+    if (id === "technique-study") id = "garden-party";
     if (id === songId) return true;
     generation++;
     controller?.abort(); controller = null;
@@ -336,7 +338,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     if (!hold) gain.gain.linearRampToValueAtTime(0, now + 0.35);
     source.connect(gain).connect(master);
     voices.set(source, [gain]);
-    heldVoices.set(id, { source, gain, start: now });
+    heldVoices.set(id, { source, gain, start: now, midi, sustained: hold, volume: (technique === "slap" ? 1.8 : 1.35) * (songId === "final-hit" ? 0.45 : 1) });
     source.onended = () => {
       voices.delete(source);
       if (heldVoices.get(id)?.source === source) heldVoices.delete(id);
@@ -345,6 +347,27 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     };
     source.start(now, 0.317);
     source.stop(now + (hold ? 30 : 0.36));
+  }
+  /** 同じサンプラーの再生率だけを補間し、通過フレットでは再発音しない。 */
+  function bendMidi(id: number, midi: number) {
+    const voice = heldVoices.get(id);
+    if (!voice || !context || context.state !== "running" || !Number.isFinite(midi)) return false;
+    const now = context.currentTime;
+    if (!voice.sustained) {
+      voice.sustained = true;
+      voice.gain.gain.cancelScheduledValues(now);
+      voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+      voice.gain.gain.linearRampToValueAtTime(voice.volume, now + BASS_GESTURE_CONFIG.pitchRampSeconds);
+      voice.source.stop(now + 30);
+    }
+    const rate = voice.source.playbackRate;
+    const target = 2 ** ((Math.max(28, Math.min(48, midi)) - 31) / 12);
+    // cancelAndHold preserves the value inside an in-flight ramp on Safari/Chromium.
+    if (rate.cancelAndHoldAtTime) rate.cancelAndHoldAtTime(now);
+    else { rate.cancelScheduledValues(now); rate.setValueAtTime(rate.value, now); }
+    rate.linearRampToValueAtTime(target, now + BASS_GESTURE_CONFIG.pitchRampSeconds);
+    voice.midi = midi;
+    return true;
   }
   function releaseMidi(id: number) {
     const voice = heldVoices.get(id);
@@ -383,5 +406,5 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   }
 
   return { unlock, preload, prepare, selectSong, seek: (snapshot: BassGameSnapshot, paused = false) => { stop(); sync(snapshot, paused); }, status: () => state,
-    isRunning: () => context?.state === "running", playbackTime, sync, pluck, playMidi, releaseMidi, stop, dispose };
+    isRunning: () => context?.state === "running", playbackTime, sync, pluck, playMidi, bendMidi, releaseMidi, stop, dispose };
 }

@@ -29,6 +29,14 @@ describe("bass picking gestures", () => {
     expect(gesture.end(point(100, 176, 251))).toBeNull();
   });
 
+  it("accepts a downward slap with the same thresholds and one emission", () => {
+    const gesture = createBassGesture();
+    gesture.begin(start);
+    expect(gesture.move(point(102, 230, 100))).toEqual({ string: 2, technique: "slap" });
+    expect(gesture.move(point(102, 260, 150))).toBeNull();
+    expect(gesture.end(point(102, 260, 160))).toBeNull();
+  });
+
   it("ignores additional fingers without cancelling or stealing the first contact", () => {
     const gesture = createBassGesture();
     gesture.begin(start);
@@ -43,7 +51,6 @@ describe("bass picking gestures", () => {
     ["long press", 100, 200, 221],
     ["slow upward swipe", 100, 170, 251],
     ["horizontal swipe", 150, 200, 100],
-    ["downward swipe", 100, 230, 100],
     ["diagonal swipe without enough upward motion", 130, 170, 100],
   ])("does not turn a %s into a pick", (_name, x, y, time) => {
     const gesture = createBassGesture();

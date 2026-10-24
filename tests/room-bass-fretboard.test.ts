@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BASS_FRETBOARD, bassPositionsForMidi, bassPitch, midiFrequency } from "../src/room/bassFretboard";
+import { BASS_FRETBOARD, bassPositionsForMidi, bassPitch, bassPitchColor, midiFrequency } from "../src/room/bassFretboard";
 import { BASS_SONGS, createBassGame, type BassNote } from "../src/room/bassGame";
 import { createBassContacts, type BassPointerInput } from "../src/room/bassInput";
 import { chargeProgress, nextCharge, timelineX } from "../src/room/bassVisuals";
@@ -18,19 +18,19 @@ function playing(chart: BassNote[]) {
 const pointer = (id: number, x = 0, y = 0, time = 0): BassPointerInput => ({ id, x, y, time, action: "down", midi: 33, string: 2, fret: 0 });
 
 describe("24-position bass fretboard", () => {
-  it("generates all labels, native MIDI pitches and octave colors in row order", () => {
+  it("generates all labels, native MIDI pitches and shared pitch colors in row order", () => {
     expect(BASS_FRETBOARD).toHaveLength(24);
     expect(BASS_FRETBOARD.map(cell => cell.name).join(" ")).toBe("G G# A A# B C D D# E F F# G A A# B C C# D E F F# G G# A");
     for (let row = 0; row < 4; row++) for (let fret = 0; fret < 6; fret++) {
       const cell = BASS_FRETBOARD[row * 6 + fret];
       expect(cell).toMatchObject({ string: row, fret, midi: [43, 38, 33, 28][row] + fret });
-      expect(cell.color).toBe(cell.midi < 40 ? "blue" : "red");
+      expect(cell.color).toBe(bassPitchColor(cell.midi));
     }
     expect(bassPositionsForMidi(33).map(cell => [cell.string, cell.fret])).toEqual([[2, 0], [3, 5]]);
     expect(bassPositionsForMidi(38)).toHaveLength(2);
     expect(bassPositionsForMidi(43)).toHaveLength(2);
-    expect(bassPitch(33)).toMatchObject({ name: "A", octave: 1, color: "blue" });
-    expect(bassPitch(45)).toMatchObject({ name: "A", octave: 2, color: "red" });
+    expect(bassPitch(33)).toMatchObject({ name: "A", octave: 1, color: bassPitchColor(33) });
+    expect(bassPitch(45)).toMatchObject({ name: "A", octave: 2, color: bassPitchColor(45) });
   });
   it("preserves every old chart's known string/fret pitch, native attack and unique ID", () => {
     for (const song of Object.values(BASS_SONGS)) {

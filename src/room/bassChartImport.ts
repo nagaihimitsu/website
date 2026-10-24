@@ -1,4 +1,5 @@
 import { BASS_FRETBOARD, BASS_STRINGS, midiFrequency, type BassString } from "./bassFretboard";
+import { validateBassSlide } from "./bassSlide";
 import type { BassNote, BassNoteKind, BassSong } from "./bassGame";
 
 export interface MidiEvent { id: string; timeSec: number; durationSec: number; midiNote: number; velocity: number }
@@ -11,7 +12,7 @@ export interface CandidateNote extends MidiEvent, BassPosition {
 }
 export interface MidiMaster { schemaVersion: string; kind: string; songId: string; durationSec: number; noteCount: number; notes: MidiEvent[]; tempoChanges: { timeSec: number; bpm: number }[] }
 export interface MidiCandidates { schemaVersion: string; kind: string; songId: string; durationSec: number; audioOffsetSec: number; audioSyncVerified: boolean; candidateNotesCount: number; notes: CandidateNote[] }
-export interface ChartPatch { stringNumber?: number; fret?: number; technique?: string | null; kind?: BassNoteKind; positionVerified?: boolean; techniqueVerified?: boolean; excluded?: boolean }
+export interface ChartPatch { stringNumber?: number; fret?: number; technique?: string | null; kind?: BassNoteKind; endTimeSec?: number; endStringNumber?: number; endFret?: number; positionVerified?: boolean; techniqueVerified?: boolean; excluded?: boolean }
 export interface ChartOverrides { schemaVersion: string; audioOffsetSec?: number; audioSyncVerified?: boolean; notes: Record<string, ChartPatch> }
 export interface ImportExclusion { sourceId: string; timeSec: number; midiNote: number; reason: "not-in-candidates" | "outside-current-fretboard" | "manually-excluded" }
 export interface ImportedChart {
@@ -65,7 +66,7 @@ export function importMidiChart(masterValue: unknown, candidateValue: unknown, o
   for (const [id, patch] of Object.entries(overrides.notes)) {
     check(originals.has(id) && record(patch), `${id}: 修正対象が存在しません`);
     check(patch.technique === undefined || patch.technique === null || typeof patch.technique === "string", `${id}: 奏法が不正です`);
-    check(patch.kind === undefined || (typeof patch.kind === "string" && ["tap", "hold", "slap"].includes(patch.kind)), `${id}: ノーツ種別が不正です`);
+    check(patch.kind === undefined || (typeof patch.kind === "string" && ["tap", "hold", "slap", "slide"].includes(patch.kind)), `${id}: ノーツ種別が不正です`);
     for (const key of ["positionVerified", "techniqueVerified", "excluded"] as const) check(patch[key] === undefined || typeof patch[key] === "boolean", `${id}: ${key}が不正です`);
   }
   const notes: BassNote[] = [];
@@ -91,15 +92,24 @@ export function importMidiChart(masterValue: unknown, candidateValue: unknown, o
     const kind = patch.kind ?? (technique === "slap" ? "slap" : "tap");
     check(kind !== "hold" || source.durationSec > 0, `${source.id}: 保持時間がありません`);
     const time = source.timeSec + audioOffsetSec;
-    notes.push({ id: original.index, sourceId: source.id, time, midi: source.midiNote, frequency: midiFrequency(source.midiNote),
+    const importedNote: BassNote = { id: original.index, sourceId: source.id, time, midi: source.midiNote, frequency: midiFrequency(source.midiNote),
       kind, ...(kind === "hold" ? { endTime: time + source.durationSec } : {}),
       string: display.string as BassString, fret: display.fret, phraseId: notes.length,
-      technique: technique === "pick" || technique === "slap" ? technique : null,
+      technique: technique === "pick" || technique === "slap" || technique === "slide" ? technique : null,
       importedTechnique: technique, sourceTimeSec: source.timeSec, sourceDurationSec: source.durationSec, velocity: source.velocity,
       sourceStringNumber: chosen.stringNumber, sourceFret: chosen.fret,
       sourcePositionVerified: patch.positionVerified ?? source.positionVerified,
       positionVerified: display.string + 1 === chosen.stringNumber && display.fret === chosen.fret && (patch.positionVerified ?? source.positionVerified), techniqueVerified: patch.techniqueVerified ?? source.techniqueVerified,
-      travelSeconds: 1.2 });
+      travelSeconds: 1.2 };
+    if (kind === "slide") {
+      check(display.string + 1 === chosen.stringNumber && display.fret === chosen.fret, `${source.id}: スライド始点は現行指板の位置が必要です`);
+      importedNote.endTime = patch.endTimeSec === undefined ? undefined : patch.endTimeSec + audioOffsetSec;
+      importedNote.endString = (patch.endStringNumber === undefined ? display.string : patch.endStringNumber - 1) as BassString;
+      importedNote.endFret = patch.endFret;
+      importedNote.endMidi = patch.endFret === undefined ? undefined : BASS_STRINGS[display.string].openMidi + patch.endFret;
+      validateBassSlide(importedNote);
+    }
+    notes.push(importedNote);
   }
   for (const n of master.notes) if (!seen.has(n.id)) excluded.push({ sourceId: n.id, timeSec: n.timeSec, midiNote: n.midiNote, reason: "not-in-candidates" });
   notes.sort((a, b) => a.time - b.time || a.id - b.id);
@@ -115,7 +125,7 @@ export function importedBassSong(chart: ImportedChart, audioDurationSec: number)
   const countdownSeconds = beatSeconds * 4;
   const notes = chart.notes.map((note, phraseId) => ({ ...note, phraseId }));
   return { id: "final-hit", title: "最終のヒット", difficulty: "normal", label: "MIDI仮譜面", bpm, beatSeconds, countdownSeconds,
-    duration: Math.max(audioDurationSec, chart.midiDurationSec + chart.audioOffsetSec + 0.2),
+    duration: Math.max(audioDurationSec, chart.midiDurationSec + chart.audioOffsetSec + 0.2, ...notes.map(note => (note.endTime ?? note.time) + 0.2)),
     beats: audioDurationSec / beatSeconds, notes, swing: 0.5, chords: [], importInfo: chart,
     phrases: notes.map((note, id) => ({ id, string: note.string, fret: note.fret, start: note.time, end: note.endTime ?? note.time,
       frequency: note.frequency, mode: note.kind === "hold" ? "hold" : "tap",

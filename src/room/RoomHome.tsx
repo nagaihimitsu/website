@@ -201,6 +201,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             room.current.dataset.bassElapsed = value.elapsed.toFixed(3);
             room.current.dataset.bassHits = String(value.hits);
             room.current.dataset.bassScore = String(value.score);
+            const event = value.performanceEvents.at(-1);
+            room.current.dataset.bassPerformance = event ? `${event.serial}:${event.kind}:${event.stage}:${event.grade}` : "";
           }
           bassStore.publish(value);
         },

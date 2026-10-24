@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { BASS_PROXIMITY_SECONDS, BASS_SONGS, BASS_TRACKS, type BassSongId, type BassDifficulty, type BassGameSnapshot } from "./bassGame";
 import { BASS_FRETBOARD, bassPitch } from "./bassFretboard";
 import type { BassPointerInput } from "./bassInput";
@@ -43,17 +43,45 @@ function Timeline({ snapshot, time }: { snapshot: BassGameSnapshot; time: number
         const dense = (snapshot.notes[index - 1] && note.time - snapshot.notes[index - 1].time < 0.2) || (snapshot.notes[index + 1] && snapshot.notes[index + 1].time - note.time < 0.2);
         const y = dense ? snapshot.importSummary ? 16 + (index % 3) * 22 : index % 2 ? 49 : 25 : 38;
         const radius = dense ? snapshot.importSummary ? 10 : 12 : 17;
-        const resolved = note.state !== "pending" && note.state !== "holding";
+        const resolved = !["pending", "holding", "sliding"].includes(note.state);
         return <g key={note.id} data-bass-note={note.id} data-kind={note.kind} data-midi={note.midi}
-          className={`bass-time-note bass-tone-${pitch.color} ${resolved ? "is-resolved" : ""}`}>
+          style={{ "--tone": pitch.color } as CSSProperties}
+          className={`bass-time-note ${resolved ? "is-resolved" : ""}`}>
           {note.kind === "hold" && <g className="bass-hold-tail"><rect x={x} y={y - 5} width={Math.max(0, endX - x)} height="10" rx="5" /><line x1={endX} x2={endX} y1={y - 12} y2={y + 12} /></g>}
-          <circle cx={x} cy={y} r={radius} />
+          {note.kind === "slide" && <g className="bass-slide-tail" data-bass-slide-tail>
+            <defs><linearGradient id={`timeline-slide-${note.id}`}><stop stopColor={pitch.color} /><stop offset="1" stopColor={bassPitch(note.endMidi!).color} /></linearGradient></defs>
+            <rect x={x} y={y - 5} width={Math.max(0, endX - x)} height="10" rx="5" fill={`url(#timeline-slide-${note.id})`} />
+            <text className="bass-slide-direction" x={(x + endX) / 2} y={y - 9} textAnchor="middle">{note.endFret! > note.fret ? "SLIDE →" : "SLIDE ←"}</text>
+            <circle cx={endX} cy={y} r={radius} style={{ fill: bassPitch(note.endMidi!).color }} />
+            <text x={endX} y={y + 4} textAnchor="middle" fontSize={dense ? 10 : 13}>{bassPitch(note.endMidi!).name}<tspan fontSize="8" dy="2">{bassPitch(note.endMidi!).octave}</tspan></text>
+            <line className="bass-slide-end-line" x1={endX} x2={endX} y1={y + radius + 1} y2={y + radius + 7} />
+          </g>}
+          {note.kind === "slap" ? <path className="bass-slap-outline" d={Array.from({ length: 20 }, (_, i) => { const a = i * Math.PI / 10; const r = radius * (i % 2 ? 0.86 : 1.08); return `${i ? "L" : "M"}${x + Math.sin(a) * r},${y + Math.cos(a) * r}`; }).join(" ") + "Z"} /> : <circle cx={x} cy={y} r={radius} />}
           <text x={x} y={y + 4} textAnchor="middle" fontSize={dense ? 10 : 13}>{pitch.name}<tspan fontSize="8" dy="2">{pitch.octave}</tspan></text>
-          {note.kind === "slap" && <text className="bass-slap-arrow" x={x} y={y - radius - 2} textAnchor="middle">↑</text>}
+          {note.kind === "slap" && <text className="bass-slap-arrow" x={x} y={y - radius - 2} textAnchor="middle">↕</text>}
         </g>;
       })}
     </svg>
   </div>;
+}
+
+/** 同じ譜面イベントの座標だけを描画し、判定状態や時計を所有しない。 */
+function SlidePaths({ snapshot, time }: { snapshot: BassGameSnapshot; time: number }) {
+  return <svg className="bass-slide-paths" viewBox="0 0 600 400" preserveAspectRatio="none" aria-hidden="true">
+    {snapshot.notes.filter(note => note.kind === "slide").map(note => {
+      const success = ["perfect", "great", "good"].includes(note.state) && time - (note.resolvedAt ?? -10) < 0.25;
+      if (!success && note.state !== "sliding" && (note.state !== "pending" || note.time - time > BASS_VISUAL_CONFIG.leadTime)) return null;
+      const x = (note.fret + 0.5) * 100, endX = (note.endFret! + 0.5) * 100, y = (note.string + 0.5) * 100 + 29;
+      const movingX = success ? x + (endX - x) * Math.min(1, (time - note.resolvedAt!) / 0.2) : ((note.slideFret ?? note.fret) + 0.5) * 100;
+      return <g key={note.id} data-bass-slide-path={note.id} data-state={note.state} className={success ? "is-slide-success" : note.state === "sliding" ? "is-sliding" : ""}>
+        <defs><linearGradient id={`board-slide-${note.id}`} x1={x < endX ? "0%" : "100%"} x2={x < endX ? "100%" : "0%"}><stop stopColor={bassPitch(note.midi).color} /><stop offset="1" stopColor={bassPitch(note.endMidi!).color} /></linearGradient></defs>
+        <line x1={x} x2={endX} y1={y} y2={y} stroke={`url(#board-slide-${note.id})`} className="bass-slide-route-shadow" />
+        <line x1={x} x2={endX} y1={y} y2={y} stroke="#fff2b8" className="bass-slide-route" />
+        <path d={`M${endX - Math.sign(endX - x) * 12},${y - 7} L${endX},${y} L${endX - Math.sign(endX - x) * 12},${y + 7}`} className="bass-slide-route-arrow" />
+        {(note.state === "sliding" || success) && <><line className="bass-slide-trail" x1={movingX - Math.sign(endX - x) * 20} x2={movingX} y1={y} y2={y} /><circle className="bass-slide-traveller" cx={movingX} cy={y} r="6" /></>}
+      </g>;
+    })}
+  </svg>;
 }
 
 export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDifficulty, onInput, onPause, onPutDown, onLayout, audioStatus }: Props) {
@@ -105,7 +133,7 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
   return <section className={`bass-hud bass-phase-${phase}`} data-bass-phase={phase} data-selected-difficulty={snapshot.difficulty} aria-label="ベース演奏"
     onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()} onContextMenu={event => event.preventDefault()}>
     <header className="bass-top-hud">
-      <div className="bass-title"><strong>{snapshot.songTitle}</strong><span>{snapshot.importSummary ? "MIDI仮譜面" : BASS_SONGS[snapshot.difficulty].label}</span></div>
+      <div className="bass-title"><strong>{snapshot.songTitle}</strong><span>{snapshot.importSummary ? "MIDI仮譜面" : snapshot.songId === "technique-study" ? "奏法練習" : BASS_SONGS[snapshot.difficulty].label}</span></div>
       <button className="bass-pause" type="button" onClick={onPause} aria-label="演奏をポーズ">Ⅱ</button>
       <div className="bass-live-score"><span>SCORE <strong>{snapshot.score.toLocaleString()}</strong></span><span>COMBO <strong>{snapshot.combo}</strong></span></div>
       <div className="bass-playback-progress" role="progressbar" aria-label="曲の進行" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}><span style={{ transform: `scaleX(${progress})` }} /></div>
@@ -118,18 +146,23 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
         onPointerMove={event => send(event, "move")} onPointerUp={event => send(event, "up")} onPointerCancel={event => send(event, "cancel")}
         onLostPointerCapture={event => send(event, "cancel")}>
         {BASS_FRETBOARD.map((cell, index) => {
-          const note = nextCharge(snapshot.notes, cell.midi);
+          const note = nextCharge(snapshot.notes, cell.midi, cell);
           const holding = note?.state === "holding";
+          const slideEnd = snapshot.notes.find(n => n.kind === "slide" && n.endString === cell.string && n.endFret === cell.fret &&
+            (n.state === "sliding" || (n.state === "pending" && n.time - time <= BASS_VISUAL_CONFIG.leadTime)));
+          const endProgress = slideEnd ? chargeProgress(slideEnd.endTime!, time, slideEnd.endTime! - slideEnd.time) : 0;
+          const passing = snapshot.notes.some(n => n.state === "sliding" && n.string === cell.string && Math.abs((n.slideFret ?? -10) - cell.fret) < 0.4);
           const charge = note ? chargeProgress(holding ? note.endTime! : note.time, time, holding ? note.endTime! - note.time : BASS_VISUAL_CONFIG.leadTime) : 0;
-          const recentHit = snapshot.notes.some(hit => hit.midi === cell.midi && !["pending", "holding", "miss"].includes(hit.state) && time >= hit.time && time - hit.time < 0.12);
+          const recentHit = snapshot.notes.some(hit => (hit.kind === "slide" ? hit.endMidi : hit.midi) === cell.midi && !["pending", "holding", "sliding", "skipped", "miss", "bad"].includes(hit.state) && time >= (hit.resolvedAt ?? hit.time) && time - (hit.resolvedAt ?? hit.time) < 0.12);
           const active = Boolean(note && (holding || note.time - time <= BASS_VISUAL_CONFIG.leadTime));
-          return <button type="button" key={index} className={`bass-fret bass-tone-${cell.color} ${active ? "is-charging" : ""} ${holding ? "is-holding" : ""} ${recentHit ? "is-hit" : ""}`}
+          return <button type="button" key={index} className={`bass-fret ${slideEnd ? "is-slide-target" : ""} ${passing ? "is-slide-passing" : ""} ${active ? "is-charging" : ""} ${holding ? "is-holding" : ""} ${recentHit ? "is-hit" : ""}`}
             data-bass-fret={`${cell.string}-${cell.fret}`} data-midi={cell.midi} data-charge-note={active ? note?.id : undefined} data-charge={active ? charge.toFixed(3) : "0"}
-            disabled={!enabled} aria-label={`${cell.string + 1}弦 ${cell.fret}フレット ${cell.name}${cell.octave}`} style={{ boxShadow: active ? `0 0 ${charge * 10}px #f2ce8766` : undefined }}
+            disabled={!enabled} aria-label={`${cell.string + 1}弦 ${cell.fret}フレット ${cell.name}${cell.octave}`} style={{ "--tone": cell.color, boxShadow: active ? `0 0 ${charge * 10}px #f2ce8766` : undefined } as CSSProperties}
             onPointerDown={event => {
               if (event.button !== 0 || !enabled) return;
               event.preventDefault();
-              const input: BassPointerInput = { id: event.pointerId, action: "down", midi: cell.midi, string: cell.string, fret: cell.fret, x: event.clientX, y: event.clientY, time: event.timeStamp };
+              const rect = event.currentTarget.getBoundingClientRect();
+              const input: BassPointerInput = { fretWidth: rect.width + 6, rowTop: rect.top, rowBottom: rect.bottom, id: event.pointerId, action: "down", midi: cell.midi, string: cell.string, fret: cell.fret, x: event.clientX, y: event.clientY, time: event.timeStamp };
               contacts.current.set(event.pointerId, input);
               if (event.isTrusted) event.currentTarget.setPointerCapture(event.pointerId);
               onInput(input);
@@ -152,10 +185,12 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
             }} onClick={event => event.preventDefault()}>
             <span className="bass-fret-fill" aria-hidden="true" style={{ transform: `scaleY(${active ? charge : 0})` }} />
             <svg className="bass-fret-clock" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="16" pathLength="100" strokeDasharray={`${active ? charge * 100 : 0} 100`} /></svg>
+            {slideEnd && <svg className="bass-slide-end-clock" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" data-slide-end={slideEnd.id} data-end-progress={endProgress.toFixed(3)}><rect x="9" y="9" width="82" height="82" rx="12" pathLength="100" strokeDasharray={`${Math.max(0, 1 - endProgress) * 100} 100`} /></svg>}
             <span className="bass-fret-name">{cell.name}<small>{cell.octave}</small></span>
-            {active && <span className="bass-fret-technique" aria-hidden="true">{holding ? "HOLD" : note?.kind === "slap" ? "↑" : note?.kind === "hold" ? "―" : ""}</span>}
+            {(active || slideEnd) && <span className="bass-fret-technique" aria-hidden="true">{holding ? "HOLD" : note?.kind === "slap" ? "↕" : note?.kind === "slide" ? (note.endFret! > note.fret ? "→" : "←") : note?.kind === "hold" ? "―" : slideEnd ? "END" : ""}</span>}
           </button>;
         })}
+        <SlidePaths snapshot={snapshot} time={time} />
       </div>
       {(phase === "ready" || phase === "result") && <div className="bass-setup">
         {phase === "result" && <div className="bass-result" role="status">SCORE {snapshot.score.toLocaleString()} · 精度 {Math.round(snapshot.accuracy)}% · 最高コンボ {snapshot.maxCombo}</div>}
@@ -163,8 +198,9 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
         {snapshot.importSummary ? <>
           <p className="bass-draft-summary">仮譜面 · {snapshot.importSummary.playableCount}音（0〜5F）<br />運指・奏法・原曲との一致は未確認</p>
           <label className="bass-offset">譜面調整<input aria-label="新曲の譜面オフセット（ミリ秒）" type="number" min="-750" max="5000" step="10" value={Math.round(snapshot.audioOffsetSec * 1000)} onChange={event => { const ms = Math.round(Number(event.target.value)); if (event.target.value !== "" && ms >= -750 && ms <= 5000) onOffset(ms / 1000); }} />ms</label>
-        </> : <div className="bass-difficulty-selector" role="group" aria-label="難易度">{(["easy", "normal", "hard"] as const).map(value => <button key={value} data-bass-difficulty={value} aria-pressed={value === snapshot.difficulty} onClick={() => onDifficulty(value)}>{BASS_SONGS[value].label}</button>)}</div>}
-        {!snapshot.importSummary && <p>音名をタップ · 帯は長押し · ↑は上フリック</p>}
+        </> : snapshot.songId === "garden-party" ? <div className="bass-difficulty-selector" role="group" aria-label="難易度">{(["easy", "normal", "hard"] as const).map(value => <button key={value} data-bass-difficulty={value} aria-pressed={value === snapshot.difficulty} onClick={() => onDifficulty(value)}>{BASS_SONGS[value].label}</button>)}</div> : null}
+        {!snapshot.importSummary && <p>音名をタップ · 帯は長押し · ↕は上下フリック</p>}
+        {snapshot.songId === "technique-study" && <p>矢印は同じ弦を押したまま左右にスライド</p>}
         <button className="bass-start" onClick={onStart} disabled={busy}>{busy ? "曲を準備中…" : audioStatus === "error" ? "曲の読み込みを再試行" : audioStatus === "unavailable" ? "音声を再試行" : phase === "result" ? "もう一度" : "演奏する"}</button>
       </div>}
       {enabled && (audioStatus === "unavailable" || audioStatus === "error") && <button className="bass-audio-resume" onClick={onStart}>音声を再開</button>}

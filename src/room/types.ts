@@ -62,7 +62,7 @@ export interface RoomScene {
     anchor: { x: number; z: number };
     radius: number;
     animate: (time: number, lift: number, pluck: number, bloom: number, reducedMotion: boolean,
-      performance?: { playing: boolean; beat: number; success: number; string?: number; slap?: number }) => void;
+      performance?: { playing: boolean; beat: number; success: number; string?: number; slap?: number; snapshot?: BassGameSnapshot }) => void;
   };
   breakObject: (id: string, impulse: THREE.Vector3) => boolean;
   resetObjects: () => void;

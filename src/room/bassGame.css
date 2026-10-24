@@ -16,7 +16,6 @@
 .bass-feedback { min-height:18px; font-size:13px; font-weight:700; color:#96723b; }.bass-feedback-miss,.bass-feedback-bad { color:#a06960; }
 .bass-timeline { height:76px; overflow:hidden; border:1px solid #d9d9c7; border-radius:12px; background:#fffdf5; pointer-events:none; }.bass-timeline svg { display:block; width:100%; height:76px; overflow:hidden; }
 .bass-time-axis { stroke:#e3e2d4; }.bass-judge-line { stroke:#9c966e; stroke-width:2; }
-.bass-tone-blue { --tone:#4d7c9c; --tone-light:#89b3d5; }.bass-tone-red { --tone:#ae6563; --tone-light:#dfa39a; }
 .bass-time-note circle { fill:var(--tone); stroke:#fff8e3; stroke-width:2; }.bass-time-note text { fill:white; font-family:system-ui,sans-serif; font-weight:800; }.bass-time-note.is-resolved { opacity:.25; }.bass-time-note .bass-slap-arrow { fill:#795b35; font-size:16px; }.bass-hold-tail { fill:var(--tone-light); stroke:var(--tone); stroke-width:2; }
 .bass-fret-labels { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); margin:5px 0; text-align:center; color:#9a987e; font-size:9px; }
 .bass-fretboard { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(44px,1fr)); gap:6px; height:clamp(194px,29svh,276px); touch-action:none; }
@@ -37,3 +36,26 @@
 .bass-draft-summary { line-height:1.5; }
 
 .bass-phase-result .bass-setup { gap:6px; padding:10px; }
+
+/* Ver.2.1: 色は共通MIDI関数、奏法は形状・帯・矢印で区別する。 */
+.bass-time-note circle,.bass-slap-outline { fill:var(--tone); stroke:#fff8e3; stroke-width:2; }
+.bass-time-note text { paint-order:stroke; stroke:#24322466; stroke-width:1.5px; stroke-linejoin:round; }
+.bass-time-note .bass-slide-direction { fill:#655b3d; stroke:none; font-size:9px; }
+.bass-slide-end-line { stroke:#75633e; stroke-width:2; }
+.bass-hold-tail { fill:var(--tone); fill-opacity:.45; stroke:var(--tone); }
+.bass-fretboard { position:relative; }
+.bass-fret-name { z-index:3; text-shadow:0 1px 2px #172a30b0,0 0 1px #172a30; }
+.bass-fret-fill { background:#ffffff30; }
+.bass-slide-paths { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2; }
+.bass-slide-route-shadow { stroke-width:10; opacity:.8; stroke-linecap:round; }
+.bass-slide-route { stroke-width:2; stroke-dasharray:4 5; opacity:.65; }
+.bass-slide-route-arrow { fill:none; stroke:#fff5d5; stroke-width:3; stroke-linejoin:round; }
+.is-sliding .bass-slide-route { opacity:1; stroke-width:3; stroke-dasharray:none; }
+.bass-slide-traveller { fill:#fff7d2; stroke:#fff; stroke-width:1; }
+.bass-slide-trail { stroke:#fff4c7; opacity:.65; stroke-width:5; stroke-linecap:round; }
+.is-slide-success .bass-slide-route { stroke-width:4; opacity:1; }
+.is-slide-target { outline:1px dashed #fff2bd; outline-offset:-3px; }
+.is-slide-passing { filter:brightness(1.15); }
+.bass-slide-end-clock { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.bass-slide-end-clock rect { fill:none; stroke:#fff8dc; stroke-width:2; vector-effect:non-scaling-stroke; }
+@media(prefers-reduced-motion:reduce) { .bass-slide-trail,.bass-slide-traveller { display:none; } }

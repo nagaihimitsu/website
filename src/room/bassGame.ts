@@ -1,3 +1,7 @@
+import { validateBassSlide } from "./bassSlide";
+export { validateBassSlide } from "./bassSlide";
+import { makeTechniqueStudy } from "./bassTechniqueStudy";
+import { BASS_GESTURE_CONFIG } from "./bassGesture";
 import { finalHitSong } from "./finalHitTrack";
 import type { ImportedChart } from "./bassChartImport";
 import { BASS_STRINGS, midiFrequency, type BassString } from "./bassFretboard";
@@ -11,15 +15,16 @@ export const BASS_GOOD_WINDOW = 0.18;
 export const BASS_PERFECT_WINDOW = 0.085;
 
 export type BassPhase = "idle" | "approaching" | "pickup" | "ready" | "countdown" | "playing" | "result";
-export type BassNoteState = "pending" | "holding" | "skipped" | "perfect" | "great" | "good" | "bad" | "miss";
-export type BassFeedback = Exclude<BassNoteState, "pending" | "holding" | "skipped">;
+export type BassNoteState = "pending" | "holding" | "sliding" | "skipped" | "perfect" | "great" | "good" | "bad" | "miss";
+export type BassFeedback = Exclude<BassNoteState, "pending" | "holding" | "sliding" | "skipped">;
 export type BassDifficulty = "easy" | "normal" | "hard";
-export type BassSongId = "garden-party" | "final-hit";
+export type BassSongId = "garden-party" | "final-hit" | "technique-study";
 export const BASS_TRACKS = [
   { id: "garden-party", title: GARDEN_TRACK.title, draft: false },
   { id: "final-hit", title: "最終のヒット", draft: true },
+  { id: "technique-study", title: "奏法練習 · Garden-Party", draft: false },
 ] as const;
-export type BassTechnique = "pick" | "slap";
+export type BassTechnique = "pick" | "slap" | "slide";
 export interface BassPhrase {
   id: number;
   string: BassString;
@@ -31,7 +36,7 @@ export interface BassPhrase {
   frequency: number;
   mode: "hold" | "tap";
 }
-export type BassNoteKind = "tap" | "hold" | "slap";
+export type BassNoteKind = "tap" | "hold" | "slap" | "slide";
 export interface BassNote {
   sourceId?: string;
   sourceTimeSec?: number;
@@ -46,6 +51,9 @@ export interface BassNote {
   midi: number;
   kind: BassNoteKind;
   endTime?: number;
+  endMidi?: number;
+  endString?: BassString;
+  endFret?: number;
   id: number;
   time: number;
   frequency: number;
@@ -72,7 +80,27 @@ export interface BassSong {
   /** Position of the swung offbeat within a beat; 0.5 is straight. */
   swing: number;
 }
-export interface BassGameNote extends BassNote { state: BassNoteState }
+export interface BassGameNote extends BassNote {
+  state: BassNoteState;
+  slideFret?: number;
+  slideProgress?: number;
+  arrivedAt?: number;
+  resolvedAt?: number;
+}
+export interface BassPerformanceEvent {
+  serial: number;
+  noteId: number;
+  time: number;
+  stage: "start" | "complete" | "fail";
+  kind: BassNoteKind;
+  grade: BassFeedback;
+  midi: number;
+  string: BassString;
+  fret: number;
+  endFret?: number;
+  combo: number;
+}
+
 export interface BassJudgement {
   kind: BassFeedback;
   frequency: number | null;
@@ -104,6 +132,7 @@ export interface BassGameSnapshot {
   misses: number;
   strayPlucks: number;
   accuracy: number;
+  performanceEvents: readonly BassPerformanceEvent[];
   feedback: BassFeedback | null;
   feedbackAge: number;
   notes: readonly BassGameNote[];
@@ -207,6 +236,7 @@ function makeSong(difficulty: BassDifficulty): BassSong {
 export const BASS_SONGS: Readonly<Record<BassDifficulty, BassSong>> = Object.freeze({
   easy: makeSong("easy"), normal: makeSong("normal"), hard: makeSong("hard"),
 });
+export const BASS_TECHNIQUE_STUDY = makeTechniqueStudy(BASS_SONGS.easy);
 // Existing integrations and EASY fixtures keep their stable aliases.
 export const BASS_BPM = BASS_SONGS.easy.bpm;
 export const BASS_BEAT_SECONDS = BASS_SONGS.easy.beatSeconds;
@@ -236,17 +266,28 @@ export function createBassGame(chart?: readonly BassNote[]) {
   let isPaused = false;
   let directInput = false;
   let notes: BassGameNote[] = [];
-  const contacts = new Map<number, { midi: number; time: number; noteId: number | null; grade: BassFeedback }>();
+  let eventSerial = 0;
+  let performanceEvents: BassPerformanceEvent[] = [];
+  const contacts = new Map<number, { midi: number; time: number; noteId: number | null; grade: BassFeedback; lastFret?: number }>();
+  function emit(note: BassGameNote, stage: BassPerformanceEvent["stage"], kind: BassFeedback, time = elapsed) {
+    performanceEvents.push({ serial: ++eventSerial, noteId: note.id, time, stage, kind: note.kind, grade: kind,
+      midi: note.midi, string: note.string, fret: note.fret, endFret: note.endFret, combo });
+    performanceEvents = performanceEvents.slice(-64);
+  }
   const grade = (delta: number): BassFeedback => delta <= 0.045 ? "perfect" : delta <= BASS_PERFECT_WINDOW ? "great" : delta <= 0.14 ? "good" : "bad";
   const points: Record<BassFeedback, number> = { perfect: 1000, great: 850, good: 650, bad: 250, miss: 0 };
-  function finish(note: BassGameNote, kind: BassFeedback) {
+  function finish(note: BassGameNote, kind: BassFeedback, time = elapsed) {
+    if (!["pending", "holding", "sliding"].includes(note.state)) return;
     note.state = kind;
+    time = Number.isFinite(time) ? time : elapsed;
+    note.resolvedAt = time;
     score += points[kind];
     if (kind === "miss") misses++; else hits++;
     if (kind === "miss" || kind === "bad") combo = 0; else combo++;
     maxCombo = Math.max(maxCombo, combo);
     feedback = kind;
     feedbackAge = 0;
+    emit(note, kind === "miss" || kind === "bad" ? "fail" : "complete", kind, time);
   }
   function nearest(midi: number, time = elapsed) {
     return notes.filter(note => note.state === "pending" && note.midi === midi &&
@@ -255,20 +296,26 @@ export function createBassGame(chart?: readonly BassNote[]) {
       .sort((a, b) => Math.abs(a.time - time) - Math.abs(b.time - time) || a.time - b.time)[0];
   }
   function wrong() { strayPlucks++; combo = 0; feedback = "miss"; feedbackAge = 0; }
-  function beginInput(id: number, midi: number, time = elapsed) {
-    if (isPaused || phase !== "playing" || contacts.has(id) || !Number.isInteger(midi) || midi < 28 || midi > 48) return null;
+  function beginInput(id: number, midi: number, time = elapsed, position?: { string: BassString; fret: number }) {
+    if (isPaused || phase !== "playing" || contacts.has(id) || !Number.isFinite(time) || !Number.isInteger(midi) || midi < 28 || midi > 48) return null;
     // A hold detached by pause can be caught again without consuming a new note.
     const held = notes.find(note => note.state === "holding" && note.midi === midi &&
       ![...contacts.values()].some(contact => contact.noteId === note.id));
-    const note = held ?? nearest(midi, time);
+    let note: BassGameNote | undefined = held ?? nearest(midi, time);
+    if (note?.kind === "slide" && (position?.string !== note.string || position.fret !== note.fret)) note = undefined;
     const contact = { midi, time, noteId: note?.id ?? null, grade: grade(Math.abs(time - (note?.time ?? time))) };
     directInput = true;
     contacts.set(id, contact);
     if (!note) wrong();
     else if (held) contact.grade = "good";
-    else if (note.kind === "hold") { note.state = "holding"; feedback = contact.grade; feedbackAge = 0; }
-    else if (note.kind === "tap") finish(note, contact.grade);
-    return { technique: note?.kind === "slap" ? "slap" as const : "pick" as const, noteId: note?.id ?? null };
+    else if (note.kind === "hold" || note.kind === "slide") {
+      note.state = note.kind === "slide" ? "sliding" : "holding";
+      if (note.kind === "slide") { note.slideFret = note.fret; note.slideProgress = 0; }
+      feedback = contact.grade; feedbackAge = 0;
+      emit(note, "start", contact.grade, time);
+    }
+    else if (note.kind === "tap") finish(note, contact.grade, time);
+    return { technique: note?.kind === "slap" ? "slap" as const : note?.kind === "slide" ? "slide" as const : "pick" as const, noteId: note?.id ?? null };
   }
   function slapInput(id: number) {
     const contact = contacts.get(id);
@@ -278,28 +325,59 @@ export function createBassGame(chart?: readonly BassNote[]) {
     finish(note, contact.grade);
     return true;
   }
+  function slideInput(id: number, fret: number, valid = true, time = elapsed) {
+    const contact = contacts.get(id);
+    const note = notes.find(note => note.id === contact?.noteId);
+    if (!contact || !note || note.state !== "sliding" || isPaused || phase !== "playing") return null;
+    const direction = Math.sign(note.endFret! - note.fret);
+    const last = contact.lastFret ?? note.fret;
+    if (!valid || !Number.isFinite(fret) || !Number.isFinite(time) || time < contact.time ||
+      (fret - last) * direction < -0.5 || (fret - note.fret) * direction < -0.3) {
+      finish(note, "miss", time); return { finished: true, success: false, midi: note.midi };
+    }
+    contact.lastFret = fret;
+    note.slideFret = fret;
+    note.slideProgress = Math.max(0, Math.min(1, (fret - note.fret) / (note.endFret! - note.fret)));
+    if ((fret - note.endFret!) * direction >= -BASS_GESTURE_CONFIG.slideArrivalTolerance) {
+      note.arrivedAt = time;
+      const delta = Math.abs(time - note.endTime!);
+      const endGrade = delta > BASS_GOOD_WINDOW ? "miss" : grade(delta);
+      const result = points[endGrade] < points[contact.grade] ? endGrade : contact.grade;
+      finish(note, result, time);
+      return { finished: true, success: result !== "miss" && result !== "bad", midi: note.endMidi! };
+    }
+    return { finished: false, success: false, midi: note.midi + fret - note.fret };
+  }
   function endInput(id: number, cancelled = false, time = elapsed) {
     const contact = contacts.get(id);
     contacts.delete(id);
     if (!contact || isPaused || phase !== "playing") return;
     const note = notes.find(note => note.id === contact.noteId);
     if (!note) return;
-    if (note.state === "holding") {
+    if (note.state === "sliding") finish(note, "miss", time);
+    else if (note.state === "holding") {
       const delta = Math.abs(time - note.endTime!);
-      const endGrade = cancelled || delta > BASS_GOOD_WINDOW ? "miss" : grade(delta);
+      const endGrade = cancelled || !Number.isFinite(time) || delta > BASS_GOOD_WINDOW ? "miss" : grade(delta);
       finish(note, points[endGrade] < points[contact.grade] ? endGrade : contact.grade);
     } else if (note.kind === "slap" && note.state === "pending") finish(note, "miss");
   }
-  function suspendInputs() { contacts.clear(); }
+  function suspendInputs() {
+    for (const contact of contacts.values()) {
+      const note = notes.find(note => note.id === contact.noteId);
+      if (note?.state === "sliding") finish(note, "miss");
+    }
+    contacts.clear();
+  }
 
 
   function resetScore() {
     countdownRemaining = song().countdownSeconds;
     elapsed = score = combo = maxCombo = hits = misses = strayPlucks = feedbackAge = 0;
     feedback = null;
+    performanceEvents = [];
     contacts.clear();
     directInput = false;
-    notes = (chart ?? song().notes).map((note) => ({ ...note, state: "pending" }));
+    notes = (chart ?? song().notes).map((note) => { validateBassSlide(note); return { ...note, state: "pending" }; });
   }
   resetScore();
 
@@ -331,7 +409,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
       countdownRemaining: phase === "countdown" ? countdownRemaining : 0,
       elapsed, duration: song().duration, score: penalizedScore, combo, maxCombo, hits, misses, strayPlucks,
       accuracy: Math.round(penalizedScore / Math.max(1, notes.filter(n => n.state !== "skipped").length * 1000) * 100),
-      feedback, feedbackAge,
+      performanceEvents: performanceEvents.map(event => ({ ...event })), feedback, feedbackAge,
       notes: notes.map((note) => ({ ...note })),
       ...guideState(),
     };
@@ -376,6 +454,10 @@ export function createBassGame(chart?: readonly BassNote[]) {
     if (phase === "playing") {
       elapsed = Math.min(song().duration, elapsed + remaining);
       for (const note of notes) {
+        if (note.state === "sliding") {
+          if (elapsed > note.endTime! + BASS_GOOD_WINDOW) finish(note, "miss");
+          continue;
+        }
         if (note.state === "holding") {
           if (elapsed > note.endTime! + BASS_GOOD_WINDOW) finish(note, "bad");
           continue;
@@ -383,11 +465,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
         const reserved = [...contacts.values()].find(contact => contact.noteId === note.id);
         const deadline = note.kind === "slap" && reserved ? Math.max(note.time + BASS_GOOD_WINDOW, reserved.time + 0.25) : note.time + BASS_GOOD_WINDOW;
         if (note.state !== "pending" || elapsed <= deadline) continue;
-        note.state = "miss";
-        misses++;
-        combo = 0;
-        feedback = "miss";
-        feedbackAge = 0;
+        finish(note, "miss");
       }
       if (elapsed >= song().duration) {
         contacts.clear();
@@ -406,7 +484,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
 
   function selectSong(id: BassSongId) {
     if (isPaused || !["ready", "result"].includes(phase) || !BASS_TRACKS.some(track => track.id === id)) return false;
-    activeSong = id === "garden-party" ? BASS_SONGS[difficulty] : finalHitSong();
+    activeSong = id === "garden-party" ? BASS_SONGS[difficulty] : id === "technique-study" ? BASS_TECHNIQUE_STUDY : finalHitSong();
     resetScore(); phase = "ready"; return true;
   }
   function setAudioOffset(offset: number) {
@@ -437,7 +515,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
     let difference = Infinity;
     for (const note of notes) {
       const distance = Math.abs(elapsed - note.time);
-      if (note.string === string && note.state === "pending" && distance < difference) {
+      if (note.kind !== "slide" && note.string === string && note.state === "pending" && distance < difference) {
         closest = note;
         difference = distance;
       }
@@ -461,5 +539,5 @@ export function createBassGame(chart?: readonly BassNote[]) {
     resetScore();
   }
 
-  return { tick, start, setDifficulty, selectSong, setAudioOffset, seek, pluck, beginInput, slapInput, endInput, suspendInputs, cancel, snapshot };
+  return { tick, start, setDifficulty, selectSong, setAudioOffset, seek, pluck, beginInput, slapInput, slideInput, endInput, suspendInputs, cancel, snapshot };
 }

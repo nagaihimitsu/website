@@ -407,6 +407,10 @@ function initializeRoomEngine(
     const musicDelta = playbackTime === null ? 0 : Math.max(0, playbackTime - timeline);
     bassState = bassGame.tick(performing ? musicDelta : delta,
       near && !bassNeedsExit && !opening && !opened && !pinchControlsLocked());
+    for (const contact of bassContacts.values()) {
+      const note = bassState.notes.find(note => note.id === contact.noteId);
+      if (note?.kind === "slide" && note.state !== "sliding" && note.state !== "pending") bassAudio.releaseMidi(contact.id);
+    }
     if (bassState.phase === "result") bassContacts.clear();
     if (phase === "idle" && bassState.phase === "approaching") void bassAudio.preload();
     if ((phase === "idle" || phase === "approaching") && bassHeld()) {
@@ -497,11 +501,12 @@ function initializeRoomEngine(
     const stamp = input.time > 1e12 ? input.time - performance.timeOrigin : input.time;
     const inputTime = bassState.elapsed - Math.max(0, performance.now() - stamp) / 1000;
     if (input.action === "down") {
-      if (!bassContacts.begin(input, bassState.elapsed)) return;
-      const result = bassGame.beginInput(input.id, input.midi, inputTime);
-      if (!result) return;
+      if (!bassContacts.begin(input, inputTime)) return;
+      const result = bassGame.beginInput(input.id, input.midi, inputTime, input);
+      if (!result) { bassContacts.end(input, inputTime); return; }
+      bassContacts.get(input.id)!.noteId = result.noteId;
       const note = bassState.notes.find(note => note.id === result.noteId);
-      bassAudio.playMidi(input.id, input.midi, result.technique, note?.kind === "hold");
+      bassAudio.playMidi(input.id, input.midi, result.technique, note?.kind === "hold" || note?.kind === "slide");
       bassPluckPulse = 1;
       bassPluckString = input.string;
       bassSlapPulse = result.technique === "slap" ? 1 : 0;
@@ -509,14 +514,21 @@ function initializeRoomEngine(
       if (input.action !== "cancel" && bassContacts.move(input)) {
         if (bassGame.slapInput(input.id)) bassSlapPulse = bassSuccessPulse = 1;
       }
+      const contact = bassContacts.get(input.id)!;
+      if (contact.gesture === "slide" || contact.gesture === "invalid" || contact.gesture === "slap") {
+        const slide = bassGame.slideInput(input.id, contact.currentFret, contact.gesture === "slide", inputTime);
+        if (contact.gesture === "slide") bassAudio.bendMidi(input.id, slide?.midi ?? contact.currentMidi);
+        if (slide?.finished || contact.cancelled) bassAudio.releaseMidi(input.id);
+      }
       if (input.action === "up" || input.action === "cancel") {
-        bassContacts.end(input, bassState.elapsed);
-        bassGame.endInput(input.id, input.action === "cancel", inputTime);
+        bassContacts.end(input, inputTime);
+        bassGame.endInput(input.id, input.action === "cancel" || contact.cancelled, inputTime);
         bassAudio.releaseMidi(input.id);
       }
     }
     bassState = bassGame.snapshot();
-    bassSuccessPulse = bassState.feedback === "miss" ? 0 : 1;
+    const event = bassState.performanceEvents.at(-1);
+    bassSuccessPulse = event?.stage === "complete" && event.time >= inputTime - 0.01 ? 1 : 0;
     reportBass(performance.now(), true);
   }
 
@@ -1263,7 +1275,8 @@ function initializeRoomEngine(
       const punchProgress = updatePunch(time);
       const automaticPhrase = bassState.phase === "playing"
         ? bassState.currentPhrase ?? bassState.nextPhrase : null;
-      const bassLeft = automaticPhrase ?? { string: 3, fret: BASS_REST_FRET };
+      const sliding = bassState.notes.find(note => note.state === "sliding");
+      const bassLeft = sliding ? { string: sliding.string, fret: sliding.slideFret ?? sliding.fret } : automaticPhrase ?? { string: 3, fret: BASS_REST_FRET };
       const bassBeat = bassState.beat;
       room.animateAvatar({
         time: animationTime,
@@ -1283,13 +1296,13 @@ function initializeRoomEngine(
         bass: {
           lift: bassVisualLift, pluck: bassPluckPulse, playing: bassState.phase === "playing",
           beat: bassBeat, string: bassLeft.string, fret: bassLeft.fret,
-          fretting: automaticPhrase !== null, pluckString: bassPluckString,
+          fretting: automaticPhrase !== null || Boolean(sliding), pluckString: bassPluckString,
           slap: bassSlapPulse,
         },
       });
       room.bass.animate(animationTime, bassVisualLift, bassPluckPulse,
         bassState.notes.length ? bassState.hits / bassState.notes.length : 0, reducedMotion,
-        { playing: bassState.phase === "playing", beat: bassBeat, success: bassSuccessPulse, string: bassPluckString, slap: bassSlapPulse });
+        { snapshot: bassState, playing: bassState.phase === "playing", beat: bassBeat, success: bassSuccessPulse, string: bassPluckString, slap: bassSlapPulse });
       room.scene.updateMatrixWorld();
       if (time - aimTime >= 100 && !opening && !opened && !bassHeld() && !pinchControlsLocked()) {
         aimTime = time;

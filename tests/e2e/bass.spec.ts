@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { BASS_SONGS, BASS_DURATION } from "../../src/room/bassGame";
+import { BASS_SONGS, BASS_TECHNIQUE_STUDY, BASS_DURATION } from "../../src/room/bassGame";
 import { BASS_FRETBOARD } from "../../src/room/bassFretboard";
 import { collectPageErrors, enterRoom, savedPosition } from "./helpers/room";
 
@@ -17,11 +17,16 @@ async function prepare(page: Page) {
     const Original = window.AudioContext;
     const starts: { rate: number; offset: number; duration: number; loop: boolean }[] = [];
     (window as any).bassStarts = starts;
+    const bends: { rate: number; when: number; voice: number }[] = [];
+    (window as any).bassBends = bends;
     window.AudioContext = class extends Original {
       get currentTime() { return performance.now() / 1000; }
       createBufferSource() {
         const voice = super.createBufferSource();
         const start = voice.start.bind(voice);
+        const voiceIndex = starts.length;
+        const ramp = voice.playbackRate.linearRampToValueAtTime.bind(voice.playbackRate);
+        voice.playbackRate.linearRampToValueAtTime = (rate, when) => { bends.push({ rate, when, voice: voiceIndex }); return ramp(rate, when); };
         voice.start = (when = 0, offset = 0, duration?: number) => {
           starts.push({ rate: voice.playbackRate.value, offset, duration: voice.buffer?.duration ?? 0, loop: voice.loop });
           start(when, offset, duration);
@@ -148,7 +153,7 @@ test("ロング開始・終了、スラップと通過ボタンの二重発音�
   await expect(room).toHaveAttribute("data-bass-hits", "1");
   const slap = BASS_SONGS.normal.notes.find(n => n.kind === "slap" && n.time > hold.endTime!)!;
   await seek(page, started, slap.time, "normal");
-  await expect(page.locator(`[data-bass-note="${slap.id}"] .bass-slap-arrow`)).toHaveText("↑");
+  await expect(page.locator(`[data-bass-note="${slap.id}"] .bass-slap-arrow`)).toHaveText("↕");
   const before = (await samplerStarts(page)).length;
   await hit(page, slap.midi, 2);
   await hit(page, slap.midi, 2, "move", -45);
@@ -304,3 +309,129 @@ test("375pxでも新曲の選曲・調整・開始と指板が画面内に収ま
   await page.clock.fastForward(3000);
   expect(await page.evaluate(() => scrollY)).toBe(0);
 });
+
+async function studyStart(page: Page) {
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("technique-study");
+  await page.getByRole("button", { name: "演奏する", exact: true }).click();
+  await expect(page.locator(".room-home")).toHaveAttribute("data-bass-phase", "countdown");
+  return page.evaluate(() => performance.now());
+}
+async function slidePointer(page: Page, string: number, startFret: number, currentFret: number, id: number, action: "down" | "move" | "up" | "cancel") {
+  const startControl = page.locator(`[data-bass-fret="${string}-${startFret}"]`);
+  const a = (await startControl.boundingBox())!;
+  const b = (await page.locator(`[data-bass-fret="${string}-${Math.floor(currentFret)}"]`).boundingBox())!;
+  const next = currentFret % 1;
+  await startControl.dispatchEvent(`pointer${action}`, { pointerId: id, pointerType: "touch", button: 0,
+    buttons: action === "up" || action === "cancel" ? 0 : 1,
+    clientX: b.x + b.width / 2 + next * (a.width + 6), clientY: a.y + a.height / 2 });
+}
+
+test("V2.1 左右スライド・連続音程・上下スラップ・保持と高速連打", { tag: "@bass" }, async ({ page }) => {
+  const errors = collectPageErrors(page);
+  const room = await prepare(page);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const started = await studyStart(page);
+  await seek(page, started, 1.5);
+  const before = (await samplerStarts(page)).length;
+  const timeline = page.locator('[data-bass-note="1"]');
+  await expect(timeline.locator('[data-bass-slide-tail]')).toBeVisible();
+  await expect(timeline).toContainText("B"); await expect(timeline).toContainText("D");
+  const board = (await page.locator(".bass-fretboard").boundingBox())!;
+  await seek(page, started, 2);
+  await slidePointer(page, 2, 2, 2, 51, "down");
+  await expect(room).toHaveAttribute("data-bass-hits", "0");
+  await expect(page.locator('[data-bass-slide-path="1"]')).toHaveAttribute("data-state", "sliding");
+  await seek(page, started, 2.5);
+  await slidePointer(page, 2, 2, 3.5, 51, "move");
+  await expect(page.locator('[data-slide-end="1"]')).toHaveAttribute("data-end-progress", "0.500");
+  await page.clock.runFor(16);
+  await page.screenshot({ path: "/tmp/bass-v21-slide.png" });
+  await seek(page, started, 3);
+  await slidePointer(page, 2, 2, 5, 51, "move"); await slidePointer(page, 2, 2, 5, 51, "up");
+  await expect(room).toHaveAttribute("data-bass-hits", "1");
+  await expect(room).toHaveAttribute("data-bass-performance", /:slide:complete:perfect$/);
+  expect((await samplerStarts(page)).length).toBe(before + 1);
+  const bends = await page.evaluate(() => (window as any).bassBends as { rate: number }[]);
+  expect(bends).toHaveLength(2);
+  expect(bends[0].rate).toBeCloseTo(2 ** ((36.5 - 31) / 12));
+  expect(bends[1].rate).toBeCloseTo(2 ** ((38 - 31) / 12));
+  await seek(page, started, 4);
+  await slidePointer(page, 2, 5, 5, 52, "down");
+  await seek(page, started, 4.5); await slidePointer(page, 2, 5, 3.5, 52, "move");
+  await seek(page, started, 5); await slidePointer(page, 2, 5, 2, 52, "up");
+  await expect(room).toHaveAttribute("data-bass-hits", "2");
+  for (const [time, midi, dy] of [[6, 35, -40], [7, 38, 40]]) {
+    await seek(page, started, time);
+    const count = (await samplerStarts(page)).length;
+    await hit(page, midi, 60); await hit(page, midi, 60, "move", dy); await hit(page, midi, 60, "up", dy);
+    await expect(room).toHaveAttribute("data-bass-performance", /:slap:complete:perfect$/);
+    expect((await samplerStarts(page)).length).toBe(count + 1);
+  }
+  await seek(page, started, 8); await hit(page, 40, 70);
+  await seek(page, started, 9); await hit(page, 40, 70, "up");
+  for (let i = 0; i < 8; i++) {
+    await seek(page, started, 10 + i * 0.125);
+    const control = page.locator(`[data-bass-fret="${i % 2 ? "2-0" : "3-5"}"]`);
+    await control.dispatchEvent("pointerdown", { pointerId: 80 + i, pointerType: "touch", button: 0 });
+    await control.dispatchEvent("pointerup", { pointerId: 80 + i, pointerType: "touch", button: 0 });
+  }
+  await expect(room).toHaveAttribute("data-bass-hits", "13");
+  expect(await page.locator(".bass-fretboard").boundingBox()).toEqual(board);
+  await seek(page, started, 12); await slidePointer(page, 0, 1, 1, 90, "down");
+  await page.getByRole("button", { name: "演奏をポーズ" }).click();
+  const frozen = await room.getAttribute("data-bass-elapsed"); await page.clock.fastForward(3000);
+  expect(await room.getAttribute("data-bass-elapsed")).toBe(frozen);
+  await page.getByRole("button", { name: "部屋に戻る", exact: true }).click(); await page.clock.runFor(32);
+  await expect(page.locator('.bass-slide-paths [data-state="sliding"]')).toHaveCount(0);
+  await expect(room).toHaveAttribute("data-bass-performance", /:slide:fail:miss$/);
+  expect(errors).toEqual([]);
+});
+
+test("V2.1 実タッチのスライド・別弦失敗・キャンセルと同時入力", { tag: "@bass" }, async ({ page, context }) => {
+  const room = await prepare(page); const started = await studyStart(page);
+  await seek(page, started, 2);
+  const cdp = await context.newCDPSession(page);
+  const a = (await page.locator('[data-bass-fret="2-2"]').boundingBox())!;
+  const b = (await page.locator('[data-bass-fret="2-5"]').boundingBox())!;
+  const p1 = { id: 1, x: a.x + a.width / 2, y: a.y + a.height / 2 };
+  const p2 = { id: 2, x: b.x + b.width / 2, y: b.y + b.height / 2 + 3 };
+  const count = (await samplerStarts(page)).length;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [p1, p2] });
+  await seek(page, started, 2.5);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...p1, x: (p1.x + p2.x) / 2 }, p2] });
+  expect((await samplerStarts(page)).length).toBe(count + 2);
+  await seek(page, started, 3);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...p1, x: p2.x }, p2] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(room).toHaveAttribute("data-bass-hits", "1");
+  await seek(page, started, 4);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...p1, x: p2.x }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...p1, x: p2.x - 35 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...p1, x: p1.x, y: p1.y - a.height - 6 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+  await expect(room).toHaveAttribute("data-bass-performance", /:slide:fail:miss$/);
+  await expect(page.locator('[data-bass-slide-path="2"]')).toHaveCount(0);
+  await seek(page, started, 6); await hit(page, 35, 101); await hit(page, 35, 101, "move", 40); await hit(page, 35, 101, "up", 40);
+  await expect(room).toHaveAttribute("data-bass-hits", "2");
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+});
+
+for (const [width, height] of [[375, 667], [390, 844], [430, 932]]) {
+  test(`V2.1 ${width}px 音高カラーとスライド予告の安定配置`, { tag: "@bass" }, async ({ page }) => {
+    await page.setViewportSize({ width, height }); await prepare(page); const started = await studyStart(page);
+    await seek(page, started, 1.5);
+    await expect(page.locator('[data-bass-slide-path="1"]')).toBeVisible();
+    const note = page.locator('[data-bass-note="1"]');
+    const cell = page.locator('[data-bass-fret="2-2"]');
+    expect(await note.evaluate(node => getComputedStyle(node).getPropertyValue("--tone").trim())).toBe(await cell.evaluate(node => getComputedStyle(node).getPropertyValue("--tone").trim()));
+    for (const midi of [33, 38, 43]) {
+      const colors = await page.locator(`[data-bass-fret][data-midi="${midi}"]`).evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundColor));
+      expect(new Set(colors).size).toBe(1);
+    }
+    for (const control of await page.locator('[data-bass-fret]').all()) {
+      const box = (await control.boundingBox())!; expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(height);
+    }
+    await page.clock.runFor(16); await page.screenshot({ path: `/tmp/bass-v21-${width}.png` });
+  });
+}
