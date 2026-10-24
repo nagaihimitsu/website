@@ -336,6 +336,11 @@ test("V2.1 左右スライド・連続音程・上下スラップ・保持と高
   const timeline = page.locator('[data-bass-note="1"]');
   await expect(timeline.locator('[data-bass-slide-tail]')).toBeVisible();
   await expect(timeline).toContainText("B"); await expect(timeline).toContainText("D");
+  // 水平線のobjectBoundingBoxは高さ0となり、SVGグラデーションを描画できない。
+  const routeGradient = page.locator('[data-bass-slide-path="1"] linearGradient');
+  await expect(routeGradient).toHaveAttribute("gradientUnits", "userSpaceOnUse");
+  await expect(routeGradient).toHaveAttribute("x1", "250");
+  await expect(routeGradient).toHaveAttribute("x2", "550");
   const board = (await page.locator(".bass-fretboard").boundingBox())!;
   await seek(page, started, 2);
   await slidePointer(page, 2, 2, 2, 51, "down");
@@ -356,6 +361,9 @@ test("V2.1 左右スライド・連続音程・上下スラップ・保持と高
   expect(bends[0].rate).toBeCloseTo(2 ** ((36.5 - 31) / 12));
   expect(bends[1].rate).toBeCloseTo(2 ** ((38 - 31) / 12));
   await seek(page, started, 4);
+  const reversedGradient = page.locator('[data-bass-slide-path="2"] linearGradient');
+  await expect(reversedGradient).toHaveAttribute("x1", "550");
+  await expect(reversedGradient).toHaveAttribute("x2", "250");
   await slidePointer(page, 2, 5, 5, 52, "down");
   await seek(page, started, 4.5); await slidePointer(page, 2, 5, 3.5, 52, "move");
   await seek(page, started, 5); await slidePointer(page, 2, 5, 2, 52, "up");

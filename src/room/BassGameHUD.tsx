@@ -74,7 +74,7 @@ function SlidePaths({ snapshot, time }: { snapshot: BassGameSnapshot; time: numb
       const x = (note.fret + 0.5) * 100, endX = (note.endFret! + 0.5) * 100, y = (note.string + 0.5) * 100 + 29;
       const movingX = success ? x + (endX - x) * Math.min(1, (time - note.resolvedAt!) / 0.2) : ((note.slideFret ?? note.fret) + 0.5) * 100;
       return <g key={note.id} data-bass-slide-path={note.id} data-state={note.state} className={success ? "is-slide-success" : note.state === "sliding" ? "is-sliding" : ""}>
-        <defs><linearGradient id={`board-slide-${note.id}`} x1={x < endX ? "0%" : "100%"} x2={x < endX ? "100%" : "0%"}><stop stopColor={bassPitch(note.midi).color} /><stop offset="1" stopColor={bassPitch(note.endMidi!).color} /></linearGradient></defs>
+        <defs><linearGradient id={`board-slide-${note.id}`} gradientUnits="userSpaceOnUse" x1={x} x2={endX} y1={y} y2={y}><stop stopColor={bassPitch(note.midi).color} /><stop offset="1" stopColor={bassPitch(note.endMidi!).color} /></linearGradient></defs>
         <line x1={x} x2={endX} y1={y} y2={y} stroke={`url(#board-slide-${note.id})`} className="bass-slide-route-shadow" />
         <line x1={x} x2={endX} y1={y} y2={y} stroke="#fff2b8" className="bass-slide-route" />
         <path d={`M${endX - Math.sign(endX - x) * 12},${y - 7} L${endX},${y} L${endX - Math.sign(endX - x) * 12},${y + 7}`} className="bass-slide-route-arrow" />
