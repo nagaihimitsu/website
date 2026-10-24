@@ -26,6 +26,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   let controller: AbortController | null = null;
   let transport: { sources: AudioBufferSourceNode[]; gains: GainNode[]; anchor: number; difficulty: string } | null = null;
   let windows: Window[] = [];
+  const heldVoices = new Map<number, { source: AudioBufferSourceNode; gain: GainNode; start: number }>();
   const seenHits = new Set<number>();
   const countTicks = new Set<number>();
   const voices = new Map<AudioScheduledSourceNode, AudioNode[]>();
@@ -74,7 +75,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
         const AudioContextConstructor = window.AudioContext ??
           (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!AudioContextConstructor) { setStatus("unavailable"); return; }
-        context = new AudioContextConstructor();
+        context = new AudioContextConstructor({ latencyHint: "interactive" });
         master = context.createGain();
         // Leave mix headroom; successful bass segments have their own boost.
         master.gain.value = 0.9;
@@ -137,6 +138,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
       nodes.forEach((node) => node.disconnect());
     }
     voices.clear();
+    heldVoices.clear();
   }
 
   function stopTransport() {
@@ -279,10 +281,10 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
         tone(660, Math.max(context.currentTime, transport.anchor + tick), 0.05, 0.075);
       }
     }
-    scheduleGate(snapshot, timeline);
+    if (!snapshot.directInput) scheduleGate(snapshot, timeline);
   }
 
-  /** Success reveals the recorded bass, never a second synthesized bass melody. */
+  /** Compatibility entry point for callers of the original string-based API. */
   function pluck(frequency: number | null, _technique: BassTechnique = "pick",
     snapshot?: BassGameSnapshot, noteId?: number | null) {
     if (disposed || !context || context.state !== "running") return;
@@ -292,6 +294,49 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     }
     if (snapshot && noteId !== null && noteId !== undefined &&
       snapshot.notes.some((note) => note.id === noteId && (note.state === "perfect" || note.state === "good"))) sync(snapshot);
+  }
+
+
+  /** Reuse the isolated G1 attack as a pitched sampler. One source per contact,
+   * including wrong notes. Slap uses the same attack with a stronger envelope;
+   * gesture confirmation never starts a second source. */
+  function playMidi(id: number, midi: number, technique: BassTechnique, hold: boolean) {
+    if (disposed || !context || !master || !stems || context.state !== "running" || heldVoices.has(id)) return;
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    const now = context.currentTime;
+    source.buffer = stems[1];
+    source.playbackRate.value = 2 ** ((midi - 31) / 12);
+    source.loop = true;
+    source.loopStart = 0.39;
+    source.loopEnd = 0.55;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(technique === "slap" ? 1.8 : 1.35, now + 0.004);
+    if (!hold) gain.gain.linearRampToValueAtTime(0, now + 0.35);
+    source.connect(gain).connect(master);
+    voices.set(source, [gain]);
+    heldVoices.set(id, { source, gain, start: now });
+    source.onended = () => {
+      voices.delete(source);
+      if (heldVoices.get(id)?.source === source) heldVoices.delete(id);
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start(now, 0.317);
+    source.stop(now + (hold ? 30 : 0.36));
+  }
+  function releaseMidi(id: number) {
+    const voice = heldVoices.get(id);
+    if (!voice || !context) return;
+    heldVoices.delete(id);
+    const end = Math.max(context.currentTime, voice.start + 0.1);
+    if (voice.gain.gain.cancelAndHoldAtTime) voice.gain.gain.cancelAndHoldAtTime(end);
+    else {
+      voice.gain.gain.cancelScheduledValues(end);
+      voice.gain.gain.setValueAtTime(voice.gain.gain.value, end);
+    }
+    voice.gain.gain.linearRampToValueAtTime(0, end + 0.025);
+    voice.source.stop(end + 0.03);
   }
 
   function dispose() {
@@ -316,5 +361,5 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   }
 
   return { unlock, preload, prepare, status: () => state,
-    isRunning: () => context?.state === "running", playbackTime, sync, pluck, stop, dispose };
+    isRunning: () => context?.state === "running", playbackTime, sync, pluck, playMidi, releaseMidi, stop, dispose };
 }

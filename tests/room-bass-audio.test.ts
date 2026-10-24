@@ -14,7 +14,7 @@ function installAudio() {
     exponentialRampToValueAtTime: vi.fn(), cancelScheduledValues: vi.fn() });
   const node = () => ({ connect: vi.fn(function (this: unknown, destination: unknown) { return destination; }), disconnect: vi.fn() });
   function source(kind: "recording" | "tone") {
-    return { ...node(), kind, buffer: null as unknown, loop: false, type: "sine", frequency: parameter(),
+    return { ...node(), kind, buffer: null as unknown, loop: false, playbackRate: parameter(), loopStart: 0, loopEnd: 0, type: "sine", frequency: parameter(),
       start: vi.fn(), stop: vi.fn(), onended: null as (() => void) | null };
   }
   const sources: ReturnType<typeof source>[] = [];
@@ -375,5 +375,45 @@ describe("recorded bass transport", () => {
     expect(await audio.prepare()).toBe(false);
     expect(audio.status()).toBe("unavailable");
     expect(() => { audio.sync(snapshot()); audio.pluck(null); audio.dispose(); }).not.toThrow();
+  });
+});
+
+
+describe("direct MIDI sampler", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("uses the existing stem and correct pitch rates, including wrong pitches, once per contact", async () => {
+    const { audio, recordings } = await ready();
+    for (let midi = 28; midi <= 48; midi++) {
+      audio.playMidi(midi, midi, "pick", false);
+      audio.playMidi(midi, midi, "slap", false); // same contact must not retrigger
+      const voice = recordings().at(-1)!;
+      expect(voice.playbackRate.value).toBeCloseTo(2 ** ((midi - 31) / 12));
+      expect(voice.start).toHaveBeenCalledTimes(1);
+      expect(voice.start).toHaveBeenCalledWith(10, 0.317);
+      audio.releaseMidi(midi);
+    }
+    expect(recordings()).toHaveLength(21);
+    audio.stop();
+    expect(recordings().every(voice => voice.disconnect.mock.calls.length > 0)).toBe(true);
+  });
+  it("sustains a hold, releases its own voice and silences all contacts on background/pause", async () => {
+    const { audio, recordings } = await ready();
+    audio.playMidi(1, 33, "pick", true);
+    audio.playMidi(2, 38, "slap", false);
+    const [hold, slap] = recordings();
+    expect(hold.loop).toBe(true);
+    expect(hold.stop).toHaveBeenCalledWith(40);
+    audio.releaseMidi(1);
+    expect(hold.stop.mock.calls.at(-1)![0]).toBeCloseTo(10.13);
+    expect(slap.stop).toHaveBeenCalledTimes(1);
+    audio.stop();
+    expect(slap.stop).toHaveBeenCalledTimes(2);
+  });
+  it("never opens the continuous bass gate on top of direct voices", async () => {
+    const { audio, gains } = await ready();
+    const state = success(snapshot(1), 0);
+    state.directInput = true;
+    audio.sync(state);
+    expect(gains[2].gain.linearRampToValueAtTime).not.toHaveBeenCalled();
   });
 });

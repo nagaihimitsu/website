@@ -5,7 +5,8 @@ export default defineConfig({
   fullyParallel: true,
   // SwiftShader renders the full room on CPU; keep WebGL tests from competing.
   workers: 1,
-  timeout: 45000,
+  // Software WebGL can take over a minute for a sequence of real pointer moves.
+  timeout: 120000,
   use: {
     baseURL: "http://127.0.0.1:5173",
     ...devices["Desktop Chrome"],

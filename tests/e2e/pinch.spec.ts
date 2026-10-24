@@ -2,7 +2,7 @@ import { test, expect, type CDPSession, type Page } from "@playwright/test";
 import { PerspectiveCamera, Vector3 } from "three";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
-test.describe.configure({ timeout: 90_000 });
+test.describe.configure({ timeout: 120_000 });
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
 type Contact = { id: number; x: number; y: number };
@@ -249,7 +249,9 @@ test("3倍を超えた時だけ旅人が滑らかに消え、縮小・解除す�
   const input = touches(cdp);
   // Frame the traveller's head/hood off-centre so screenshots prove that the
   // actual model fades, rather than merely being cropped outside the view.
-  const anchor = { x: 215, y: 450 };
+  // Avoid the collection interaction label at 50% + 24px: both fingers
+  // must start on the canvas to exercise the actual pinch handler.
+  const anchor = { x: 215, y: 380 };
   const contacts = (zoom: number, firstId = 1): Contact[] => [
     { id: firstId, x: anchor.x - 20 * zoom, y: anchor.y },
     { id: firstId + 1, x: anchor.x + 20 * zoom, y: anchor.y },
@@ -273,6 +275,8 @@ test("3倍を超えた時だけ旅人が滑らかに消え、縮小・解除す�
   try {
     await expectShown();
     await input.start(contacts(1));
+    await page.clock.runFor(128);
+    await expect(room).toHaveAttribute("data-pinching", "true");
     await zoomTo(3);
     await expectShown();
     await page.screenshot({ path: "docs/screenshots/pinch-avatar-3x.png" });
@@ -311,6 +315,8 @@ test("3倍を超えた時だけ旅人が滑らかに消え、縮小・解除す�
     for (const [index, reason] of ["cancel", "blur"].entries()) {
       const firstId = 3 + index * 2;
       await input.start(contacts(1, firstId));
+      await page.clock.runFor(128);
+      await expect(room).toHaveAttribute("data-pinching", "true");
       await zoomTo(6, firstId);
       await expect(room).toHaveAttribute("data-avatar-visible", "false");
       if (reason === "cancel") await input.cancel();

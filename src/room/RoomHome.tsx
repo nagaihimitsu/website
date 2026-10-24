@@ -97,17 +97,19 @@ function ExternalLink() {
   );
 }
 
-function BassOverlay({ store, engine, paused, audioStatus }: {
+function BassOverlay({ store, engine, paused, audioStatus, onPause }: {
   store: ReturnType<typeof createBassGameStore>;
   engine: RefObject<RoomEngine | null>;
   paused: boolean;
   audioStatus: BassAudioStatus;
+  onPause: () => void;
 }) {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return <BassGameHUD snapshot={snapshot} paused={paused} audioStatus={audioStatus}
     onStart={() => engine.current?.startBass()}
     onDifficulty={(difficulty) => engine.current?.setBassDifficulty(difficulty)}
-    onPluck={(string, technique) => engine.current?.pluckBass(string, technique)}
+    onInput={(input) => engine.current?.inputBass(input)}
+    onPause={onPause}
     onLayout={(height) => engine.current?.setBassOverlayHeight(height)}
     onPutDown={() => engine.current?.putDownBass()} />;
 }
@@ -460,7 +462,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           {links("room-fallback-links")}
         </div>
       )}
-      <BassOverlay store={bassStore} engine={engine} audioStatus={bassAudioStatus} paused={menuOpen || status !== "ready" || Boolean(opening)} />
+      <BassOverlay onPause={() => setMenuOpen(true)} store={bassStore} engine={engine} audioStatus={bassAudioStatus} paused={menuOpen || status !== "ready" || Boolean(opening)} />
       <div className="room-controls" style={bassHeld ? { display: "none" } : undefined}>
         <div
           ref={joystick}

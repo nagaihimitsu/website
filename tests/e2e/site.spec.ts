@@ -253,7 +253,7 @@ test("360pxの各画面で横はみ出しなし、ボトムシート操作", asy
   await page.setViewportSize({ width: 360, height: 800 });
   for (const s of ["", "world", "japan", "mountains", "pokemon"]) {
     await page.goto("/#/" + s);
-    await expect(page.locator(s ? ".page-count" : ".room-home")).toBeVisible();
+    await expect(page.locator(s ? ".page-count" : ".room-home")).toBeVisible({ timeout: 30000 });
     if (!s)
       await expect(page.locator(".room-home")).toHaveAttribute(
         "data-room-status",

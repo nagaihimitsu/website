@@ -48,7 +48,7 @@ npm run preview
 - 歩き始めと停止を滑らかにし、歩行から走行への切替でも手足の動きを連続させています。初期位置を部屋の奥へ移し、手前へ歩くための空間を確保。[操作仕様と参考資料の確認状況](docs/CONTROLS.md) にカメラの判断基準をまとめています。
 - Space／ジャンプボタンで机・ベッド・ソファに飛び乗り、上を歩けます。F／J／拳ボタンで近くの小物にパンチ。物の直接クリック／タップ、Eで照準先の記録を開く操作にも対応。
 - 入口の木製ドアに近づいて正面からパンチすると、ドアが外側へ開きます。開口部を歩いて通り、ページを切り替えずに小さなテラスと部屋を往復できます。開いた状態は同じタブ内で保持し、小物の復元でも閉じません。
-- テラスの花壇のそばに、アンプへケーブルでつないだベースを配置。近くで3秒待つと円形ゲージが満ち、主人公がストラップ付きのベースを持ちます。[企画書v0.1](docs/BASS_RHYTHM_GAME_SPEC_v0.1.txt) に沿ったEASY／NORMAL／HARDを同じ画面で選択。上からG・D・A・Eの4段で、右側のピッキング／上スワイプのスラップだけで演奏し、主人公の押弦は自動です。提供音源「Garden-Party Groove」の実測リズムに合わせた約56秒の譜面で、NORMALはピッキングとスラップ、HARDはより多いアタックと段の移動を組み合わせます。伴奏とベースを分離し、成功した区間で録音のベースが鳴ります。PCは7・8・9・0、Shift＋同じキーでスラップ。両手の動き、拍に合わせて踊る花、成功時の花びらと音符を表示します。[遊び方・音源・コード構成](docs/ROOM_BASS.md)。
+- テラスのベースを3秒の滞在で手に取り、既存曲「Garden-Party Groove」をEASY／NORMAL／HARDで演奏します。縦画面の常設タイムラインと4行×6列（開放弦〜5F）の指板を表示し、音名ボタンの直接タップ・長押し・上フリックで演奏。同じMIDI音高の別位置も正解です。既存の録音素材からベース音をピッチ変更して発音し、音声時計に同期して判定・スコア・コンボを更新します。主人公・部屋・花・楽器と演奏アニメーションは従来のThree.jsシーンを使用。[遊び方・音源・コード構成](docs/ROOM_BASS.md)。
 - キャラクターの届く範囲にある陶器・鉢・積み木を壊し、破片を表示。破壊は部屋の小物だけの演出で、TXT・写真・コレクションの実績は変更しません。メニューの「小物を元に戻す」で復元できます。位置・視点・壊した小物は同じタブ内で保持。
 - 操作中の大きな見出しと常時表示ラベルを取り除き、記録一覧・設定・操作説明は右上のメニューに集約。
 - アイボリー・木・セージ色を基調に、記録画面も明るい配色。Space Groteskをローカル配信。OSの動き抑制設定とメニューの「動きを減らす」設定に対応。
@@ -108,7 +108,7 @@ GitHub Pagesの場合：
 - [furnitureLayout.ts](src/room/furnitureLayout.ts)：家具の位置・寸法。描画、天板上の小物、当たり判定、リンクの注視位置を同じ親座標から導出。ソファなどの段差は別々の当たり判定を維持します。
 - [roomArchitecture.ts](src/room/roomArchitecture.ts)：有限の床・壁・窓・天井・テラスの共有形状、ドアのヒンジと開閉、小鳥の室内行動範囲、落下時の帰還先。
 - [collision.ts](src/room/collision.ts)／[movement.ts](src/room/movement.ts)／[followCamera.ts](src/room/followCamera.ts)：実物の床と回転を含む立体障害物に対する移動・着地・頭上衝突・カメラの判定。部屋の座標上限や無限の床には依存しません。
-- [bassGame.ts](src/room/bassGame.ts)／[bassAudio.ts](src/room/bassAudio.ts)：ベースの滞在時間・弦と奏法・採点・自動押弦位置と、操作後に起動する録音2音源の同期再生。[音源の出典と制作手順](docs/ROOM_BASS_AUDIO.md)。[BassGameHUD.tsx](src/room/BassGameHUD.tsx) のゲージと4段譜面を専用ストアで更新。[bassPose.ts](src/room/art/bassPose.ts) から楽器と指先の位置を共通計算します。
+- [bassGame.ts](src/room/bassGame.ts)／[bassAudio.ts](src/room/bassAudio.ts)：ベースの滞在時間・MIDI音高と奏法・保持と採点・自動押弦位置、録音の共通時計と直接入力サンプラー。[音源の出典と制作手順](docs/ROOM_BASS_AUDIO.md)。[BassGameHUD.tsx](src/room/BassGameHUD.tsx) の常設タイムラインと24ボタン指板を専用ストアで更新。共通の音高定義は [bassFretboard.ts](src/room/bassFretboard.ts)、表示計算は [bassVisuals.ts](src/room/bassVisuals.ts)。[bassPose.ts](src/room/art/bassPose.ts) から楽器と指先の位置を共通計算します。
 - [disposal.ts](src/room/disposal.ts)：取得順の逆順で、所有リソースを一度ずつ解放。途中の初期化失敗でも回収し、借りた写真テクスチャは所有者側で解放します。
 - [roomSnapshot.ts](src/room/roomSnapshot.ts)：座標などの診断用属性を直接更新。Reactには画面表示に必要なパンチ状態の変化だけを通知。
 - [ブラウザテスト共通ヘルパー](tests/e2e/helpers/room.ts)：保存位置、入室待機、カメラからの投影、描画待機を共用。

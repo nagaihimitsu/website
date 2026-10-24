@@ -4,6 +4,8 @@ import sharp from "sharp";
 test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT・写真・ハッシュ再読み込みが動く", async ({
   page,
 }) => {
+  const sourcePaths = ["public/data/訪問した国.txt", "public/data/記録_国.txt"];
+  const sourcesBefore = await Promise.all(sourcePaths.map(path => readFile(path, "utf8")));
   // Synthetic records exist only in the isolated test build, never public/ or dist/.
   await mkdir(".test-build/photos/test", { recursive: true });
   await sharp({
@@ -57,8 +59,7 @@ test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT�
     ),
   ).toBe(true);
   expect(failed).toEqual([]);
-  // Ensure production sources remain empty.
-  expect(await readFile("public/data/訪問した国.txt", "utf8")).not.toMatch(
-    /^日本$/m,
-  );
+  // Production records already include Japan. Compare both original files
+  // exactly rather than assuming that the user's real records are empty.
+  expect(await Promise.all(sourcePaths.map(path => readFile(path, "utf8")))).toEqual(sourcesBefore);
 });

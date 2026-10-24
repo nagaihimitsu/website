@@ -8,6 +8,7 @@ import { createBirdMotion } from "./birdMotion";
 import { worldRecovery } from "./roomArchitecture";
 import { findRecoveryPosition } from "./worldRecovery";
 import { createBassGame, type BassDifficulty, type BassString, type BassTechnique } from "./bassGame";
+import { createBassContacts, type BassPointerInput } from "./bassInput";
 import { createBassAudio } from "./bassAudio";
 import { BASS_REST_FRET } from "./art/bassPose";
 import {
@@ -49,7 +50,6 @@ const BASS_VIEW_YAW = Math.PI;
 // A three-quarter presentation shows the supporting shoulder, backpack and
 // carved body depth while keeping the garden behind the live performance.
 const BASS_PERFORMER_YAW = Math.PI + BASS_VIEW_YAW - (30 * Math.PI) / 180;
-const BASS_PLUCK_KEYS: Record<string, BassString> = { Digit7: 0, Digit8: 1, Digit9: 2, Digit0: 3 };
 const KEY_DIRECTIONS: Record<string, Direction> = {
   ArrowUp: "up",
   KeyW: "up",
@@ -239,6 +239,7 @@ function initializeRoomEngine(
   let bassSuccessPulse = 0;
   let bassPluckString: BassString = 3;
   let bassOverlayHeight = 0;
+  const bassContacts = createBassContacts();
   let bassViewOffset = 0;
   let bassNeedsExit = false;
   let bassStartGeneration = 0;
@@ -406,6 +407,7 @@ function initializeRoomEngine(
     const musicDelta = playbackTime === null ? 0 : Math.max(0, playbackTime - timeline);
     bassState = bassGame.tick(performing ? musicDelta : delta,
       near && !bassNeedsExit && !opening && !opened && !pinchControlsLocked());
+    if (bassState.phase === "result") bassContacts.clear();
     if (phase === "idle" && bassState.phase === "approaching") void bassAudio.preload();
     if ((phase === "idle" || phase === "approaching") && bassHeld()) {
       bassPickupStart = { x: player.x, z: player.z };
@@ -432,7 +434,10 @@ function initializeRoomEngine(
         !(resumeOnly ? ["countdown", "playing"] : ["ready", "result"]).includes(bassState.phase)) return;
       bassPreviousTime = performance.now();
       if (resumeOnly) clearInputs();
-      else if (!bassGame.start()) return;
+      else {
+        if (!bassGame.start()) return;
+        bassContacts.clear();
+      }
       bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
       bassState = bassGame.snapshot();
       bassAudio.sync(bassState);
@@ -457,6 +462,37 @@ function initializeRoomEngine(
     reportBass(bassPreviousTime, true);
   }
 
+  function inputBass(input: BassPointerInput) {
+    if (disposed || failed || paused || document.hidden || bassState.phase !== "playing") return;
+    bassAudio.unlock();
+    if (!bassAudio.isRunning()) return;
+    advanceBass(performance.now());
+    const stamp = input.time > 1e12 ? input.time - performance.timeOrigin : input.time;
+    const inputTime = bassState.elapsed - Math.max(0, performance.now() - stamp) / 1000;
+    if (input.action === "down") {
+      if (!bassContacts.begin(input, bassState.elapsed)) return;
+      const result = bassGame.beginInput(input.id, input.midi, inputTime);
+      if (!result) return;
+      const note = bassState.notes.find(note => note.id === result.noteId);
+      bassAudio.playMidi(input.id, input.midi, result.technique, note?.kind === "hold");
+      bassPluckPulse = 1;
+      bassPluckString = input.string;
+      bassSlapPulse = result.technique === "slap" ? 1 : 0;
+    } else if (bassContacts.has(input.id)) {
+      if (input.action !== "cancel" && bassContacts.move(input)) {
+        if (bassGame.slapInput(input.id)) bassSlapPulse = bassSuccessPulse = 1;
+      }
+      if (input.action === "up" || input.action === "cancel") {
+        bassContacts.end(input, bassState.elapsed);
+        bassGame.endInput(input.id, input.action === "cancel", inputTime);
+        bassAudio.releaseMidi(input.id);
+      }
+    }
+    bassState = bassGame.snapshot();
+    bassSuccessPulse = bassState.feedback === "miss" ? 0 : 1;
+    reportBass(performance.now(), true);
+  }
+
   function pluckBass(string: BassString, technique: BassTechnique = "pick") {
     if (disposed || failed || paused || document.hidden || bassState.phase !== "playing") return;
     if (!bassAudio.isRunning()) return;
@@ -474,6 +510,7 @@ function initializeRoomEngine(
   }
 
   function putDownBass() {
+    bassContacts.clear();
     if (disposed || failed) return;
     cancelBassStart();
     bassAudio.stop();
@@ -740,9 +777,6 @@ function initializeRoomEngine(
       if (event.code === "Escape") {
         event.preventDefault();
         if (!event.repeat) putDownBass();
-      } else if (Object.hasOwn(BASS_PLUCK_KEYS, event.code)) {
-        event.preventDefault();
-        if (!event.repeat) pluckBass(BASS_PLUCK_KEYS[event.code], event.shiftKey ? "slap" : "pick");
       } else if (["Space", "Enter"].includes(event.code)) {
         if (["Space", "Enter"].includes(event.code) && event.target instanceof HTMLElement && event.target.closest("button, a")) return;
         event.preventDefault();
@@ -934,6 +968,8 @@ function initializeRoomEngine(
   }
 
   function syncSuspension() {
+    bassContacts.clear();
+    bassGame.suspendInputs();
     cancelBassStart();
     clearInputs();
     reportBass(performance.now(), true);
@@ -1020,10 +1056,11 @@ function initializeRoomEngine(
       .copy(cameraTarget)
       .addScaledVector(boomDirection, cameraDistance);
     camera.lookAt(cameraTarget);
-    camera.fov = baseFov();
+    camera.fov = baseFov() + Math.max(0, 750 - height) * 0.07 * bassVisualLift;
     // Keep the live room full-screen while framing the performer in the space
     // above the actual control deck, including phone rotation and safe areas.
-    const wantedOffset = Math.min(bassOverlayHeight, height * 0.76) * 0.5 * bassVisualLift;
+    const topReserve = Math.min(110, height * 0.16);
+    const wantedOffset = Math.max(0, Math.min(bassOverlayHeight, height * 0.76) - topReserve) * 0.5 * bassVisualLift;
     bassViewOffset = THREE.MathUtils.damp(bassViewOffset, wantedOffset, 9, elapsed);
     if (bassViewOffset > 0.1) camera.setViewOffset(width, height, 0, bassViewOffset, width, height);
     else camera.clearViewOffset();
@@ -1318,6 +1355,7 @@ function initializeRoomEngine(
     startBass,
     setBassDifficulty,
     pluckBass,
+    inputBass,
     putDownBass,
     setBassOverlayHeight(value) { bassOverlayHeight = Number.isFinite(value) ? Math.max(0, value) : 0; },
     open,

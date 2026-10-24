@@ -1,3 +1,4 @@
+import type { BassPointerInput } from "./bassInput";
 import type * as THREE from "three";
 import type { Archive, Section } from "../data/model";
 import type { BirdAnimationState } from "./art/bird";
@@ -121,6 +122,7 @@ export interface RoomEngine {
   punch: () => void;
   startBass: () => void;
   setBassDifficulty: (difficulty: BassDifficulty) => void;
+  inputBass: (input: BassPointerInput) => void;
   pluckBass: (string: BassString, technique?: BassTechnique) => void;
   putDownBass: () => void;
   setBassOverlayHeight: (height: number) => void;
