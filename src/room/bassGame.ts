@@ -7,6 +7,7 @@ import type { ImportedChart } from "./bassChartImport";
 import { BASS_STRINGS, midiFrequency, type BassString } from "./bassFretboard";
 export { BASS_STRINGS, type BassString } from "./bassFretboard";
 import { GARDEN_BASS_NOTES, GARDEN_TRACK, gardenTimeToBeat } from "./gardenTrack";
+import { calculateBassResult, type BassResult } from "./bassResult";
 
 /** Guides, scoring, animation and recorded sound share one active media clock. */
 export const BASS_PROXIMITY_SECONDS = 3;
@@ -132,6 +133,7 @@ export interface BassGameSnapshot {
   misses: number;
   strayPlucks: number;
   accuracy: number;
+  result: BassResult | null;
   performanceEvents: readonly BassPerformanceEvent[];
   feedback: BassFeedback | null;
   feedbackAge: number;
@@ -268,6 +270,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
   let hits = 0;
   let misses = 0;
   let strayPlucks = 0;
+  let result: BassResult | null = null;
   let feedback: BassFeedback | null = null;
   let feedbackAge = 0;
   let isPaused = false;
@@ -381,6 +384,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
     countdownRemaining = song().countdownSeconds;
     elapsed = score = combo = maxCombo = hits = misses = strayPlucks = feedbackAge = 0;
     feedback = null;
+    result = null;
     performanceEvents = [];
     contacts.clear();
     directInput = false;
@@ -416,6 +420,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
       countdownRemaining: phase === "countdown" ? countdownRemaining : 0,
       elapsed, duration: song().duration, score: penalizedScore, combo, maxCombo, hits, misses, strayPlucks,
       accuracy: Math.round(penalizedScore / Math.max(1, notes.filter(n => n.state !== "skipped").length * 1000) * 100),
+      result,
       performanceEvents: performanceEvents.map(event => ({ ...event })), feedback, feedbackAge,
       notes: notes.map((note) => ({ ...note })),
       ...guideState(),
@@ -475,7 +480,10 @@ export function createBassGame(chart?: readonly BassNote[]) {
         finish(note, "miss");
       }
       if (elapsed >= song().duration) {
+        // 終端直前のノーツ・保持も確定してから、一度だけ不変の結果を作る。
+        for (const note of notes) if (["pending", "holding", "sliding"].includes(note.state)) finish(note, "miss");
         contacts.clear();
+        result = calculateBassResult(notes.map(note => note.state), maxCombo);
         phase = "result";
       }
     }
@@ -492,6 +500,10 @@ export function createBassGame(chart?: readonly BassNote[]) {
   function selectSong(id: BassSongId) {
     if (isPaused || !["ready", "result"].includes(phase) || !BASS_TRACKS.some(track => track.id === id)) return false;
     activeSong = id === "garden-party" ? BASS_SONGS[gardenDifficulty] : id === "technique-study" ? BASS_TECHNIQUE_STUDIES[studyDifficulty] : finalHitSong();
+    resetScore(); phase = "ready"; return true;
+  }
+  function continueFromResult() {
+    if (isPaused || phase !== "result") return false;
     resetScore(); phase = "ready"; return true;
   }
   function setAudioOffset(offset: number) {
@@ -546,5 +558,5 @@ export function createBassGame(chart?: readonly BassNote[]) {
     resetScore();
   }
 
-  return { tick, start, setDifficulty, selectSong, setAudioOffset, seek, pluck, beginInput, slapInput, slideInput, endInput, suspendInputs, cancel, snapshot };
+  return { tick, start, setDifficulty, selectSong, continueFromResult, setAudioOffset, seek, pluck, beginInput, slapInput, slideInput, endInput, suspendInputs, cancel, snapshot };
 }

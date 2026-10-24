@@ -121,6 +121,7 @@ export interface RoomEngine {
   jump: () => void;
   punch: () => void;
   startBass: () => void;
+  continueBass: () => boolean;
   selectBassSong: (id: BassSongId) => boolean;
   setBassAudioOffset: (seconds: number) => boolean;
   seekBass: (seconds: number) => boolean;

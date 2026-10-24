@@ -429,13 +429,13 @@ function initializeRoomEngine(
   function startBass() {
     const resumeOnly = ["countdown", "playing"].includes(bassState.phase) && !bassAudio.isRunning();
     if (disposed || failed || paused || document.hidden || bassStartPending ||
-      (!resumeOnly && !["ready", "result"].includes(bassState.phase))) return;
+      (!resumeOnly && bassState.phase !== "ready")) return;
     bassAudio.unlock(); // Must run synchronously inside this key/tap gesture.
     const generation = ++bassStartGeneration;
     bassStartPending = true;
     void bassAudio.prepare().then((loaded) => {
       if (!loaded || generation !== bassStartGeneration || disposed || failed || paused || document.hidden ||
-        !(resumeOnly ? ["countdown", "playing"] : ["ready", "result"]).includes(bassState.phase)) return;
+        !(resumeOnly ? ["countdown", "playing"] : ["ready"]).includes(bassState.phase)) return;
       bassPreviousTime = performance.now();
       if (resumeOnly) clearInputs();
       else {
@@ -475,6 +475,17 @@ function initializeRoomEngine(
     bassPreviousTime = performance.now();
     reportBass(bassPreviousTime, true);
     void bassAudio.preload();
+    return true;
+  }
+  function continueBass() {
+    if (disposed || failed || paused || document.hidden || !bassGame.continueFromResult()) return false;
+    cancelBassStart();
+    bassContacts.clear();
+    bassAudio.stop();
+    clearInputs();
+    bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
+    bassPreviousTime = performance.now();
+    reportBass(bassPreviousTime, true);
     return true;
   }
   function setBassAudioOffset(seconds: number) {
@@ -820,7 +831,8 @@ function initializeRoomEngine(
         if (["Space", "Enter"].includes(event.code) && event.target instanceof HTMLElement && event.target.closest("button, a")) return;
         event.preventDefault();
         if (!event.repeat) {
-          if (bassState.phase === "ready" || bassState.phase === "result") startBass();
+          if (bassState.phase === "ready") startBass();
+          else if (bassState.phase === "result") continueBass();
         }
       } else if (event.code === "KeyR") {
         event.preventDefault();
@@ -1393,6 +1405,7 @@ function initializeRoomEngine(
     jump,
     punch,
     startBass,
+    continueBass,
     setBassDifficulty,
     selectBassSong,
     setBassAudioOffset,

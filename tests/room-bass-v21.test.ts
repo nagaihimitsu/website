@@ -184,6 +184,8 @@ describe("スライドの共通譜面・時計・判定", () => {
     game.tick(60, true);
     expect(game.snapshot()).toMatchObject({ phase: "result", hits: song.notes.length,
       score: song.notes.length * 1000, combo: song.notes.length, misses: 0, strayPlucks: 0, difficulty });
+    expect(game.snapshot().result).toMatchObject({ total: song.notes.length, achievement: 100, rank: "SS", maxCombo: song.notes.length,
+      counts: { excellent: song.notes.length, great: 0, good: 0, bad: 0, miss: 0 } });
   });
   it("MIDI修正は明示的な始点・終点で保存可能、原本・確認状態は維持", () => {
     const original = JSON.stringify([master, candidates]);

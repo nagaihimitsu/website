@@ -107,6 +107,7 @@ function BassOverlay({ store, engine, paused, audioStatus, onPause }: {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return <BassGameHUD snapshot={snapshot} paused={paused} audioStatus={audioStatus}
     onStart={() => engine.current?.startBass()}
+    onContinue={() => { engine.current?.continueBass(); }}
     onSong={(id) => {
       if (!engine.current?.selectBassSong(id)) return;
       try {

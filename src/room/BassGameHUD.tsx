@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from "react";
 import { BASS_PROXIMITY_SECONDS, BASS_SONGS, BASS_TRACKS, type BassSongId, type BassDifficulty, type BassGameSnapshot } from "./bassGame";
 import { BASS_FRETBOARD, bassPitch } from "./bassFretboard";
 import type { BassPointerInput } from "./bassInput";
@@ -9,6 +9,7 @@ import "./bassGame.css";
 type Props = {
   snapshot: BassGameSnapshot;
   onStart: () => void;
+  onContinue: () => void;
   onSong: (id: BassSongId) => void;
   onOffset: (seconds: number) => void;
   onDifficulty: (difficulty: BassDifficulty) => void;
@@ -20,6 +21,39 @@ type Props = {
   onLayout?: (occupiedBottomHeight: number) => void;
 };
 const FEEDBACK = { perfect: "Excellent", great: "Great", good: "Good", bad: "Bad", miss: "Miss" };
+
+function BassResultScreen({ snapshot, onContinue, onQuit }: { snapshot: BassGameSnapshot; onContinue: () => void; onQuit: () => void }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const leaving = useRef(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { panel.current?.focus({ preventScroll: true }); }, []);
+  const result = snapshot.result!;
+  const leave = (action: () => void) => {
+    if (leaving.current) return;
+    leaving.current = true; setBusy(true); action();
+  };
+  const keys = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); leave(onQuit); }
+    if (event.key !== "Tab") return;
+    const buttons = panel.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+    if (!buttons?.length) return;
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) { event.preventDefault(); first.focus(); }
+  };
+  return <div className="bass-result-backdrop">
+    <div className="bass-result" ref={panel} role="dialog" aria-modal="true" aria-labelledby="bass-result-title" tabIndex={-1} onKeyDown={keys}>
+      <header><p className="bass-result-caption">RESULT</p><h2 id="bass-result-title">{snapshot.songTitle}</h2><p className="bass-result-difficulty">{snapshot.difficulty.toUpperCase()}</p></header>
+      <div className="bass-result-rating"><div><span>総合評価</span><strong className="bass-result-rank">{result.rank}</strong></div><div><span>達成率</span><strong className="bass-result-achievement">{result.achievement.toFixed(2)}<small>%</small></strong></div></div>
+      <dl className="bass-result-counts">
+        {(["excellent", "great", "good", "bad", "miss"] as const).map(key => <div key={key} data-bass-result-count={key}><dt>{key === "excellent" ? "Excellent" : key[0].toUpperCase() + key.slice(1)}</dt><dd>{result.counts[key]}</dd></div>)}
+        <div data-bass-result-count="max-combo"><dt>最大コンボ</dt><dd>{result.maxCombo}</dd></div>
+      </dl>
+      <p className="bass-result-score">SCORE <strong>{snapshot.score.toLocaleString()}</strong></p>
+      <div className="bass-result-actions"><button type="button" disabled={busy} onClick={() => leave(onContinue)}>続ける</button><button type="button" disabled={busy} onClick={() => leave(onQuit)}>やめる</button></div>
+    </div>
+  </div>;
+}
 
 function Timeline({ snapshot, time }: { snapshot: BassGameSnapshot; time: number }) {
   const host = useRef<HTMLDivElement>(null);
@@ -84,7 +118,7 @@ function SlidePaths({ snapshot, time }: { snapshot: BassGameSnapshot; time: numb
   </svg>;
 }
 
-export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDifficulty, onInput, onPause, onPutDown, onLayout, audioStatus }: Props) {
+export function BassGameHUD({ snapshot, paused, onStart, onContinue, onSong, onOffset, onDifficulty, onInput, onPause, onPutDown, onLayout, audioStatus }: Props) {
   const { phase } = snapshot;
   const deck = useRef<HTMLDivElement>(null);
   const contacts = useRef(new Map<number, BassPointerInput>());
@@ -93,7 +127,12 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
   const layoutCallback = useRef(onLayout);
   layoutCallback.current = onLayout;
   const enabled = !paused && phase === "playing";
-  const visible = !paused && ["ready", "countdown", "playing", "result"].includes(phase);
+  const visible = !paused && ["ready", "countdown", "playing"].includes(phase);
+  const previousPhase = useRef(phase);
+  useEffect(() => {
+    if (phase === "ready" && previousPhase.current === "result") deck.current?.querySelector<HTMLSelectElement>(".bass-song-select select")?.focus({ preventScroll: true });
+    previousPhase.current = phase;
+  }, [phase]);
   useEffect(() => {
     const clear = () => {
       for (const contact of contacts.current.values()) callback.current({ ...contact, action: "cancel", time: performance.now() });
@@ -130,6 +169,10 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
     onInput(input);
     if (action === "up" || action === "cancel") contacts.current.delete(event.pointerId);
   };
+  if (phase === "result" && snapshot.result) return <section className="bass-hud bass-phase-result" data-bass-phase={phase} data-selected-difficulty={snapshot.difficulty} aria-label="ベース演奏"
+    onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()}>
+    <BassResultScreen snapshot={snapshot} onContinue={onContinue} onQuit={onPutDown} />
+  </section>;
   return <section className={`bass-hud bass-phase-${phase}`} data-bass-phase={phase} data-selected-difficulty={snapshot.difficulty} aria-label="ベース演奏"
     onPointerDown={event => event.stopPropagation()} onPointerMove={event => event.stopPropagation()} onPointerUp={event => event.stopPropagation()} onContextMenu={event => event.preventDefault()}>
     <header className="bass-top-hud">
@@ -192,15 +235,14 @@ export function BassGameHUD({ snapshot, paused, onStart, onSong, onOffset, onDif
         })}
         <SlidePaths snapshot={snapshot} time={time} />
       </div>
-      {(phase === "ready" || phase === "result") && <div className="bass-setup">
-        {phase === "result" && <div className="bass-result" role="status">SCORE {snapshot.score.toLocaleString()} · 精度 {Math.round(snapshot.accuracy)}% · 最高コンボ {snapshot.maxCombo}</div>}
+      {phase === "ready" && <div className="bass-setup">
         <label className="bass-song-select">曲<select aria-label="曲を選択" value={snapshot.songId} onChange={event => onSong(event.target.value as BassSongId)}>{BASS_TRACKS.map(track => <option key={track.id} value={track.id}>{track.title}{track.draft ? "（仮譜面）" : ""}</option>)}</select></label>
         {snapshot.importSummary ? <>
           <p className="bass-draft-summary">仮譜面 · {snapshot.importSummary.playableCount}音（0〜5F）<br />運指・奏法・原曲との一致は未確認</p>
           <label className="bass-offset">譜面調整<input aria-label="新曲の譜面オフセット（ミリ秒）" type="number" min="-750" max="5000" step="10" value={Math.round(snapshot.audioOffsetSec * 1000)} onChange={event => { const ms = Math.round(Number(event.target.value)); if (event.target.value !== "" && ms >= -750 && ms <= 5000) onOffset(ms / 1000); }} />ms</label>
         </> : <div className="bass-difficulty-selector" role="group" aria-label="難易度">{(["easy", "normal", "hard"] as const).map(value => <button key={value} data-bass-difficulty={value} aria-pressed={value === snapshot.difficulty} onClick={() => onDifficulty(value)}>{BASS_SONGS[value].label}</button>)}</div>}
         {!snapshot.importSummary && <p>{snapshot.songId === "technique-study" ? "タップ · 長押し · ↕フリック · ↔同じ弦をスライド" : "音名をタップ · 帯は長押し · ↕は上下フリック"}</p>}
-        <button className="bass-start" onClick={onStart} disabled={busy}>{busy ? "曲を準備中…" : audioStatus === "error" ? "曲の読み込みを再試行" : audioStatus === "unavailable" ? "音声を再試行" : phase === "result" ? "もう一度" : "演奏する"}</button>
+        <button className="bass-start" onClick={onStart} disabled={busy}>{busy ? "曲を準備中…" : audioStatus === "error" ? "曲の読み込みを再試行" : audioStatus === "unavailable" ? "音声を再試行" : "演奏する"}</button>
       </div>}
       {enabled && (audioStatus === "unavailable" || audioStatus === "error") && <button className="bass-audio-resume" onClick={onStart}>音声を再開</button>}
     </div>

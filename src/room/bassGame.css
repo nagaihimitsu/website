@@ -25,7 +25,7 @@
 .bass-fret-clock { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }.bass-fret-clock rect { fill:none; stroke:#fff3bc; stroke-width:5; vector-effect:non-scaling-stroke; }
 .bass-fret-name { position:relative; z-index:1; font:800 clamp(16px,4.8vw,23px)/1 system-ui,sans-serif; text-shadow:0 1px 2px #0005; white-space:nowrap; }.bass-fret-name small { font-size:9px; margin-left:1px; opacity:.85; }.bass-fret-technique { position:absolute; z-index:1; left:0; right:0; bottom:3px; font-size:8px; font-weight:bold; }.is-holding { outline:2px solid #eecb7d; outline-offset:-2px; }
 .bass-setup { position:absolute; inset:auto 8px calc(100% + 10px); display:flex; flex-direction:column; justify-content:center; gap:8px; padding:12px; border-radius:12px; background:#faf7eef5; box-shadow:0 4px 20px #53432110; text-align:center; }.bass-setup p { margin:0; font-size:11px; color:#77826b; }.bass-difficulty-selector { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }.bass-difficulty-selector button { min-height:44px; border:1px solid #a1ae8b50; border-radius:10px; color:#7b866e; background:#f2f1e7; font-size:11px; }.bass-difficulty-selector button[aria-pressed=true] { background:#e4ead6; border-color:#8a9d6e; color:#4d663b; }
-.bass-start,.bass-audio-resume { min-height:48px; padding:10px 18px; border:0; border-radius:12px; color:#fffdf4; background:#586c4b; font-size:13px; }.bass-start:disabled { opacity:.65; }.bass-result { font-size:12px; line-height:1.8; }.bass-audio-resume { position:absolute; inset:50% 20px auto; }
+.bass-start,.bass-audio-resume { min-height:48px; padding:10px 18px; border:0; border-radius:12px; color:#fffdf4; background:#586c4b; font-size:13px; }.bass-start:disabled { opacity:.65; }.bass-audio-resume { position:absolute; inset:50% 20px auto; }
 @media(max-height:650px) { .bass-fretboard { gap:4px; height:188px; }.bass-deck { padding-bottom:6px; }.bass-top-hud { padding-block:7px; }.bass-timeline,.bass-timeline svg { height:66px; } }
 @media(prefers-reduced-motion:reduce) { .bass-fret { box-shadow:none!important; } }
 
@@ -35,7 +35,21 @@
 .bass-offset { justify-content:center; }
 .bass-draft-summary { line-height:1.5; }
 
-.bass-phase-result .bass-setup { gap:6px; padding:10px; }
+.bass-result-backdrop { position:absolute; inset:0; display:grid; place-items:center; padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); box-sizing:border-box; background:#eeeaddc9; pointer-events:auto; touch-action:none; }
+.bass-result { width:min(400px,100%); max-height:100%; overflow:auto; box-sizing:border-box; padding:22px 20px 18px; border:1px solid #fffdf2; border-radius:22px; background:#faf7ee; box-shadow:0 8px 32px #66573b1a; text-align:center; animation:bass-result-appear .18s ease-out; outline:none; }
+.bass-result-caption { margin:0 0 10px; color:#7c856e; font-size:10px; letter-spacing:2px; }
+.bass-result h2 { margin:0; font-size:16px; line-height:1.4; overflow-wrap:anywhere; }
+.bass-result-difficulty { margin:6px 0 0; color:#788368; font-size:11px; letter-spacing:1px; }
+.bass-result-rating { display:flex; align-items:center; justify-content:center; gap:24px; margin:18px 0; }
+.bass-result-rank { font-size:64px; line-height:1; color:#8a703b; letter-spacing:-3px; }
+.bass-result-rating div { text-align:left; }.bass-result-rating span { display:block; margin-bottom:4px; font-size:11px; color:#7c856e; }
+.bass-result-achievement { display:block; font-size:32px; font-variant-numeric:tabular-nums; line-height:1.2; }.bass-result-achievement small { margin-left:3px; font-size:15px; }
+.bass-result-counts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin:0; }.bass-result-counts div { display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0; padding:10px; border-radius:10px; background:#eeeedf; }.bass-result-counts dt { font-size:11px; color:#6e795f; }.bass-result-counts dd { margin:0; font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; }
+.bass-result-score { margin:14px 0; color:#7c856e; font-size:11px; }.bass-result-score strong { margin-left:8px; color:#405436; font-size:16px; }
+.bass-result-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.bass-result-actions button { min-height:48px; border:1px solid #9cae8666; border-radius:12px; color:#536644; background:#ebeeda; font-size:14px; }.bass-result-actions button:first-child { background:#586c4b; color:#fffdf4; }.bass-result-actions button:focus-visible { outline:3px solid #b59754; outline-offset:2px; }.bass-result-actions button:disabled { opacity:.6; }
+@keyframes bass-result-appear { from { opacity:0; } to { opacity:1; } }
+@media(max-height:550px) { .bass-result { padding:12px; }.bass-result-rating { margin:10px 0; }.bass-result-rank { font-size:48px; }.bass-result-counts div { padding:6px 10px; }.bass-result-score { margin:10px 0; } }
+@media(prefers-reduced-motion:reduce) { .bass-result { animation:none; } }
 
 /* Ver.2.1: 色は共通MIDI関数、奏法は形状・帯・矢印で区別する。 */
 .bass-time-note circle,.bass-slap-outline { fill:var(--tone); stroke:#fff8e3; stroke-width:2; }

@@ -128,8 +128,10 @@ test("MIDI入力・同音別位置・誤入力音声・ポーズ・結果・再�
   started = await page.evaluate(() => performance.now()) - (BASS_SONGS.easy.countdownSeconds + Number(await room.getAttribute("data-bass-elapsed"))) * 1000;
   await seek(page, started, BASS_DURATION + 0.1);
   await expect(room).toHaveAttribute("data-bass-phase", "result");
-  await expect(page.locator(".bass-result")).toContainText("最高コンボ");
-  await page.getByRole("button", { name: "もう一度", exact: true }).click();
+  await expect(page.locator(".bass-result")).toContainText("最大コンボ");
+  await page.getByRole("button", { name: "続ける", exact: true }).click();
+  await expect(room).toHaveAttribute("data-bass-phase", "ready");
+  await page.getByRole("button", { name: "演奏する", exact: true }).click();
   await expect(room).toHaveAttribute("data-bass-score", "0");
   await expect(room).toHaveAttribute("data-bass-phase", "countdown");
   await page.getByRole("button", { name: "ベースを置く", exact: true }).click();
@@ -264,6 +266,7 @@ test("新曲を選び、オフセット付き譜面・原曲音源・停止再�
   await expect(room).toHaveAttribute("data-bass-song", "final-hit");
   await page.clock.fastForward(65000);
   await expect(room).toHaveAttribute("data-bass-phase", "result");
+  await page.getByRole("button", { name: "続ける", exact: true }).click();
   await page.getByRole("combobox", { name: "曲を選択" }).selectOption("garden-party");
   await expect(room).toHaveAttribute("data-bass-song", "garden-party");
   await expect(page.locator(".bass-title")).toContainText("Garden-Party Groove");
@@ -316,6 +319,71 @@ async function studyStart(page: Page) {
   await expect(page.locator(".room-home")).toHaveAttribute("data-bass-phase", "countdown");
   return page.evaluate(() => performance.now());
 }
+
+for (const [width, height] of [[375, 667], [390, 844], [430, 932]]) {
+  test(`リザルト ${width}px 全判定・固定結果・続ける・やめる`, { tag: "@bass" }, async ({ page }) => {
+    const errors = collectPageErrors(page);
+    await page.setViewportSize({ width, height });
+    const room = await prepare(page);
+    const started = await start(page);
+    await page.evaluate(() => {
+      (window as any).bassResultMounts = 0;
+      new MutationObserver(records => {
+        for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) {
+          (window as any).bassResultMounts += node.matches(".bass-result") ? 1 : node.querySelectorAll(".bass-result").length;
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    await seek(page, started, BASS_DURATION + 0.1);
+    const result = page.getByRole("dialog", { name: "Garden-Party Groove" });
+    await expect(result).toHaveCount(1);
+    await expect(result).toContainText("EASY");
+    await expect(page.locator(".bass-result-rank")).toHaveText("D");
+    await expect(page.locator(".bass-result-achievement")).toHaveText("0.00%");
+    for (const key of ["excellent", "great", "good", "bad", "max-combo"]) await expect(page.locator(`[data-bass-result-count="${key}"] dd`)).toHaveText("0");
+    await expect(page.locator('[data-bass-result-count="miss"] dd')).toHaveText(String(BASS_SONGS.easy.notes.length));
+    await expect(page.locator(".bass-fretboard,.bass-song-select")).toHaveCount(0);
+    await expect(result.getByRole("button")).toHaveCount(2);
+    const before = await result.textContent();
+    const voices = (await samplerStarts(page)).length;
+    await page.clock.fastForward(10000);
+    await page.keyboard.press("KeyG");
+    expect(await result.textContent()).toBe(before);
+    expect(await samplerStarts(page)).toHaveLength(voices);
+    expect(await page.evaluate(() => (window as any).bassResultMounts)).toBe(1);
+    for (const control of [result, result.getByRole("button", { name: "続ける" }), result.getByRole("button", { name: "やめる" })]) {
+      const box = (await control.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(height);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.evaluate(() => scrollY)).toBe(0);
+    await page.screenshot({ path: `/tmp/bass-result-${width}.png` });
+    await page.keyboard.press("Tab");
+    await expect(result.getByRole("button", { name: "続ける" })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(result.getByRole("button", { name: "やめる" })).toBeFocused();
+    await result.getByRole("button", { name: "続ける" }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+    await expect(room).toHaveAttribute("data-bass-phase", "ready");
+    await expect(page.getByRole("combobox", { name: "曲を選択" })).toBeFocused();
+    await expect(room).toHaveAttribute("data-bass-score", "0");
+    await expect(room).toHaveAttribute("data-bass-hits", "0");
+    await expect(page.locator(".bass-result")).toHaveCount(0);
+    await page.getByRole("combobox", { name: "曲を選択" }).selectOption("technique-study");
+    await page.getByRole("button", { name: "演奏する", exact: true }).click();
+    await page.clock.fastForward(65000);
+    await expect(room).toHaveAttribute("data-bass-phase", "result");
+    await expect(page.locator('[data-bass-result-count="miss"] dd')).toHaveText(String(BASS_TECHNIQUE_STUDY.notes.length));
+    expect(await page.evaluate(() => (window as any).bassResultMounts)).toBe(2);
+    await page.getByRole("button", { name: "やめる", exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+    await expect(room).toHaveAttribute("data-bass-phase", "idle");
+    await expect(page.locator(".bass-result,.bass-hud")).toHaveCount(0);
+    await page.clock.fastForward(4500);
+    await expect(room).toHaveAttribute("data-bass-phase", "idle");
+    expect(errors).toEqual([]);
+  });
+}
+
 async function slidePointer(page: Page, string: number, startFret: number, currentFret: number, id: number, action: "down" | "move" | "up" | "cancel") {
   const startControl = page.locator(`[data-bass-fret="${string}-${startFret}"]`);
   const a = (await startControl.boundingBox())!;
@@ -367,8 +435,11 @@ test("奏法練習の完全版3難易度を375pxで選択し、終止音・結�
     await seek(page, started, song.duration + 0.1, difficulty);
     await expect(room).toHaveAttribute("data-bass-phase", "result");
     await expect(page.locator(".bass-result")).toContainText("1,000");
-    const resultSetup = (await page.locator(".bass-setup").boundingBox())!;
-    expect(resultSetup.y).toBeGreaterThanOrEqual(header.y + header.height);
+    const resultPanel = (await page.locator(".bass-result").boundingBox())!;
+    expect(resultPanel.y).toBeGreaterThanOrEqual(0);
+    expect(resultPanel.y + resultPanel.height).toBeLessThanOrEqual(667);
+    await page.getByRole("button", { name: "続ける", exact: true }).click();
+    await expect(room).toHaveAttribute("data-bass-phase", "ready");
   }
   await page.getByRole("combobox", { name: "曲を選択" }).selectOption("garden-party");
   await expect(room).toHaveAttribute("data-bass-difficulty", "easy");
