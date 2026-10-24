@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { BASS_SONGS, BASS_TECHNIQUE_STUDY, createBassGame, validateBassSlide, type BassNote, type BassGameSnapshot } from "../src/room/bassGame";
-import { BASS_FRETBOARD, bassPitchColor, bassPositionsForMidi, bassPitch, midiFrequency } from "../src/room/bassFretboard";
+import { BASS_SONGS, BASS_TECHNIQUE_STUDY, BASS_TECHNIQUE_STUDIES, createBassGame, validateBassSlide, type BassNote, type BassGameSnapshot } from "../src/room/bassGame";
+import { BASS_FRETBOARD, BASS_STRINGS, bassPitchColor, bassPositionsForMidi, bassPitch, midiFrequency } from "../src/room/bassFretboard";
+import { GARDEN_BASS_NOTES, GARDEN_TRACK, gardenBeatToTime, gardenTimeToBeat } from "../src/room/gardenTrack";
 import { createBassContacts, type BassPointerInput } from "../src/room/bassInput";
 import { chargeProgress, nextCharge, timelineX } from "../src/room/bassVisuals";
 import { createBassPerformanceEffects, bassComboTier, successfulBassEvent, BASS_EFFECT_CONFIG } from "../src/room/art/bassPerformanceEffects";
@@ -163,9 +164,11 @@ describe("スライドの共通譜面・時計・判定", () => {
     const game = playing(); game.tick(60, true); expect(game.snapshot().phase).toBe("result");
     expect(game.selectSong("technique-study")).toBe(true); expect(game.snapshot().songId).toBe("technique-study");
   });
-  it("練習譜面全曲を4奏法で完走し、最終スコアとコンボを1音1回に保つ", () => {
-    const game = playing(BASS_TECHNIQUE_STUDY.notes);
-    for (const note of BASS_TECHNIQUE_STUDY.notes) {
+  it.each(["easy", "normal", "hard"] as const)("練習%s全曲を4奏法で完走し、最終スコアとコンボを1音1回に保つ", difficulty => {
+    const song = BASS_TECHNIQUE_STUDIES[difficulty];
+    const game = createBassGame(); game.tick(4.1, true); game.selectSong("technique-study"); game.setDifficulty(difficulty);
+    game.start(); game.tick(song.countdownSeconds, true);
+    for (const note of song.notes) {
       game.tick(note.time - game.snapshot().elapsed, true);
       game.beginInput(note.id, note.midi, note.time, note);
       if (note.kind === "slap") game.slapInput(note.id);
@@ -179,8 +182,8 @@ describe("スライドの共通譜面・時計・判定", () => {
       game.endInput(note.id);
     }
     game.tick(60, true);
-    expect(game.snapshot()).toMatchObject({ phase: "result", hits: BASS_TECHNIQUE_STUDY.notes.length,
-      score: BASS_TECHNIQUE_STUDY.notes.length * 1000, combo: BASS_TECHNIQUE_STUDY.notes.length, misses: 0, strayPlucks: 0 });
+    expect(game.snapshot()).toMatchObject({ phase: "result", hits: song.notes.length,
+      score: song.notes.length * 1000, combo: song.notes.length, misses: 0, strayPlucks: 0, difficulty });
   });
   it("MIDI修正は明示的な始点・終点で保存可能、原本・確認状態は維持", () => {
     const original = JSON.stringify([master, candidates]);
@@ -191,6 +194,70 @@ describe("スライドの共通譜面・時計・判定", () => {
     expect(result.notes.find(n => n.sourceId === source.id)).toMatchObject({ kind: "slide", endMidi: 38, endFret: 5, techniqueVerified: false });
     expect(JSON.stringify([master, candidates])).toBe(original);
     expect(() => importMidiChart(master, candidates, { schemaVersion: "1.0.0", notes: { [source.id]: { kind: "slide" } } })).toThrow();
+  });
+});
+
+describe("奏法練習の完全版と3難易度", () => {
+  it.each(["easy", "normal", "hard"] as const)("%sは録音終止まで4奏法を持ち、重複や保持中の次音を作らない", difficulty => {
+    const song = BASS_TECHNIQUE_STUDIES[difficulty];
+    expect(song).toMatchObject({ id: "technique-study", difficulty, label: difficulty.toUpperCase(), duration: GARDEN_TRACK.duration });
+    expect(new Set(song.notes.map(n => n.kind))).toEqual(new Set(["tap", "hold", "slap", "slide"]));
+    expect(song.notes.at(-1)).toMatchObject({ time: GARDEN_BASS_NOTES.at(-1)!.time, midi: 38, kind: "hold", endTime: GARDEN_TRACK.fadeStart });
+    expect(new Set(song.notes.map(n => n.id)).size).toBe(song.notes.length);
+    for (const [index, note] of song.notes.entries()) {
+      expect(note.id).toBe(index); expect(note.phraseId).toBe(index);
+      expect(note.midi).toBe(BASS_STRINGS[note.string].openMidi + note.fret);
+      expect(note.frequency).toBeCloseTo(midiFrequency(note.midi));
+      expect(note.fret).toBeGreaterThanOrEqual(1); expect(note.fret).toBeLessThanOrEqual(5);
+      expect(() => validateBassSlide(note)).not.toThrow();
+      expect(note.endTime ?? note.time).toBeLessThanOrEqual(song.duration);
+      if (index) {
+        const previous = song.notes[index - 1];
+        const gap = note.time - (previous.endTime ?? previous.time);
+        expect(gap).toBeGreaterThan(0); expect(gap).toBeLessThanOrEqual(1.81);
+      }
+    }
+    for (const start of [0, 10, 20, 30, 40, 50]) expect(song.notes.some(n => n.time >= start && n.time < start + 10)).toBe(true);
+    expect(song.phrases).toHaveLength(song.notes.length);
+  });
+  it("NORMALの既存31音を維持し、EASYは間引き・短い移動、HARDは拍に合う音を追加", () => {
+    const { easy, normal, hard } = BASS_TECHNIQUE_STUDIES;
+    expect(BASS_TECHNIQUE_STUDY).toBe(normal);
+    expect([easy.notes.length, normal.notes.length, hard.notes.length]).toEqual([46, 61, 102]);
+    expect(normal.notes.slice(0, 31).map(n => n.time)).toEqual([
+      1, 2, 4, 6, 7, 8, ...Array.from({ length: 8 }, (_, i) => 10 + i * 0.125),
+      12, 14, 16, 18, 19, 21, ...Array.from({ length: 8 }, (_, i) => 24 + i * 0.125), 26, 28, 29,
+    ]);
+    expect(normal.notes[31].time).toBe(gardenBeatToTime(54));
+    for (const note of easy.notes.filter(n => n.kind === "slide")) expect(Math.abs(note.endFret! - note.fret)).toBeLessThanOrEqual(2);
+    expect(normal.notes.some(n => n.kind === "slide" && Math.abs(n.endFret! - n.fret) > 2)).toBe(true);
+    const signature = ({ id: _id, phraseId: _phraseId, ...note }: BassNote) => JSON.stringify(note);
+    const originals = new Set(normal.notes.map(signature));
+    for (const note of normal.notes) expect(hard.notes.map(signature)).toContain(signature(note));
+    for (const note of hard.notes.filter(n => !originals.has(signature(n)))) {
+      expect(note.kind).toBe("tap");
+      expect(gardenTimeToBeat(note.time) * 2).toBeCloseTo(Math.round(gardenTimeToBeat(note.time) * 2));
+    }
+  });
+  it("曲ごとに難易度を保持し、練習はNORMALを初期選択、演奏中やポーズ中は変更しない", () => {
+    const game = createBassGame(); game.tick(4.1, true);
+    expect(game.setDifficulty("hard")).toBe(true);
+    expect(game.selectSong("technique-study")).toBe(true);
+    expect(game.snapshot()).toMatchObject({ difficulty: "normal", notes: expect.any(Array) });
+    expect(game.snapshot().notes).toHaveLength(61);
+    expect(game.setDifficulty("easy")).toBe(true); expect(game.snapshot().notes).toHaveLength(46);
+    game.tick(0, true, true); expect(game.setDifficulty("hard")).toBe(false);
+    game.tick(0, true); game.start(); expect(game.setDifficulty("hard")).toBe(false);
+    game.tick(BASS_TECHNIQUE_STUDIES.easy.countdownSeconds + 1, true);
+    game.beginInput(1, 35); game.endInput(1);
+    expect(game.snapshot().hits).toBe(1); expect(game.setDifficulty("hard")).toBe(false);
+    game.tick(60, true); expect(game.setDifficulty("hard")).toBe(true);
+    expect(game.snapshot()).toMatchObject({ phase: "ready", difficulty: "hard", score: 0, combo: 0, hits: 0, elapsed: 0 });
+    expect(game.snapshot().notes).toHaveLength(102);
+    game.selectSong("garden-party"); expect(game.snapshot().difficulty).toBe("hard");
+    game.setDifficulty("normal"); game.selectSong("technique-study"); expect(game.snapshot().difficulty).toBe("hard");
+    game.selectSong("final-hit"); expect(game.setDifficulty("easy")).toBe(false);
+    game.selectSong("garden-party"); expect(game.snapshot().difficulty).toBe("normal");
   });
 });
 

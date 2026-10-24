@@ -236,7 +236,13 @@ function makeSong(difficulty: BassDifficulty): BassSong {
 export const BASS_SONGS: Readonly<Record<BassDifficulty, BassSong>> = Object.freeze({
   easy: makeSong("easy"), normal: makeSong("normal"), hard: makeSong("hard"),
 });
-export const BASS_TECHNIQUE_STUDY = makeTechniqueStudy(BASS_SONGS.easy);
+export const BASS_TECHNIQUE_STUDIES: Readonly<Record<BassDifficulty, BassSong>> = Object.freeze({
+  easy: makeTechniqueStudy(BASS_SONGS.easy, "easy"),
+  normal: makeTechniqueStudy(BASS_SONGS.normal, "normal"),
+  hard: makeTechniqueStudy(BASS_SONGS.hard, "hard"),
+});
+// 旧エイリアスは完全版NORMALを指す。
+export const BASS_TECHNIQUE_STUDY = BASS_TECHNIQUE_STUDIES.normal;
 // Existing integrations and EASY fixtures keep their stable aliases.
 export const BASS_BPM = BASS_SONGS.easy.bpm;
 export const BASS_BEAT_SECONDS = BASS_SONGS.easy.beatSeconds;
@@ -248,8 +254,9 @@ export const BASS_CHART = BASS_SONGS.easy.notes;
 /** The engine supplies active elapsed time; a menu/background pause never ages notes. */
 export function createBassGame(chart?: readonly BassNote[]) {
   let phase: BassPhase = "idle";
-  let difficulty: BassDifficulty = "easy";
-  let activeSong: BassSong = BASS_SONGS[difficulty];
+  let gardenDifficulty: BassDifficulty = "easy";
+  let studyDifficulty: BassDifficulty = "normal";
+  let activeSong: BassSong = BASS_SONGS[gardenDifficulty];
   const song = () => activeSong;
   let proximityTime = 0;
   let pickupTime = 0;
@@ -400,8 +407,8 @@ export function createBassGame(chart?: readonly BassNote[]) {
         candidateCount: song().importInfo!.candidateNoteCount, playableCount: song().notes.length,
         excludedCount: song().importInfo!.excluded.filter(n => n.reason === "outside-current-fretboard").length,
         audioSyncVerified: song().importInfo!.audioSyncVerified } } : {}),
-      directInput, difficulty, bpm: song().bpm, beatSeconds: song().beatSeconds,
-      beat: song().id === "garden-party" ? gardenTimeToBeat(phase === "countdown" ? -countdownRemaining : elapsed) :
+      directInput, difficulty: song().difficulty, bpm: song().bpm, beatSeconds: song().beatSeconds,
+      beat: song().id !== "final-hit" ? gardenTimeToBeat(phase === "countdown" ? -countdownRemaining : elapsed) :
         (phase === "countdown" ? -countdownRemaining : elapsed) / song().beatSeconds,
       proximityProgress: Math.min(1, proximityTime / BASS_PROXIMITY_SECONDS),
       pickupProgress: Math.min(1, pickupTime / BASS_PICKUP_SECONDS),
@@ -484,7 +491,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
 
   function selectSong(id: BassSongId) {
     if (isPaused || !["ready", "result"].includes(phase) || !BASS_TRACKS.some(track => track.id === id)) return false;
-    activeSong = id === "garden-party" ? BASS_SONGS[difficulty] : id === "technique-study" ? BASS_TECHNIQUE_STUDY : finalHitSong();
+    activeSong = id === "garden-party" ? BASS_SONGS[gardenDifficulty] : id === "technique-study" ? BASS_TECHNIQUE_STUDIES[studyDifficulty] : finalHitSong();
     resetScore(); phase = "ready"; return true;
   }
   function setAudioOffset(offset: number) {
@@ -500,10 +507,10 @@ export function createBassGame(chart?: readonly BassNote[]) {
   }
 
   function setDifficulty(value: BassDifficulty) {
-    if (song().id !== "garden-party" || isPaused || (phase !== "ready" && phase !== "result") ||
+    if (song().id === "final-hit" || isPaused || (phase !== "ready" && phase !== "result") ||
       typeof value !== "string" || !Object.hasOwn(BASS_SONGS, value)) return false;
-    difficulty = value;
-    activeSong = BASS_SONGS[difficulty];
+    if (song().id === "technique-study") { studyDifficulty = value; activeSong = BASS_TECHNIQUE_STUDIES[value]; }
+    else { gardenDifficulty = value; activeSong = BASS_SONGS[value]; }
     resetScore();
     phase = "ready";
     return true;

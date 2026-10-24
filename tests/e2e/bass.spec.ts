@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { BASS_SONGS, BASS_TECHNIQUE_STUDY, BASS_DURATION } from "../../src/room/bassGame";
+import { BASS_SONGS, BASS_TECHNIQUE_STUDY, BASS_TECHNIQUE_STUDIES, BASS_DURATION } from "../../src/room/bassGame";
 import { BASS_FRETBOARD } from "../../src/room/bassFretboard";
 import { collectPageErrors, enterRoom, savedPosition } from "./helpers/room";
 
@@ -325,6 +325,58 @@ async function slidePointer(page: Page, string: number, startFret: number, curre
     buttons: action === "up" || action === "cancel" ? 0 : 1,
     clientX: b.x + b.width / 2 + next * (a.width + 6), clientY: a.y + a.height / 2 });
 }
+
+test("奏法練習の完全版3難易度を375pxで選択し、終止音・結果・再選択まで演奏する", { tag: "@bass" }, async ({ page }) => {
+  const errors = collectPageErrors(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  const room = await prepare(page);
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("technique-study");
+  await expect(room).toHaveAttribute("data-bass-difficulty", "normal");
+  for (const difficulty of ["normal", "easy", "hard"] as const) {
+    const song = BASS_TECHNIQUE_STUDIES[difficulty];
+    await page.locator(`button[data-bass-difficulty=${difficulty}]`).click();
+    await expect(page.locator(".bass-title")).toContainText(difficulty.toUpperCase());
+    await expect(page.locator(`button[data-bass-difficulty=${difficulty}]`)).toHaveAttribute("aria-pressed", "true");
+    const header = (await page.locator(".bass-top-hud").boundingBox())!;
+    const setup = (await page.locator(".bass-setup").boundingBox())!;
+    expect(setup.y).toBeGreaterThanOrEqual(header.y + header.height);
+    for (const selector of [".bass-setup", ".bass-song-select", ".bass-difficulty-selector", ".bass-start", ".bass-fretboard"]) {
+      const box = (await page.locator(selector).boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(375); expect(box.y + box.height).toBeLessThanOrEqual(667);
+    }
+    await expect(page.locator("[data-bass-fret]")).toHaveCount(24);
+    if (difficulty === "normal") await page.screenshot({ path: "/tmp/bass-study-ready-375.png" });
+    const started = await start(page, difficulty);
+    await expect(room).toHaveAttribute("data-bass-score", "0");
+    const ending = song.notes.at(-1)!;
+    await seek(page, started, ending.time - 0.2, difficulty);
+    await expect(page.locator(`[data-bass-note="${ending.id}"] .bass-hold-tail`)).toBeVisible();
+    const timeline = (await page.locator("[data-bass-timeline]").boundingBox())!;
+    const board = (await page.locator(".bass-fretboard").boundingBox())!;
+    expect(timeline.y + timeline.height).toBeLessThan(board.y);
+    await seek(page, started, ending.time, difficulty);
+    const before = (await samplerStarts(page)).length;
+    await hit(page, ending.midi, 71);
+    await expect(pad(page, ending.midi)).toHaveClass(/is-holding/);
+    await seek(page, started, ending.endTime!, difficulty);
+    await hit(page, ending.midi, 71, "up");
+    await expect(room).toHaveAttribute("data-bass-hits", "1");
+    await expect(room).toHaveAttribute("data-bass-score", "1000");
+    expect(await samplerStarts(page)).toHaveLength(before + 1);
+    await seek(page, started, song.duration + 0.1, difficulty);
+    await expect(room).toHaveAttribute("data-bass-phase", "result");
+    await expect(page.locator(".bass-result")).toContainText("1,000");
+    const resultSetup = (await page.locator(".bass-setup").boundingBox())!;
+    expect(resultSetup.y).toBeGreaterThanOrEqual(header.y + header.height);
+  }
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("garden-party");
+  await expect(room).toHaveAttribute("data-bass-difficulty", "easy");
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("technique-study");
+  await expect(room).toHaveAttribute("data-bass-difficulty", "hard");
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  expect(errors).toEqual([]);
+});
 
 test("V2.1 左右スライド・連続音程・上下スラップ・保持と高速連打", { tag: "@bass" }, async ({ page }) => {
   const errors = collectPageErrors(page);
