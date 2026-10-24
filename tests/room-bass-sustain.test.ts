@@ -1,4 +1,6 @@
-import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import fixture from "./fixtures/bass-sustain-g1.json" with { type: "json" };
 import { describe, expect, it } from "vitest";
 import { bassSustainSamples, BASS_SUSTAIN_CONFIG as CONFIG } from "../src/room/bassSustain";
 import { createBassContacts, type BassPointerInput } from "../src/room/bassInput";
@@ -15,8 +17,11 @@ describe("1回のアタックと連続した持続波形", () => {
     expect(samples.every(Number.isFinite)).toBe(true);
   });
   it("実際の既存MP3の継ぎ目・繰り返し減衰を除き、1／2／4秒とも再アタックしない", () => {
-    const bytes = execFileSync("ffmpeg", ["-v", "error", "-i", "src/assets/audio/garden-party-bass.mp3", "-ar", "24000", "-ac", "1", "-f", "f32le", "-"], { maxBuffer: 10_000_000 });
-    const source = new Float32Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    const bytes = readFileSync("tests/fixtures/bass-sustain-g1.f32");
+    const sha = (data: Buffer) => createHash("sha256").update(data).digest("hex");
+    expect(sha(readFileSync(fixture.sourcePath))).toBe(fixture.sourceSha256);
+    expect(sha(bytes)).toBe(fixture.sha256); expect(bytes.length).toBe(fixture.frames * 4);
+    const source = Float32Array.from({ length: fixture.frames }, (_, index) => bytes.readFloatLE(index * 4));
     const { samples, loopStart, loopEnd } = bassSustainSamples(source, 24000);
     const start = Math.round(loopStart * 24000), end = Math.round(loopEnd * 24000);
     const jump = Math.abs(samples[end - 1] - samples[start]);

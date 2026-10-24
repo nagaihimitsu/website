@@ -1,0 +1,23 @@
+{
+  "sourcePath": "src/assets/audio/garden-party-bass.mp3",
+  "sourceSha256": "0778b3b05222a611cba5087334d8fc2360a3f4118a027273a3ae2071e49b688f",
+  "sampleRate": 24000,
+  "frames": 14400,
+  "encoding": "little-endian float32 mono",
+  "sha256": "bbc65491e2e94c0bb8688cb3f1110490b9e5ff5493043e4bf4cbc81c9e0468e6",
+  "decodeArgs": [
+    "ffmpeg",
+    "-v",
+    "error",
+    "-i",
+    "src/assets/audio/garden-party-bass.mp3",
+    "-ar",
+    "24000",
+    "-ac",
+    "1",
+    "-f",
+    "f32le",
+    "-"
+  ],
+  "excerpt": "最初の14400フレーム（0.6秒）。FFmpegの全デコード出力から切り出す。"
+}
