@@ -417,3 +417,59 @@ describe("direct MIDI sampler", () => {
     expect(gains[2].gain.linearRampToValueAtTime).not.toHaveBeenCalled();
   });
 });
+
+describe("複数曲の音声時計", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("新曲は原曲ミックス1本を原速で再生し、入力音には既存サンプラーを使う", async () => {
+    const { audio, context, recordings, gains } = await ready();
+    audio.selectSong("final-hit");
+    context.decodeAudioData.mockResolvedValueOnce({ duration: 60.0135 } as AudioBuffer);
+    context.decodeAudioData.mockResolvedValueOnce({ duration: 56.14 } as AudioBuffer);
+    expect(await audio.prepare()).toBe(true);
+    const state: BassGameSnapshot = { ...snapshot(1), songId: "final-hit", songTitle: "最終のヒット", duration: 60.0135, countdownSeconds: 2, beatSeconds: 0.5 };
+    audio.sync(state);
+    expect(recordings()).toHaveLength(1);
+    expect(recordings()[0].start).toHaveBeenCalledWith(10, 1);
+    expect(gains.at(-1)!.gain.linearRampToValueAtTime).not.toHaveBeenCalled();
+    audio.playMidi(1, 40, "pick", false);
+    expect(recordings().at(-1)!.buffer).toMatchObject({ duration: 56.14 });
+    expect(recordings().at(-1)!.playbackRate.value).toBeCloseTo(2 ** ((40 - 31) / 12));
+    audio.releaseMidi(1);
+    const count = context.decodeAudioData.mock.calls.length;
+    audio.selectSong("garden-party");
+    expect(await audio.prepare()).toBe(true);
+    expect(context.decodeAudioData).toHaveBeenCalledTimes(count);
+  });
+  it("120ms未満のシークも明示的に反映し、休止と再開に独立した時計を作らない", async () => {
+    const { audio, context, recordings } = await ready();
+    const state = snapshot(1);
+    audio.sync(state);
+    const count = recordings().length;
+    audio.seek({ ...state, elapsed: 1.05 });
+    expect(recordings()).toHaveLength(count + 2);
+    expect(audio.playbackTime()).toBeCloseTo(1.05);
+    audio.seek({ ...state, elapsed: 30 }, true);
+    expect(audio.playbackTime()).toBeNull();
+    context.currentTime += 10;
+    audio.sync({ ...state, elapsed: 30 });
+    expect(audio.playbackTime()).toBeCloseTo(30);
+    expect(recordings().at(-1)!.start).toHaveBeenLastCalledWith(20, 30);
+  });
+  it("読込途中の曲変更は古いデコード結果を新曲へ適用しない", async () => {
+    const { context } = installAudio();
+    const old = deferred<AudioBuffer>();
+    context.decodeAudioData.mockImplementationOnce(() => old.promise);
+    const audio = createBassAudio(); audio.unlock();
+    const preparation = audio.prepare();
+    await vi.waitFor(() => expect(context.decodeAudioData).toHaveBeenCalled());
+    audio.selectSong("final-hit");
+    expect(await audio.prepare()).toBe(true);
+    old.resolve({ duration: 56.14 } as AudioBuffer);
+    expect(await preparation).toBe(false);
+    expect(audio.status()).toBe("ready");
+    const state: BassGameSnapshot = { ...snapshot(), songId: "final-hit" };
+    audio.sync(state);
+    expect(audio.playbackTime()).toBe(0);
+    audio.dispose();
+  });
+});

@@ -218,3 +218,89 @@ test("音源失敗後の再試行と読込中の難易度変更が遅延開始�
   await start(page, "hard");
   await expect(room).toHaveAttribute("data-bass-phase", "countdown");
 });
+
+test("新曲を選び、オフセット付き譜面・原曲音源・停止再開・既存曲への復帰が同期する", { tag: "@bass" }, async ({ page }) => {
+  const errors = collectPageErrors(page);
+  const room = await prepare(page);
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
+  await expect(room).toHaveAttribute("data-bass-song", "final-hit");
+  await expect(page.locator(".bass-draft-summary")).toContainText("315音");
+  await expect(page.locator("[data-bass-fret]")).toHaveCount(24);
+  await page.getByRole("spinbutton", { name: "新曲の譜面オフセット（ミリ秒）" }).fill("120");
+  await expect(room).toHaveAttribute("data-bass-audio-offset", "0.12");
+  await page.getByRole("button", { name: "演奏する", exact: true }).click();
+  await expect(room).toHaveAttribute("data-bass-phase", "countdown");
+  const started = await page.evaluate(() => performance.now());
+  const { finalHitSong } = await import("../../src/room/finalHitTrack");
+  const song = finalHitSong(0.12);
+  const first = song.notes[0];
+  const advance = async (time: number) => {
+    const delta = started + (song.countdownSeconds + time) * 1000 - await page.evaluate(() => performance.now());
+    if (delta > 0) await page.clock.fastForward(delta);
+  };
+  await advance(first.time);
+  await expect(page.locator(`[data-bass-note="${first.id}"]`)).toHaveAttribute("data-midi", String(first.midi));
+  await hit(page, first.midi); await hit(page, first.midi, 1, "up");
+  await expect(room).toHaveAttribute("data-bass-hits", "1");
+  const sources = await page.evaluate(() => (window as any).bassStarts as { rate: number; offset: number; duration: number }[]);
+  const mix = sources.find(n => n.offset === 0 && n.duration > 59)!;
+  expect(mix.duration).toBeCloseTo(60.0135, 2);
+  expect(mix.rate).toBe(1);
+  const scene = (await page.locator(".room-canvas canvas").boundingBox())!;
+  expect(scene.height).toBeGreaterThan(700);
+  await page.clock.runFor(16);
+  await page.screenshot({ path: "/tmp/final-hit-playing.png" });
+  await page.getByRole("button", { name: "演奏をポーズ" }).click();
+  const elapsed = await room.getAttribute("data-bass-elapsed");
+  await page.clock.fastForward(5000);
+  expect(await room.getAttribute("data-bass-elapsed")).toBe(elapsed);
+  await page.getByRole("button", { name: "部屋に戻る", exact: true }).click();
+  await page.clock.runFor(32);
+  await expect(room).toHaveAttribute("data-bass-song", "final-hit");
+  await page.clock.fastForward(65000);
+  await expect(room).toHaveAttribute("data-bass-phase", "result");
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("garden-party");
+  await expect(room).toHaveAttribute("data-bass-song", "garden-party");
+  await expect(page.locator(".bass-title")).toContainText("Garden-Party Groove");
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
+  await expect(page.getByRole("spinbutton")).toHaveValue("120");
+  expect(errors).toEqual([]);
+});
+
+test("新曲の読込を待つ間に別曲へ切り替えても遅延開始しない", { tag: "@bass" }, async ({ page }) => {
+  const room = await prepare(page);
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route(/final-hit[^/]*\.mp3(?:\?.*)?$/, async route => {
+    if (route.request().resourceType() !== "fetch") { await route.continue(); return; }
+    await gate; await route.continue();
+  });
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
+  await expect(room).toHaveAttribute("data-bass-audio", "loading");
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("garden-party");
+  release();
+  await page.clock.runFor(64);
+  await expect(room).toHaveAttribute("data-bass-song", "garden-party");
+  await expect(room).toHaveAttribute("data-bass-phase", "ready");
+  await start(page);
+  await expect(room).toHaveAttribute("data-bass-phase", "countdown");
+});
+
+test("375pxでも新曲の選曲・調整・開始と指板が画面内に収まる", { tag: "@bass" }, async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await prepare(page);
+  await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
+  for (const selector of [".bass-setup", ".bass-song-select", ".bass-offset", ".bass-start", ".bass-fretboard"]) {
+    const box = (await page.locator(selector).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0); expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+    expect(box.y + box.height).toBeLessThanOrEqual(667);
+  }
+  const setup = (await page.locator(".bass-setup").boundingBox())!;
+  const header = (await page.locator(".bass-top-hud").boundingBox())!;
+  expect(setup.y).toBeGreaterThanOrEqual(header.y + header.height);
+  await expect(page.locator("[data-bass-fret]")).toHaveCount(24);
+  await page.getByRole("button", { name: "演奏する", exact: true }).click();
+  await page.clock.fastForward(3000);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+});

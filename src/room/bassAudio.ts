@@ -1,6 +1,7 @@
 import backingUrl from "../assets/audio/garden-party-backing.mp3?url";
+import finalHitUrl from "../assets/audio/final-hit.mp3?url";
 import bassUrl from "../assets/audio/garden-party-bass.mp3?url";
-import { BASS_SONGS, type BassGameSnapshot, type BassTechnique } from "./bassGame";
+import { BASS_SONGS, type BassGameSnapshot, type BassTechnique, type BassSongId } from "./bassGame";
 
 export type BassAudioStatus = "idle" | "loading" | "ready" | "error" | "unavailable";
 type Stems = readonly [AudioBuffer, AudioBuffer];
@@ -18,6 +19,8 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   let state: BassAudioStatus = "idle";
   let disposed = false;
   let generation = 0;
+  let songId: BassSongId = "garden-party";
+  const cache = new Map<BassSongId, { bytes?: Bytes; stems?: Stems }>();
   let bytes: Bytes | null = null;
   let stems: Stems | null = null;
   let loading: Promise<boolean> | null = null;
@@ -37,6 +40,20 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     onStatusChange?.(status);
   }
 
+  function selectSong(id: BassSongId) {
+    if (disposed || !["garden-party", "final-hit"].includes(id)) return false;
+    if (id === songId) return true;
+    generation++;
+    controller?.abort(); controller = null;
+    stop();
+    songId = id;
+    bytes = cache.get(id)?.bytes ?? null;
+    stems = cache.get(id)?.stems ?? null;
+    loading = preparing = null;
+    setStatus(stems ? "ready" : "idle");
+    return true;
+  }
+
   /** Fetching is silent and does not create or unlock an AudioContext. */
   function preload(): Promise<boolean> {
     if (disposed) return Promise.resolve(false);
@@ -46,13 +63,14 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     const request = new AbortController();
     controller = request;
     setStatus("loading");
-    const load = Promise.all([backingUrl, bassUrl].map(async (url) => {
+    const load = Promise.all([songId === "final-hit" ? finalHitUrl : backingUrl, bassUrl].map(async (url) => {
       const response = await fetch(url, { signal: request.signal });
       if (!response.ok) throw new Error("The music file could not be loaded.");
       return response.arrayBuffer();
     })).then((result) => {
       if (disposed || requestGeneration !== generation) return false;
       bytes = result as unknown as Bytes;
+      cache.set(songId, { ...cache.get(songId), bytes });
       if (!preparing) setStatus("idle");
       return true;
     }).catch(() => {
@@ -113,8 +131,9 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
         const decoded = await Promise.all(bytes.map((data) => audio.decodeAudioData(data.slice(0))));
         if (disposed || requestGeneration !== generation) return false;
         if (decoded.some((buffer) => !Number.isFinite(buffer.duration) || buffer.duration <= 0) ||
-          Math.abs(decoded[0].duration - decoded[1].duration) > 0.05) throw new Error("Unaligned music stems.");
+          (songId === "garden-party" && Math.abs(decoded[0].duration - decoded[1].duration) > 0.05)) throw new Error("Unaligned music stems.");
         stems = decoded as unknown as Stems;
+        cache.set(songId, { ...cache.get(songId), stems });
       }
       if (audio.state !== "running") { setStatus("unavailable"); return false; }
       setStatus("ready");
@@ -124,7 +143,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
       return false;
     }).finally(() => {
       if (preparing === preparation) preparing = null;
-      if (!disposed && state === "loading") setStatus(audio.state === "running" ? "error" : "unavailable");
+      if (!disposed && requestGeneration === generation && state === "loading") setStatus(audio.state === "running" ? "error" : "unavailable");
     });
     preparing = preparation;
     return preparation;
@@ -187,12 +206,13 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     stop();
     const now = context.currentTime;
     const offset = Math.max(0, timeline);
-    if (offset >= Math.min(stems[0].duration, stems[1].duration)) return;
+    if (songId === "garden-party" && offset >= Math.min(stems[0].duration, stems[1].duration)) return;
     const anchor = now - timeline;
     const when = Math.max(now, anchor);
     const sources: AudioBufferSourceNode[] = [];
     const gains: GainNode[] = [];
     for (const [index, buffer] of stems.entries()) {
+      if ((songId === "final-hit" && index === 1) || offset >= buffer.duration) continue;
       const source = context.createBufferSource();
       const gain = context.createGain();
       source.buffer = buffer;
@@ -203,7 +223,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
       gains.push(gain);
       source.start(when, offset);
     }
-    transport = { sources, gains, anchor, difficulty: snapshot.difficulty };
+    transport = { sources, gains, anchor, difficulty: `${songId}:${snapshot.difficulty}` };
   }
 
   function levelAt(time: number, intervals: Window[]) {
@@ -260,6 +280,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
   /** One continuous recording; slow rendered frames do not restart or age the music. */
   function sync(snapshot: BassGameSnapshot, paused = false) {
     if (disposed) return;
+    selectSong(snapshot.songId ?? "garden-party");
     if (paused || (snapshot.phase !== "countdown" && snapshot.phase !== "playing")) { stop(); return; }
     if (!context || context.state !== "running") {
       stop();
@@ -269,10 +290,10 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     if (!stems) return;
     if (state === "unavailable") setStatus("ready");
     const timeline = snapshot.phase === "countdown" ? -snapshot.countdownRemaining : snapshot.elapsed;
-    if (!transport || transport.difficulty !== snapshot.difficulty ||
+    if (!transport || transport.difficulty !== `${songId}:${snapshot.difficulty}` ||
       Math.abs(context.currentTime - transport.anchor - timeline) > DRIFT_LIMIT) startTransport(snapshot, timeline);
     if (!transport) return;
-    const song = BASS_SONGS[snapshot.difficulty];
+    const song = { beatSeconds: snapshot.beatSeconds, countdownSeconds: snapshot.countdownSeconds ?? BASS_SONGS[snapshot.difficulty].countdownSeconds };
     if (snapshot.phase === "countdown") {
       for (let index = 0; index < Math.round(song.countdownSeconds / song.beatSeconds); index++) {
         const tick = -song.countdownSeconds + index * song.beatSeconds;
@@ -281,7 +302,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
         tone(660, Math.max(context.currentTime, transport.anchor + tick), 0.05, 0.075);
       }
     }
-    if (!snapshot.directInput) scheduleGate(snapshot, timeline);
+    if (songId === "garden-party" && !snapshot.directInput) scheduleGate(snapshot, timeline);
   }
 
   /** Compatibility entry point for callers of the original string-based API. */
@@ -311,7 +332,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     source.loopStart = 0.39;
     source.loopEnd = 0.55;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(technique === "slap" ? 1.8 : 1.35, now + 0.004);
+    gain.gain.linearRampToValueAtTime((technique === "slap" ? 1.8 : 1.35) * (songId === "final-hit" ? 0.45 : 1), now + 0.004);
     if (!hold) gain.gain.linearRampToValueAtTime(0, now + 0.35);
     source.connect(gain).connect(master);
     voices.set(source, [gain]);
@@ -352,6 +373,7 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     master = null;
     bytes = null;
     stems = null;
+    cache.clear();
   }
 
   /** Musical time comes from the sample clock, including the negative count-in. */
@@ -360,6 +382,6 @@ export function createBassAudio(onStatusChange?: (status: BassAudioStatus) => vo
     return context.currentTime - transport.anchor;
   }
 
-  return { unlock, preload, prepare, status: () => state,
+  return { unlock, preload, prepare, selectSong, seek: (snapshot: BassGameSnapshot, paused = false) => { stop(); sync(snapshot, paused); }, status: () => state,
     isRunning: () => context?.state === "running", playbackTime, sync, pluck, playMidi, releaseMidi, stop, dispose };
 }

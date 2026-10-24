@@ -1,3 +1,5 @@
+import { finalHitSong } from "./finalHitTrack";
+import type { ImportedChart } from "./bassChartImport";
 import { BASS_STRINGS, midiFrequency, type BassString } from "./bassFretboard";
 export { BASS_STRINGS, type BassString } from "./bassFretboard";
 import { GARDEN_BASS_NOTES, GARDEN_TRACK, gardenTimeToBeat } from "./gardenTrack";
@@ -9,9 +11,14 @@ export const BASS_GOOD_WINDOW = 0.18;
 export const BASS_PERFECT_WINDOW = 0.085;
 
 export type BassPhase = "idle" | "approaching" | "pickup" | "ready" | "countdown" | "playing" | "result";
-export type BassNoteState = "pending" | "holding" | "perfect" | "great" | "good" | "bad" | "miss";
-export type BassFeedback = Exclude<BassNoteState, "pending" | "holding">;
+export type BassNoteState = "pending" | "holding" | "skipped" | "perfect" | "great" | "good" | "bad" | "miss";
+export type BassFeedback = Exclude<BassNoteState, "pending" | "holding" | "skipped">;
 export type BassDifficulty = "easy" | "normal" | "hard";
+export type BassSongId = "garden-party" | "final-hit";
+export const BASS_TRACKS = [
+  { id: "garden-party", title: GARDEN_TRACK.title, draft: false },
+  { id: "final-hit", title: "最終のヒット", draft: true },
+] as const;
 export type BassTechnique = "pick" | "slap";
 export interface BassPhrase {
   id: number;
@@ -26,6 +33,16 @@ export interface BassPhrase {
 }
 export type BassNoteKind = "tap" | "hold" | "slap";
 export interface BassNote {
+  sourceId?: string;
+  sourceTimeSec?: number;
+  sourceDurationSec?: number;
+  sourceStringNumber?: number;
+  sourceFret?: number;
+  sourcePositionVerified?: boolean;
+  velocity?: number;
+  positionVerified?: boolean;
+  techniqueVerified?: boolean;
+  importedTechnique?: string | null;
   midi: number;
   kind: BassNoteKind;
   endTime?: number;
@@ -35,10 +52,13 @@ export interface BassNote {
   string: BassString;
   fret: number;
   phraseId: number;
-  technique: BassTechnique;
+  technique: BassTechnique | null;
   travelSeconds: number;
 }
 export interface BassSong {
+  id: BassSongId;
+  title: string;
+  importInfo?: ImportedChart;
   difficulty: BassDifficulty;
   label: string;
   bpm: number;
@@ -59,6 +79,11 @@ export interface BassJudgement {
   noteId: number | null;
 }
 export interface BassGameSnapshot {
+  songId: BassSongId;
+  songTitle: string;
+  countdownSeconds: number;
+  audioOffsetSec: number;
+  importSummary?: { sourceCount: number; candidateCount: number; playableCount: number; excludedCount: number; audioSyncVerified: boolean };
   directInput?: boolean;
   phase: BassPhase;
   difficulty: BassDifficulty;
@@ -171,7 +196,7 @@ function makeSong(difficulty: BassDifficulty): BassSong {
     if (tap) run.forEach((note, index) => addPhrase([note], "tap", index, repeated));
     else addPhrase(run, "hold", 0, repeated);
   }
-  return Object.freeze({ difficulty, label: difficulty.toUpperCase(), bpm: GARDEN_TRACK.bpm,
+  return Object.freeze({ id: "garden-party", title: GARDEN_TRACK.title, difficulty, label: difficulty.toUpperCase(), bpm: GARDEN_TRACK.bpm,
     beatSeconds, countdownSeconds, duration: GARDEN_TRACK.duration, beats: GARDEN_TRACK.beats,
     phrases: Object.freeze(phrases), notes: Object.freeze(notes),
     // Harmony, drums, swing and timbre come from the recording, never a second generated song.
@@ -194,7 +219,8 @@ export const BASS_CHART = BASS_SONGS.easy.notes;
 export function createBassGame(chart?: readonly BassNote[]) {
   let phase: BassPhase = "idle";
   let difficulty: BassDifficulty = "easy";
-  const song = () => BASS_SONGS[difficulty];
+  let activeSong: BassSong = BASS_SONGS[difficulty];
+  const song = () => activeSong;
   let proximityTime = 0;
   let pickupTime = 0;
   let countdownRemaining = BASS_COUNTDOWN_SECONDS;
@@ -290,14 +316,21 @@ export function createBassGame(chart?: readonly BassNote[]) {
   function snapshot(): BassGameSnapshot {
     const penalizedScore = Math.max(0, score - strayPlucks * 250);
     return {
-      phase, directInput, difficulty, bpm: song().bpm, beatSeconds: song().beatSeconds,
-      beat: gardenTimeToBeat(phase === "countdown" ? -countdownRemaining : elapsed),
+      phase, songId: song().id, songTitle: song().title, countdownSeconds: song().countdownSeconds,
+      audioOffsetSec: song().importInfo?.audioOffsetSec ?? 0,
+      ...(song().importInfo ? { importSummary: { sourceCount: song().importInfo!.sourceNoteCount,
+        candidateCount: song().importInfo!.candidateNoteCount, playableCount: song().notes.length,
+        excludedCount: song().importInfo!.excluded.filter(n => n.reason === "outside-current-fretboard").length,
+        audioSyncVerified: song().importInfo!.audioSyncVerified } } : {}),
+      directInput, difficulty, bpm: song().bpm, beatSeconds: song().beatSeconds,
+      beat: song().id === "garden-party" ? gardenTimeToBeat(phase === "countdown" ? -countdownRemaining : elapsed) :
+        (phase === "countdown" ? -countdownRemaining : elapsed) / song().beatSeconds,
       proximityProgress: Math.min(1, proximityTime / BASS_PROXIMITY_SECONDS),
       pickupProgress: Math.min(1, pickupTime / BASS_PICKUP_SECONDS),
       countdown: phase === "countdown" ? Math.max(1, Math.ceil(countdownRemaining / song().beatSeconds)) : 0,
       countdownRemaining: phase === "countdown" ? countdownRemaining : 0,
       elapsed, duration: song().duration, score: penalizedScore, combo, maxCombo, hits, misses, strayPlucks,
-      accuracy: Math.round(penalizedScore / (notes.length * 1000) * 100),
+      accuracy: Math.round(penalizedScore / Math.max(1, notes.filter(n => n.state !== "skipped").length * 1000) * 100),
       feedback, feedbackAge,
       notes: notes.map((note) => ({ ...note })),
       ...guideState(),
@@ -371,16 +404,34 @@ export function createBassGame(chart?: readonly BassNote[]) {
     return true;
   }
 
+  function selectSong(id: BassSongId) {
+    if (isPaused || !["ready", "result"].includes(phase) || !BASS_TRACKS.some(track => track.id === id)) return false;
+    activeSong = id === "garden-party" ? BASS_SONGS[difficulty] : finalHitSong();
+    resetScore(); phase = "ready"; return true;
+  }
+  function setAudioOffset(offset: number) {
+    if (isPaused || !["ready", "result"].includes(phase) || song().id !== "final-hit" || !Number.isFinite(offset)) return false;
+    try { activeSong = finalHitSong(offset); } catch { return false; }
+    resetScore(); phase = "ready"; return true;
+  }
+  function seek(time: number) {
+    if (phase !== "playing" || !Number.isFinite(time)) return false;
+    resetScore(); elapsed = Math.max(0, Math.min(song().duration, time));
+    notes.forEach(note => { if (note.time < elapsed - BASS_GOOD_WINDOW) note.state = "skipped"; });
+    return true;
+  }
+
   function setDifficulty(value: BassDifficulty) {
-    if (isPaused || (phase !== "ready" && phase !== "result") ||
+    if (song().id !== "garden-party" || isPaused || (phase !== "ready" && phase !== "result") ||
       typeof value !== "string" || !Object.hasOwn(BASS_SONGS, value)) return false;
     difficulty = value;
+    activeSong = BASS_SONGS[difficulty];
     resetScore();
     phase = "ready";
     return true;
   }
 
-  function pluck(string: BassString, technique: BassTechnique = "pick"): BassJudgement | null {
+  function pluck(string: BassString, technique: BassTechnique | null = "pick"): BassJudgement | null {
     if (isPaused || phase !== "playing") return null;
     let closest: BassGameNote | undefined;
     let difference = Infinity;
@@ -392,7 +443,7 @@ export function createBassGame(chart?: readonly BassNote[]) {
       }
     }
     feedbackAge = 0;
-    if (!closest || difference > BASS_GOOD_WINDOW || closest.technique !== technique) {
+    if (!closest || difference > BASS_GOOD_WINDOW || (closest.technique !== null && closest.technique !== technique)) {
       strayPlucks++;
       combo = 0;
       feedback = "miss";
@@ -410,5 +461,5 @@ export function createBassGame(chart?: readonly BassNote[]) {
     resetScore();
   }
 
-  return { tick, start, setDifficulty, pluck, beginInput, slapInput, endInput, suspendInputs, cancel, snapshot };
+  return { tick, start, setDifficulty, selectSong, setAudioOffset, seek, pluck, beginInput, slapInput, endInput, suspendInputs, cancel, snapshot };
 }

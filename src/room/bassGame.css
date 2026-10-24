@@ -25,7 +25,15 @@
 .bass-fret-fill { position:absolute; inset:0; transform-origin:bottom; background:#fff9d547; pointer-events:none; }
 .bass-fret-clock { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }.bass-fret-clock rect { fill:none; stroke:#fff3bc; stroke-width:5; vector-effect:non-scaling-stroke; }
 .bass-fret-name { position:relative; z-index:1; font:800 clamp(16px,4.8vw,23px)/1 system-ui,sans-serif; text-shadow:0 1px 2px #0005; white-space:nowrap; }.bass-fret-name small { font-size:9px; margin-left:1px; opacity:.85; }.bass-fret-technique { position:absolute; z-index:1; left:0; right:0; bottom:3px; font-size:8px; font-weight:bold; }.is-holding { outline:2px solid #eecb7d; outline-offset:-2px; }
-.bass-setup { position:absolute; inset:auto 8px calc(100% + 10px); display:flex; flex-direction:column; justify-content:center; gap:12px; padding:20px; border-radius:12px; background:#faf7eef5; box-shadow:0 4px 20px #53432110; text-align:center; }.bass-setup p { margin:0; font-size:11px; color:#77826b; }.bass-difficulty-selector { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }.bass-difficulty-selector button { min-height:44px; border:1px solid #a1ae8b50; border-radius:10px; color:#7b866e; background:#f2f1e7; font-size:11px; }.bass-difficulty-selector button[aria-pressed=true] { background:#e4ead6; border-color:#8a9d6e; color:#4d663b; }
+.bass-setup { position:absolute; inset:auto 8px calc(100% + 10px); display:flex; flex-direction:column; justify-content:center; gap:8px; padding:12px; border-radius:12px; background:#faf7eef5; box-shadow:0 4px 20px #53432110; text-align:center; }.bass-setup p { margin:0; font-size:11px; color:#77826b; }.bass-difficulty-selector { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }.bass-difficulty-selector button { min-height:44px; border:1px solid #a1ae8b50; border-radius:10px; color:#7b866e; background:#f2f1e7; font-size:11px; }.bass-difficulty-selector button[aria-pressed=true] { background:#e4ead6; border-color:#8a9d6e; color:#4d663b; }
 .bass-start,.bass-audio-resume { min-height:48px; padding:10px 18px; border:0; border-radius:12px; color:#fffdf4; background:#586c4b; font-size:13px; }.bass-start:disabled { opacity:.65; }.bass-result { font-size:12px; line-height:1.8; }.bass-audio-resume { position:absolute; inset:50% 20px auto; }
 @media(max-height:650px) { .bass-fretboard { gap:4px; height:188px; }.bass-deck { padding-bottom:6px; }.bass-top-hud { padding-block:7px; }.bass-timeline,.bass-timeline svg { height:66px; } }
 @media(prefers-reduced-motion:reduce) { .bass-fret { box-shadow:none!important; } }
+
+.bass-song-select,.bass-offset { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; }
+.bass-song-select select { flex:1; min-width:0; min-height:36px; padding:5px 8px; border:1px solid #a1ae8b70; border-radius:8px; color:#455b3d; background:#fffdf5; font:inherit; }
+.bass-offset input { width:90px; min-height:32px; padding:3px 8px; border:1px solid #a1ae8b70; border-radius:8px; background:#fffdf5; color:#455b3d; font:inherit; }
+.bass-offset { justify-content:center; }
+.bass-draft-summary { line-height:1.5; }
+
+.bass-phase-result .bass-setup { gap:6px; padding:10px; }

@@ -1,0 +1,40 @@
+{
+  "songId": "最終のヒット 2",
+  "durationSec": 59.596875,
+  "midiNotes": 648,
+  "bass24FretPlayableCandidates": 557,
+  "excludedOutOfRangeOrDrum": 91,
+  "noteRangeMidi": [
+    28,
+    87
+  ],
+  "noteRangeNames": [
+    "E1",
+    "D#6"
+  ],
+  "firstNoteTimeSec": 0.789583,
+  "tempoChanges": [
+    {
+      "timeSec": 0.0,
+      "bpm": 120.0
+    }
+  ],
+  "sourceTracks": [
+    {
+      "index": 0,
+      "name": "",
+      "messageCount": 3
+    },
+    {
+      "index": 1,
+      "name": "",
+      "messageCount": 1299
+    }
+  ],
+  "issues": [
+    "MIDI program 0 means piano playback setting, not proof of what was recorded.",
+    "MIDI may contain non-bass notes; a 4-string range filter is not stem separation.",
+    "TAB articulations such as dead notes are not represented as pitched MIDI notes.",
+    "Tempo metadata may be generic for an audio-transcribed MIDI; compare timing with audio."
+  ]
+}

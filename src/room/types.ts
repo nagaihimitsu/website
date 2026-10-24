@@ -3,7 +3,7 @@ import type * as THREE from "three";
 import type { Archive, Section } from "../data/model";
 import type { BirdAnimationState } from "./art/bird";
 import type { RoomDestinationId } from "./destinations";
-import type { BassDifficulty, BassGameSnapshot, BassString, BassTechnique } from "./bassGame";
+import type { BassDifficulty, BassGameSnapshot, BassSongId, BassString, BassTechnique } from "./bassGame";
 import type { BassAudioStatus } from "./bassAudio";
 
 export type Direction = "up" | "down" | "left" | "right";
@@ -121,6 +121,9 @@ export interface RoomEngine {
   jump: () => void;
   punch: () => void;
   startBass: () => void;
+  selectBassSong: (id: BassSongId) => boolean;
+  setBassAudioOffset: (seconds: number) => boolean;
+  seekBass: (seconds: number) => boolean;
   setBassDifficulty: (difficulty: BassDifficulty) => void;
   inputBass: (input: BassPointerInput) => void;
   pluckBass: (string: BassString, technique?: BassTechnique) => void;

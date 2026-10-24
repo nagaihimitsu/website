@@ -107,6 +107,20 @@ function BassOverlay({ store, engine, paused, audioStatus, onPause }: {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return <BassGameHUD snapshot={snapshot} paused={paused} audioStatus={audioStatus}
     onStart={() => engine.current?.startBass()}
+    onSong={(id) => {
+      if (!engine.current?.selectBassSong(id)) return;
+      try {
+        const value = JSON.parse(localStorage.getItem("personal-atlas-bass-audio-offset-v1") ?? "{}")[id];
+        if (typeof value === "number" && Number.isFinite(value) && value >= -0.75 && value <= 5) engine.current.setBassAudioOffset(value);
+      } catch { /* 端末の設定保存が使えない場合も演奏は続ける。 */ }
+    }}
+    onOffset={(value) => {
+      if (!engine.current?.setBassAudioOffset(value)) return;
+      try {
+        const offsets = JSON.parse(localStorage.getItem("personal-atlas-bass-audio-offset-v1") ?? "{}");
+        localStorage.setItem("personal-atlas-bass-audio-offset-v1", JSON.stringify({ ...offsets, [snapshot.songId]: value }));
+      } catch { /* 設定保存なしでも手動調整できる。 */ }
+    }}
     onDifficulty={(difficulty) => engine.current?.setBassDifficulty(difficulty)}
     onInput={(input) => engine.current?.inputBass(input)}
     onPause={onPause}
@@ -180,6 +194,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           if (room.current) {
             room.current.dataset.bassPhase = value.phase;
             room.current.dataset.bassDifficulty = value.difficulty;
+            room.current.dataset.bassSong = value.songId;
+            room.current.dataset.bassAudioOffset = String(value.audioOffsetSec);
             room.current.dataset.bassBpm = String(value.bpm);
             room.current.dataset.bassProgress = value.proximityProgress.toFixed(3);
             room.current.dataset.bassElapsed = value.elapsed.toFixed(3);

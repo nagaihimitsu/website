@@ -1,0 +1,2008 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceNoteCount": 648,
+  "candidateNoteCount": 557,
+  "playableNoteCount": 315,
+  "audioOffsetSec": 0,
+  "audioSyncVerified": false,
+  "excludedNotes": [
+    {
+      "sourceId": "n0001",
+      "timeSec": 0.789583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0002",
+      "timeSec": 0.905208,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0007",
+      "timeSec": 1.439583,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0008",
+      "timeSec": 1.86875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0011",
+      "timeSec": 2.241667,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0018",
+      "timeSec": 2.70625,
+      "midiNote": 64,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0025",
+      "timeSec": 3.925,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0027",
+      "timeSec": 4.03125,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0029",
+      "timeSec": 4.205208,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0033",
+      "timeSec": 4.414583,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0036",
+      "timeSec": 4.739583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0042",
+      "timeSec": 5.389583,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0048",
+      "timeSec": 6.16875,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0052",
+      "timeSec": 7.109375,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0054",
+      "timeSec": 7.225,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0057",
+      "timeSec": 7.561458,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0059",
+      "timeSec": 7.678125,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0062",
+      "timeSec": 7.759375,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0063",
+      "timeSec": 7.863542,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0065",
+      "timeSec": 7.946875,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0068",
+      "timeSec": 8.039583,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0069",
+      "timeSec": 8.155208,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0070",
+      "timeSec": 8.294792,
+      "midiNote": 49,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0073",
+      "timeSec": 8.3875,
+      "midiNote": 49,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0077",
+      "timeSec": 9.026042,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0083",
+      "timeSec": 9.3625,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0084",
+      "timeSec": 9.467708,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0089",
+      "timeSec": 10.095833,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0094",
+      "timeSec": 10.6875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0096",
+      "timeSec": 10.838542,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0104",
+      "timeSec": 11.511458,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0106",
+      "timeSec": 11.825,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0112",
+      "timeSec": 11.919792,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0119",
+      "timeSec": 12.25625,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0128",
+      "timeSec": 12.569792,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0129",
+      "timeSec": 12.569792,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0130",
+      "timeSec": 12.673958,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0132",
+      "timeSec": 12.697917,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0133",
+      "timeSec": 12.697917,
+      "midiNote": 64,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0134",
+      "timeSec": 12.802083,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0136",
+      "timeSec": 12.998958,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0137",
+      "timeSec": 12.998958,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0141",
+      "timeSec": 13.440625,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0143",
+      "timeSec": 13.510417,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0146",
+      "timeSec": 13.544792,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0150",
+      "timeSec": 13.754167,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0156",
+      "timeSec": 14.219792,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0158",
+      "timeSec": 14.242708,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0168",
+      "timeSec": 14.822917,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0169",
+      "timeSec": 14.835417,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0170",
+      "timeSec": 14.858333,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0171",
+      "timeSec": 14.928125,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0175",
+      "timeSec": 15.160417,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0176",
+      "timeSec": 15.183333,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0181",
+      "timeSec": 15.485417,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0184",
+      "timeSec": 15.682292,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0186",
+      "timeSec": 15.786458,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0188",
+      "timeSec": 15.927083,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0189",
+      "timeSec": 16.125,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0201",
+      "timeSec": 17.494792,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0203",
+      "timeSec": 17.611458,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0211",
+      "timeSec": 18.239583,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0214",
+      "timeSec": 18.680208,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0217",
+      "timeSec": 18.99375,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0220",
+      "timeSec": 19.388542,
+      "midiNote": 49,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0225",
+      "timeSec": 19.736458,
+      "midiNote": 49,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0230",
+      "timeSec": 20.097917,
+      "midiNote": 49,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0231",
+      "timeSec": 20.202083,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0232",
+      "timeSec": 20.284375,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0234",
+      "timeSec": 20.655208,
+      "midiNote": 49,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0241",
+      "timeSec": 22.316667,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0244",
+      "timeSec": 22.711458,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0246",
+      "timeSec": 22.851042,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0247",
+      "timeSec": 22.8625,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0250",
+      "timeSec": 22.966667,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0251",
+      "timeSec": 23.060417,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0254",
+      "timeSec": 23.408333,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0256",
+      "timeSec": 23.501042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0258",
+      "timeSec": 23.826042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0260",
+      "timeSec": 24.152083,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0261",
+      "timeSec": 24.233333,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0265",
+      "timeSec": 24.408333,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0268",
+      "timeSec": 24.582292,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0269",
+      "timeSec": 24.697917,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0270",
+      "timeSec": 24.779167,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0273",
+      "timeSec": 25.116667,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0276",
+      "timeSec": 25.209375,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0280",
+      "timeSec": 25.65,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0282",
+      "timeSec": 25.848958,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0287",
+      "timeSec": 26.151042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0290",
+      "timeSec": 26.383333,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0292",
+      "timeSec": 26.4875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0294",
+      "timeSec": 26.742708,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0295",
+      "timeSec": 26.835417,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0298",
+      "timeSec": 26.916667,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0301",
+      "timeSec": 27.230208,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0304",
+      "timeSec": 27.579167,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0306",
+      "timeSec": 27.683333,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0311",
+      "timeSec": 28.009375,
+      "midiNote": 58,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0312",
+      "timeSec": 28.102083,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0321",
+      "timeSec": 29.391667,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0323",
+      "timeSec": 29.716667,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0324",
+      "timeSec": 30.263542,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0325",
+      "timeSec": 30.344792,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0327",
+      "timeSec": 30.68125,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0328",
+      "timeSec": 30.773958,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0330",
+      "timeSec": 31.121875,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0332",
+      "timeSec": 31.145833,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0333",
+      "timeSec": 31.215625,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0335",
+      "timeSec": 31.401042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0340",
+      "timeSec": 31.959375,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0342",
+      "timeSec": 32.064583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0344",
+      "timeSec": 32.389583,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0345",
+      "timeSec": 32.482292,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0347",
+      "timeSec": 32.621875,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0349",
+      "timeSec": 32.714583,
+      "midiNote": 58,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0351",
+      "timeSec": 32.830208,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0353",
+      "timeSec": 32.934375,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0354",
+      "timeSec": 33.051042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0357",
+      "timeSec": 33.155208,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0359",
+      "timeSec": 33.364583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0360",
+      "timeSec": 33.678125,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0362",
+      "timeSec": 33.771875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0363",
+      "timeSec": 34.108333,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0364",
+      "timeSec": 34.189583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0366",
+      "timeSec": 34.55,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0367",
+      "timeSec": 34.63125,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0371",
+      "timeSec": 34.79375,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0372",
+      "timeSec": 34.95625,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0373",
+      "timeSec": 35.071875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0375",
+      "timeSec": 35.397917,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0376",
+      "timeSec": 35.502083,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0377",
+      "timeSec": 35.60625,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0378",
+      "timeSec": 35.617708,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0380",
+      "timeSec": 35.816667,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0382",
+      "timeSec": 35.920833,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0384",
+      "timeSec": 36.245833,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0386",
+      "timeSec": 36.3625,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0389",
+      "timeSec": 36.698958,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0390",
+      "timeSec": 37.001042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0391",
+      "timeSec": 37.001042,
+      "midiNote": 62,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0393",
+      "timeSec": 37.221875,
+      "midiNote": 64,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0394",
+      "timeSec": 37.233333,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0396",
+      "timeSec": 37.535417,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0398",
+      "timeSec": 37.651042,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0404",
+      "timeSec": 38.0125,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0406",
+      "timeSec": 38.058333,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0407",
+      "timeSec": 38.069792,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0411",
+      "timeSec": 38.929167,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0412",
+      "timeSec": 39.138542,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0413",
+      "timeSec": 39.138542,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0414",
+      "timeSec": 39.15,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0415",
+      "timeSec": 39.242708,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0421",
+      "timeSec": 39.463542,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0422",
+      "timeSec": 39.579167,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0425",
+      "timeSec": 39.684375,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0429",
+      "timeSec": 39.882292,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0432",
+      "timeSec": 40.103125,
+      "midiNote": 64,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0434",
+      "timeSec": 40.428125,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0435",
+      "timeSec": 40.428125,
+      "midiNote": 64,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0436",
+      "timeSec": 40.520833,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0439",
+      "timeSec": 40.973958,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0441",
+      "timeSec": 41.113542,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0445",
+      "timeSec": 41.391667,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0447",
+      "timeSec": 41.415625,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0448",
+      "timeSec": 41.647917,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0451",
+      "timeSec": 41.811458,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0455",
+      "timeSec": 42.298958,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0456",
+      "timeSec": 42.310417,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0457",
+      "timeSec": 42.321875,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0460",
+      "timeSec": 42.565625,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0462",
+      "timeSec": 42.635417,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0466",
+      "timeSec": 42.9375,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0468",
+      "timeSec": 43.1,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0486",
+      "timeSec": 43.971875,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0489",
+      "timeSec": 44.064583,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0494",
+      "timeSec": 44.296875,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0495",
+      "timeSec": 44.308333,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0497",
+      "timeSec": 44.413542,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0498",
+      "timeSec": 44.494792,
+      "midiNote": 67,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0512",
+      "timeSec": 45.248958,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0519",
+      "timeSec": 45.573958,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0523",
+      "timeSec": 45.679167,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0530",
+      "timeSec": 46.005208,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0532",
+      "timeSec": 46.109375,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0539",
+      "timeSec": 46.539583,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0541",
+      "timeSec": 46.632292,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0543",
+      "timeSec": 46.759375,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0547",
+      "timeSec": 46.957292,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0550",
+      "timeSec": 47.178125,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0554",
+      "timeSec": 47.630208,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0555",
+      "timeSec": 47.678125,
+      "midiNote": 60,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0559",
+      "timeSec": 48.014583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0560",
+      "timeSec": 48.246875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0563",
+      "timeSec": 48.885417,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0564",
+      "timeSec": 48.989583,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0567",
+      "timeSec": 49.35,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0570",
+      "timeSec": 49.78125,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0573",
+      "timeSec": 50.176042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0576",
+      "timeSec": 51.325,
+      "midiNote": 54,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0579",
+      "timeSec": 52,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0580",
+      "timeSec": 52.092708,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0583",
+      "timeSec": 52.208333,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0584",
+      "timeSec": 52.429167,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0588",
+      "timeSec": 52.858333,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0591",
+      "timeSec": 53.067708,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0592",
+      "timeSec": 53.067708,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0594",
+      "timeSec": 53.171875,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0597",
+      "timeSec": 53.392708,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0599",
+      "timeSec": 53.496875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0600",
+      "timeSec": 53.613542,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0602",
+      "timeSec": 53.754167,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0604",
+      "timeSec": 54.148958,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0606",
+      "timeSec": 54.345833,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0608",
+      "timeSec": 54.683333,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0609",
+      "timeSec": 54.683333,
+      "midiNote": 55,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0612",
+      "timeSec": 54.776042,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0613",
+      "timeSec": 54.7875,
+      "midiNote": 57,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0616",
+      "timeSec": 55.1125,
+      "midiNote": 59,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0617",
+      "timeSec": 55.216667,
+      "midiNote": 50,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0618",
+      "timeSec": 55.321875,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0620",
+      "timeSec": 55.4375,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0621",
+      "timeSec": 55.636458,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0622",
+      "timeSec": 55.85625,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0623",
+      "timeSec": 55.972917,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0624",
+      "timeSec": 56.065625,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0625",
+      "timeSec": 56.065625,
+      "midiNote": 64,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0626",
+      "timeSec": 56.286458,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0627",
+      "timeSec": 56.286458,
+      "midiNote": 63,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0628",
+      "timeSec": 56.6,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0630",
+      "timeSec": 56.704167,
+      "midiNote": 63,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0631",
+      "timeSec": 56.715625,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0632",
+      "timeSec": 56.820833,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0633",
+      "timeSec": 56.936458,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0634",
+      "timeSec": 57.064583,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0636",
+      "timeSec": 57.365625,
+      "midiNote": 62,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0637",
+      "timeSec": 57.597917,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0638",
+      "timeSec": 57.785417,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0640",
+      "timeSec": 57.99375,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0642",
+      "timeSec": 58.423958,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0643",
+      "timeSec": 58.644792,
+      "midiNote": 51,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0644",
+      "timeSec": 58.760417,
+      "midiNote": 52,
+      "reason": "outside-current-fretboard"
+    },
+    {
+      "sourceId": "n0016",
+      "timeSec": 2.520833,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0017",
+      "timeSec": 2.625,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0022",
+      "timeSec": 3.426042,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0023",
+      "timeSec": 3.588542,
+      "midiNote": 72,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0050",
+      "timeSec": 6.784375,
+      "midiNote": 87,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0051",
+      "timeSec": 6.992708,
+      "midiNote": 87,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0053",
+      "timeSec": 7.213542,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0075",
+      "timeSec": 8.95625,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0079",
+      "timeSec": 9.072917,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0082",
+      "timeSec": 9.269792,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0085",
+      "timeSec": 9.467708,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0087",
+      "timeSec": 9.583333,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0092",
+      "timeSec": 10.315625,
+      "midiNote": 81,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0093",
+      "timeSec": 10.420833,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0098",
+      "timeSec": 10.954167,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0099",
+      "timeSec": 11.059375,
+      "midiNote": 79,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0100",
+      "timeSec": 11.175,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0102",
+      "timeSec": 11.280208,
+      "midiNote": 74,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0103",
+      "timeSec": 11.407292,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0105",
+      "timeSec": 11.511458,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0107",
+      "timeSec": 11.825,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0115",
+      "timeSec": 12.035417,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0117",
+      "timeSec": 12.128125,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0120",
+      "timeSec": 12.25625,
+      "midiNote": 74,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0122",
+      "timeSec": 12.360417,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0124",
+      "timeSec": 12.465625,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0138",
+      "timeSec": 13.115625,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0139",
+      "timeSec": 13.219792,
+      "midiNote": 75,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0142",
+      "timeSec": 13.440625,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0147",
+      "timeSec": 13.648958,
+      "midiNote": 72,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0151",
+      "timeSec": 13.765625,
+      "midiNote": 75,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0154",
+      "timeSec": 13.964583,
+      "midiNote": 72,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0161",
+      "timeSec": 14.405208,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0162",
+      "timeSec": 14.497917,
+      "midiNote": 70,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0172",
+      "timeSec": 14.928125,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0173",
+      "timeSec": 15.147917,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0177",
+      "timeSec": 15.253125,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0182",
+      "timeSec": 15.578125,
+      "midiNote": 74,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0185",
+      "timeSec": 15.682292,
+      "midiNote": 74,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0190",
+      "timeSec": 16.310417,
+      "midiNote": 77,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0191",
+      "timeSec": 16.427083,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0192",
+      "timeSec": 16.844792,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0208",
+      "timeSec": 17.902083,
+      "midiNote": 87,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0209",
+      "timeSec": 17.914583,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0210",
+      "timeSec": 17.914583,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0212",
+      "timeSec": 18.239583,
+      "midiNote": 79,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0213",
+      "timeSec": 18.239583,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0381",
+      "timeSec": 35.828125,
+      "midiNote": 86,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0385",
+      "timeSec": 36.258333,
+      "midiNote": 86,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0401",
+      "timeSec": 37.85,
+      "midiNote": 70,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0403",
+      "timeSec": 37.965625,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0416",
+      "timeSec": 39.242708,
+      "midiNote": 74,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0419",
+      "timeSec": 39.359375,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0423",
+      "timeSec": 39.579167,
+      "midiNote": 81,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0426",
+      "timeSec": 39.684375,
+      "midiNote": 79,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0427",
+      "timeSec": 39.789583,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0437",
+      "timeSec": 40.660417,
+      "midiNote": 87,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0452",
+      "timeSec": 41.927083,
+      "midiNote": 69,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0473",
+      "timeSec": 43.447917,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0476",
+      "timeSec": 43.529167,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0477",
+      "timeSec": 43.645833,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0479",
+      "timeSec": 43.739583,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0482",
+      "timeSec": 43.867708,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0485",
+      "timeSec": 43.960417,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0490",
+      "timeSec": 44.064583,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0491",
+      "timeSec": 44.169792,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0492",
+      "timeSec": 44.273958,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0499",
+      "timeSec": 44.494792,
+      "midiNote": 79,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0500",
+      "timeSec": 44.633333,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0501",
+      "timeSec": 44.714583,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0504",
+      "timeSec": 44.819792,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0505",
+      "timeSec": 44.935417,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0507",
+      "timeSec": 45.028125,
+      "midiNote": 79,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0511",
+      "timeSec": 45.144792,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0513",
+      "timeSec": 45.248958,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0515",
+      "timeSec": 45.365625,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0517",
+      "timeSec": 45.504167,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0520",
+      "timeSec": 45.573958,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0524",
+      "timeSec": 45.679167,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0526",
+      "timeSec": 45.772917,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0528",
+      "timeSec": 45.865625,
+      "midiNote": 79,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0531",
+      "timeSec": 46.005208,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0533",
+      "timeSec": 46.109375,
+      "midiNote": 78,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0535",
+      "timeSec": 46.213542,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0536",
+      "timeSec": 46.31875,
+      "midiNote": 76,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0538",
+      "timeSec": 46.434375,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0540",
+      "timeSec": 46.539583,
+      "midiNote": 74,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0542",
+      "timeSec": 46.64375,
+      "midiNote": 71,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0646",
+      "timeSec": 59.30625,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0647",
+      "timeSec": 59.398958,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    },
+    {
+      "sourceId": "n0648",
+      "timeSec": 59.503125,
+      "midiNote": 83,
+      "reason": "not-in-candidates"
+    }
+  ]
+}

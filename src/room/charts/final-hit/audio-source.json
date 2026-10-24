@@ -1,0 +1,10 @@
+{
+  "filename": "最終のヒット.wav",
+  "sha256": "8502b7d6ce574ea8a38681962997bca96ec7b5c54e3c114f2d3abc54968e2aa2",
+  "sampleRate": 48000,
+  "frames": 2880648,
+  "channels": 2,
+  "durationSec": 60.0135,
+  "encoding": "MP3 192kbps stereo; no trim, resampling rate 48000Hz",
+  "encodedSha256": "be32b0117165a7580273cd97ec90d28f0a04f753b0e1df1ed1123c07f3c3ea30"
+}

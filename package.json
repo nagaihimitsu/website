@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "chart:final-hit": "tsx scripts/edit-bass-chart.ts",
     "validate:data": "tsx scripts/validate-data.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",

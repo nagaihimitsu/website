@@ -7,7 +7,7 @@ import { createRoomScene } from "./roomScene";
 import { createBirdMotion } from "./birdMotion";
 import { worldRecovery } from "./roomArchitecture";
 import { findRecoveryPosition } from "./worldRecovery";
-import { createBassGame, type BassDifficulty, type BassString, type BassTechnique } from "./bassGame";
+import { createBassGame, type BassDifficulty, type BassSongId, type BassString, type BassTechnique } from "./bassGame";
 import { createBassContacts, type BassPointerInput } from "./bassInput";
 import { createBassAudio } from "./bassAudio";
 import { BASS_REST_FRET } from "./art/bassPose";
@@ -460,6 +460,33 @@ function initializeRoomEngine(
     bassPluckPulse = bassSlapPulse = bassSuccessPulse = 0;
     bassPreviousTime = performance.now();
     reportBass(bassPreviousTime, true);
+  }
+
+  function selectBassSong(id: BassSongId) {
+    if (disposed || failed || paused || document.hidden || !bassGame.selectSong(id)) return false;
+    cancelBassStart();
+    bassContacts.clear();
+    bassAudio.selectSong(id);
+    bassState = bassGame.snapshot();
+    bassPreviousTime = performance.now();
+    reportBass(bassPreviousTime, true);
+    void bassAudio.preload();
+    return true;
+  }
+  function setBassAudioOffset(seconds: number) {
+    if (disposed || failed || paused || document.hidden || !bassGame.setAudioOffset(seconds)) return false;
+    cancelBassStart(); bassAudio.stop();
+    bassState = bassGame.snapshot(); reportBass(performance.now(), true);
+    return true;
+  }
+  function seekBass(seconds: number) {
+    if (disposed || failed || document.hidden || !bassGame.seek(seconds)) return false;
+    bassContacts.clear();
+    bassState = bassGame.snapshot();
+    bassAudio.seek(bassState, paused);
+    bassPreviousTime = performance.now();
+    reportBass(bassPreviousTime, true);
+    return true;
   }
 
   function inputBass(input: BassPointerInput) {
@@ -1354,6 +1381,9 @@ function initializeRoomEngine(
     punch,
     startBass,
     setBassDifficulty,
+    selectBassSong,
+    setBassAudioOffset,
+    seekBass,
     pluckBass,
     inputBass,
     putDownBass,
