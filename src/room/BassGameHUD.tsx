@@ -78,7 +78,7 @@ function Timeline({ snapshot, time }: { snapshot: BassGameSnapshot; time: number
         const y = dense ? snapshot.importSummary ? 16 + (index % 3) * 22 : index % 2 ? 49 : 25 : 38;
         const radius = dense ? snapshot.importSummary ? 10 : 12 : 17;
         const resolved = !["pending", "holding", "sliding"].includes(note.state);
-        return <g key={note.id} data-bass-note={note.id} data-kind={note.kind} data-midi={note.midi}
+        return <g key={note.id} data-bass-note={note.id} data-kind={note.kind} data-midi={note.midi} data-kime-id={note.kimeId} data-protected={note.protected ? "true" : undefined}
           style={{ "--tone": pitch.color } as CSSProperties}
           className={`bass-time-note ${resolved ? "is-resolved" : ""}`}>
           {note.kind === "hold" && <g className="bass-hold-tail"><rect x={x} y={y - 5} width={Math.max(0, endX - x)} height="10" rx="5" /><line x1={endX} x2={endX} y1={y - 12} y2={y + 12} /></g>}
@@ -199,7 +199,7 @@ export function BassGameHUD({ snapshot, paused, onStart, onContinue, onSong, onO
           const recentHit = snapshot.notes.some(hit => (hit.kind === "slide" ? hit.endMidi : hit.midi) === cell.midi && !["pending", "holding", "sliding", "skipped", "miss", "bad"].includes(hit.state) && time >= (hit.resolvedAt ?? hit.time) && time - (hit.resolvedAt ?? hit.time) < 0.12);
           const active = Boolean(note && (holding || note.time - time <= BASS_VISUAL_CONFIG.leadTime));
           return <button type="button" key={index} className={`bass-fret ${slideEnd ? "is-slide-target" : ""} ${passing ? "is-slide-passing" : ""} ${active ? "is-charging" : ""} ${holding ? "is-holding" : ""} ${recentHit ? "is-hit" : ""}`}
-            data-bass-fret={`${cell.string}-${cell.fret}`} data-midi={cell.midi} data-charge-note={active ? note?.id : undefined} data-charge={active ? charge.toFixed(3) : "0"}
+            data-bass-fret={`${cell.string}-${cell.fret}`} data-midi={cell.midi} data-charge-note={active ? note?.id : undefined} data-kime-id={active ? note?.kimeId : undefined} data-charge={active ? charge.toFixed(3) : "0"}
             disabled={!enabled} aria-label={`${cell.string + 1}弦 ${cell.fret}フレット ${cell.name}${cell.octave}`} style={{ "--tone": cell.color, boxShadow: active ? `0 0 ${charge * 10}px #f2ce8766` : undefined } as CSSProperties}
             onPointerDown={event => {
               if (event.button !== 0 || !enabled) return;

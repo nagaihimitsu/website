@@ -1,0 +1,1186 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceMidiSha256": "02e2a1167a7c1e54ed2f7c881e143081a8a6fc6e6676d5b69b48dda478732974",
+  "sourceAnalysisSha256": "abbee78ae8f5c1e69f066eede306202db92089e65feb49919502cdab44b6b570",
+  "sourceCsvSha256": "f9501f1e397e5c88699e884da516325253831d09b439541152ba37f8ed679d70",
+  "audioSha256": "8502b7d6ce574ea8a38681962997bca96ec7b5c54e3c114f2d3abc54968e2aa2",
+  "stemSha256": "73ab01465a6030ff8d26dc7a0dbf5d9767b5dc8ac3c9905ff00b7739da7c008e",
+  "midiEventsMatch": true,
+  "midiNoteCount": 648,
+  "recordingDurationSec": 60.0135,
+  "analysisDurationSec": 60.048,
+  "appliedOffsetSec": 0,
+  "tempoMetadataBpm": 120,
+  "acousticTempoApproxBpm": 140,
+  "cautions": [
+    "分析JSONのintraPairDelayMsは実時刻差と桁が異なるため再計算。",
+    "MP3の長さの差では発音時刻を拡縮しない。",
+    "推定ステムが弱い反復も、混合音源の反復とユーザー指定を優先して残す。",
+    "E3候補をE2へ置くのは24ボタン向けの編曲で、実演奏の音域や奏法の確定ではない。"
+  ],
+  "motifs": [
+    {
+      "id": "P01",
+      "providedDelayMs": 9,
+      "calculatedDelayMs": 93.75,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0250",
+              "timeSec": 22.966667,
+              "bands": {
+                "26": 2.33034,
+                "38": 34.987743,
+                "50": 21.141376
+              }
+            },
+            {
+              "sourceId": "n0251",
+              "timeSec": 23.060417,
+              "bands": {
+                "28": 7.173116,
+                "40": 48.647278,
+                "52": 18.581812
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0250",
+              "timeSec": 22.966667,
+              "bands": {
+                "26": 52.082394,
+                "38": 94.654928,
+                "50": 36.12435
+              }
+            },
+            {
+              "sourceId": "n0251",
+              "timeSec": 23.060417,
+              "bands": {
+                "28": 14.552762,
+                "40": 51.077636,
+                "52": 81.647616
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P02",
+      "providedDelayMs": 9,
+      "calculatedDelayMs": 92.709,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0254",
+              "timeSec": 23.408333,
+              "bands": {
+                "26": 1.419321,
+                "38": 27.528098,
+                "50": 44.785399
+              }
+            },
+            {
+              "sourceId": "n0256",
+              "timeSec": 23.501042,
+              "bands": {
+                "28": 2.157061,
+                "40": 48.398748,
+                "52": 38.307722
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0254",
+              "timeSec": 23.408333,
+              "bands": {
+                "26": 55.942933,
+                "38": 43.650401,
+                "50": 47.032859
+              }
+            },
+            {
+              "sourceId": "n0256",
+              "timeSec": 23.501042,
+              "bands": {
+                "28": 4.820343,
+                "40": 46.487235,
+                "52": 71.183646
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P03",
+      "providedDelayMs": 8,
+      "calculatedDelayMs": 81.25,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0269",
+              "timeSec": 24.697917,
+              "bands": {
+                "26": 5.924186,
+                "38": 34.28323,
+                "50": 41.653126
+              }
+            },
+            {
+              "sourceId": "n0270",
+              "timeSec": 24.779167,
+              "bands": {
+                "28": 9.427469,
+                "40": 57.166447,
+                "52": 24.617497
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0269",
+              "timeSec": 24.697917,
+              "bands": {
+                "26": 53.630502,
+                "38": 42.912114,
+                "50": 48.222311
+              }
+            },
+            {
+              "sourceId": "n0270",
+              "timeSec": 24.779167,
+              "bands": {
+                "28": 17.02746,
+                "40": 67.248125,
+                "52": 61.655567
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "providedDelayMs": 9,
+      "calculatedDelayMs": 92.708,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0273",
+              "timeSec": 25.116667,
+              "bands": {
+                "26": 1.685799,
+                "38": 11.53727,
+                "50": 29.380089
+              }
+            },
+            {
+              "sourceId": "n0276",
+              "timeSec": 25.209375,
+              "bands": {
+                "28": 3.064686,
+                "40": 56.9505,
+                "52": 7.493853
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0273",
+              "timeSec": 25.116667,
+              "bands": {
+                "26": 49.974272,
+                "38": 47.033917,
+                "50": 38.387566
+              }
+            },
+            {
+              "sourceId": "n0276",
+              "timeSec": 25.209375,
+              "bands": {
+                "28": 7.417437,
+                "40": 65.74022,
+                "52": 56.492965
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P05",
+      "providedDelayMs": 10,
+      "calculatedDelayMs": 104.167,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0290",
+              "timeSec": 26.383333,
+              "bands": {
+                "26": 3.162736,
+                "38": 3.764712,
+                "50": 7.708774
+              }
+            },
+            {
+              "sourceId": "n0292",
+              "timeSec": 26.4875,
+              "bands": {
+                "28": 6.573244,
+                "40": 57.612521,
+                "52": 12.493123
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0290",
+              "timeSec": 26.383333,
+              "bands": {
+                "26": 33.111292,
+                "38": 111.721971,
+                "50": 15.184857
+              }
+            },
+            {
+              "sourceId": "n0292",
+              "timeSec": 26.4875,
+              "bands": {
+                "28": 20.339667,
+                "40": 62.494568,
+                "52": 65.010004
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P06",
+      "providedDelayMs": 8,
+      "calculatedDelayMs": 81.25,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0295",
+              "timeSec": 26.835417,
+              "bands": {
+                "26": 1.279689,
+                "38": 6.130845,
+                "50": 2.18538
+              }
+            },
+            {
+              "sourceId": "n0298",
+              "timeSec": 26.916667,
+              "bands": {
+                "28": 2.530946,
+                "40": 43.71741,
+                "52": 10.418542
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0295",
+              "timeSec": 26.835417,
+              "bands": {
+                "26": 51.223375,
+                "38": 40.600489,
+                "50": 11.334132
+              }
+            },
+            {
+              "sourceId": "n0298",
+              "timeSec": 26.916667,
+              "bands": {
+                "28": 12.442624,
+                "40": 49.099011,
+                "52": 58.787453
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P07",
+      "providedDelayMs": 8,
+      "calculatedDelayMs": 81.25,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0324",
+              "timeSec": 30.263542,
+              "bands": {
+                "26": 0.605512,
+                "38": 25.015732,
+                "50": 20.108838
+              }
+            },
+            {
+              "sourceId": "n0325",
+              "timeSec": 30.344792,
+              "bands": {
+                "28": 1.967197,
+                "40": 58.002259,
+                "52": 28.0938
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0324",
+              "timeSec": 30.263542,
+              "bands": {
+                "26": 3.684969,
+                "38": 25.053633,
+                "50": 22.866728
+              }
+            },
+            {
+              "sourceId": "n0325",
+              "timeSec": 30.344792,
+              "bands": {
+                "28": 7.901151,
+                "40": 64.384096,
+                "52": 61.354864
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P08",
+      "providedDelayMs": 9,
+      "calculatedDelayMs": 92.708,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0327",
+              "timeSec": 30.68125,
+              "bands": {
+                "26": 0.760853,
+                "38": 27.747468,
+                "50": 53.438349
+              }
+            },
+            {
+              "sourceId": "n0328",
+              "timeSec": 30.773958,
+              "bands": {
+                "28": 0.527596,
+                "40": 52.251028,
+                "52": 25.6305
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0327",
+              "timeSec": 30.68125,
+              "bands": {
+                "26": 3.165629,
+                "38": 24.602181,
+                "50": 73.751409
+              }
+            },
+            {
+              "sourceId": "n0328",
+              "timeSec": 30.773958,
+              "bands": {
+                "28": 0.871048,
+                "40": 69.292027,
+                "52": 72.193934
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P09",
+      "providedDelayMs": 7,
+      "calculatedDelayMs": 69.792,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0332",
+              "timeSec": 31.145833,
+              "bands": {
+                "26": 0.850452,
+                "38": 28.921344,
+                "50": 42.415939
+              }
+            },
+            {
+              "sourceId": "n0333",
+              "timeSec": 31.215625,
+              "bands": {
+                "28": 1.19466,
+                "40": 46.803436,
+                "52": 39.675771
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0332",
+              "timeSec": 31.145833,
+              "bands": {
+                "26": 1.032096,
+                "38": 29.621118,
+                "50": 75.684767
+              }
+            },
+            {
+              "sourceId": "n0333",
+              "timeSec": 31.215625,
+              "bands": {
+                "28": 2.781659,
+                "40": 51.924609,
+                "52": 52.81507
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P10",
+      "providedDelayMs": 10,
+      "calculatedDelayMs": 105.208,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0340",
+              "timeSec": 31.959375,
+              "bands": {
+                "26": 1.40855,
+                "38": 19.928616,
+                "50": 40.500959
+              }
+            },
+            {
+              "sourceId": "n0342",
+              "timeSec": 32.064583,
+              "bands": {
+                "28": 1.385175,
+                "40": 43.098159,
+                "52": 46.364138
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0340",
+              "timeSec": 31.959375,
+              "bands": {
+                "26": 4.454469,
+                "38": 21.376671,
+                "50": 46.153572
+              }
+            },
+            {
+              "sourceId": "n0342",
+              "timeSec": 32.064583,
+              "bands": {
+                "28": 3.386585,
+                "40": 53.791068,
+                "52": 73.423629
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P11",
+      "providedDelayMs": 9,
+      "calculatedDelayMs": 92.709,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0344",
+              "timeSec": 32.389583,
+              "bands": {
+                "26": 1.296442,
+                "38": 31.179499,
+                "50": 35.933015
+              }
+            },
+            {
+              "sourceId": "n0345",
+              "timeSec": 32.482292,
+              "bands": {
+                "28": 1.608698,
+                "40": 70.224282,
+                "52": 37.3213
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0344",
+              "timeSec": 32.389583,
+              "bands": {
+                "26": 5.447575,
+                "38": 29.843922,
+                "50": 58.757217
+              }
+            },
+            {
+              "sourceId": "n0345",
+              "timeSec": 32.482292,
+              "bands": {
+                "28": 2.665031,
+                "40": 78.668768,
+                "52": 72.157562
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P12",
+      "providedDelayMs": 9,
+      "calculatedDelayMs": 93.75,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0360",
+              "timeSec": 33.678125,
+              "bands": {
+                "26": 0.963121,
+                "38": 28.514821,
+                "50": 39.652653
+              }
+            },
+            {
+              "sourceId": "n0362",
+              "timeSec": 33.771875,
+              "bands": {
+                "28": 1.191137,
+                "40": 45.940006,
+                "52": 49.484663
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0360",
+              "timeSec": 33.678125,
+              "bands": {
+                "26": 5.624187,
+                "38": 27.368613,
+                "50": 36.71733
+              }
+            },
+            {
+              "sourceId": "n0362",
+              "timeSec": 33.771875,
+              "bands": {
+                "28": 3.508034,
+                "40": 53.620515,
+                "52": 63.831724
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P13",
+      "providedDelayMs": 8,
+      "calculatedDelayMs": 81.25,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0363",
+              "timeSec": 34.108333,
+              "bands": {
+                "26": 0.889361,
+                "38": 22.439947,
+                "50": 68.520649
+              }
+            },
+            {
+              "sourceId": "n0364",
+              "timeSec": 34.189583,
+              "bands": {
+                "28": 1.434788,
+                "40": 35.541539,
+                "52": 47.148617
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0363",
+              "timeSec": 34.108333,
+              "bands": {
+                "26": 1.813294,
+                "38": 23.700837,
+                "50": 71.558086
+              }
+            },
+            {
+              "sourceId": "n0364",
+              "timeSec": 34.189583,
+              "bands": {
+                "28": 2.311265,
+                "40": 41.595642,
+                "52": 93.488575
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P14",
+      "providedDelayMs": 8,
+      "calculatedDelayMs": 81.25,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0366",
+              "timeSec": 34.55,
+              "bands": {
+                "26": 0.418419,
+                "38": 17.786463,
+                "50": 57.92771
+              }
+            },
+            {
+              "sourceId": "n0367",
+              "timeSec": 34.63125,
+              "bands": {
+                "28": 2.104786,
+                "40": 40.531503,
+                "52": 48.094203
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0366",
+              "timeSec": 34.55,
+              "bands": {
+                "26": 2.337363,
+                "38": 16.675092,
+                "50": 58.560942
+              }
+            },
+            {
+              "sourceId": "n0367",
+              "timeSec": 34.63125,
+              "bands": {
+                "28": 4.49917,
+                "40": 44.313263,
+                "52": 48.842754
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P15",
+      "providedDelayMs": 12,
+      "calculatedDelayMs": 115.625,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0372",
+              "timeSec": 34.95625,
+              "bands": {
+                "26": 0.549995,
+                "38": 1.744138,
+                "50": 2.915878
+              }
+            },
+            {
+              "sourceId": "n0373",
+              "timeSec": 35.071875,
+              "bands": {
+                "28": 0.203768,
+                "40": 0.491331,
+                "52": 1.60519
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0372",
+              "timeSec": 34.95625,
+              "bands": {
+                "26": 1.07878,
+                "38": 2.284311,
+                "50": 28.01162
+              }
+            },
+            {
+              "sourceId": "n0373",
+              "timeSec": 35.071875,
+              "bands": {
+                "28": 0.221306,
+                "40": 0.878756,
+                "52": 22.3303
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P16",
+      "providedDelayMs": 10,
+      "calculatedDelayMs": 104.166,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0375",
+              "timeSec": 35.397917,
+              "bands": {
+                "26": 0.465451,
+                "38": 1.039723,
+                "50": 2.22813
+              }
+            },
+            {
+              "sourceId": "n0376",
+              "timeSec": 35.502083,
+              "bands": {
+                "28": 0.169346,
+                "40": 0.463453,
+                "52": 1.260161
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0375",
+              "timeSec": 35.397917,
+              "bands": {
+                "26": 0.918071,
+                "38": 1.316892,
+                "50": 29.489758
+              }
+            },
+            {
+              "sourceId": "n0376",
+              "timeSec": 35.502083,
+              "bands": {
+                "28": 0.27205,
+                "40": 0.58233,
+                "52": 31.739815
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P17",
+      "providedDelayMs": 10,
+      "calculatedDelayMs": 104.166,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0380",
+              "timeSec": 35.816667,
+              "bands": {
+                "26": 0.588149,
+                "38": 3.399464,
+                "50": 3.974871
+              }
+            },
+            {
+              "sourceId": "n0382",
+              "timeSec": 35.920833,
+              "bands": {
+                "28": 0.206265,
+                "40": 0.572457,
+                "52": 1.20452
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0380",
+              "timeSec": 35.816667,
+              "bands": {
+                "26": 0.943948,
+                "38": 4.015372,
+                "50": 21.3363
+              }
+            },
+            {
+              "sourceId": "n0382",
+              "timeSec": 35.920833,
+              "bands": {
+                "28": 0.176821,
+                "40": 0.722601,
+                "52": 35.945685
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P18",
+      "providedDelayMs": 12,
+      "calculatedDelayMs": 116.667,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0384",
+              "timeSec": 36.245833,
+              "bands": {
+                "26": 0.403671,
+                "38": 2.855234,
+                "50": 17.006877
+              }
+            },
+            {
+              "sourceId": "n0386",
+              "timeSec": 36.3625,
+              "bands": {
+                "28": 0.162868,
+                "40": 1.129417,
+                "52": 2.761042
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0384",
+              "timeSec": 36.245833,
+              "bands": {
+                "26": 0.505502,
+                "38": 3.244523,
+                "50": 25.416356
+              }
+            },
+            {
+              "sourceId": "n0386",
+              "timeSec": 36.3625,
+              "bands": {
+                "28": 0.361968,
+                "40": 0.856908,
+                "52": 31.551292
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P19",
+      "providedDelayMs": 12,
+      "calculatedDelayMs": 115.625,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0580",
+              "timeSec": 52.092708,
+              "bands": {
+                "26": 1.416438,
+                "38": 45.589944,
+                "50": 85.487418
+              }
+            },
+            {
+              "sourceId": "n0583",
+              "timeSec": 52.208333,
+              "bands": {
+                "28": 2.007152,
+                "40": 70.853942,
+                "52": 27.126758
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0580",
+              "timeSec": 52.092708,
+              "bands": {
+                "26": 7.638668,
+                "38": 55.842265,
+                "50": 88.689066
+              }
+            },
+            {
+              "sourceId": "n0583",
+              "timeSec": 52.208333,
+              "bands": {
+                "28": 1.941743,
+                "40": 79.783157,
+                "52": 80.622504
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P20",
+      "providedDelayMs": 10,
+      "calculatedDelayMs": 104.167,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0597",
+              "timeSec": 53.392708,
+              "bands": {
+                "26": 0.496629,
+                "38": 41.487303,
+                "50": 77.9771
+              }
+            },
+            {
+              "sourceId": "n0599",
+              "timeSec": 53.496875,
+              "bands": {
+                "28": 1.675308,
+                "40": 70.583045,
+                "52": 43.903399
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0597",
+              "timeSec": 53.392708,
+              "bands": {
+                "26": 10.719455,
+                "38": 44.980708,
+                "50": 129.464649
+              }
+            },
+            {
+              "sourceId": "n0599",
+              "timeSec": 53.496875,
+              "bands": {
+                "28": 4.582696,
+                "40": 73.544078,
+                "52": 115.421649
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "P21",
+      "providedDelayMs": 10,
+      "calculatedDelayMs": 105.208,
+      "measurements": [
+        {
+          "audio": "estimated-bass",
+          "events": [
+            {
+              "sourceId": "n0617",
+              "timeSec": 55.216667,
+              "bands": {
+                "26": 1.729313,
+                "38": 2.34336,
+                "50": 1.537359
+              }
+            },
+            {
+              "sourceId": "n0618",
+              "timeSec": 55.321875,
+              "bands": {
+                "28": 2.062457,
+                "40": 17.561629,
+                "52": 2.913549
+              }
+            }
+          ]
+        },
+        {
+          "audio": "original-mix",
+          "events": [
+            {
+              "sourceId": "n0617",
+              "timeSec": 55.216667,
+              "bands": {
+                "26": 14.725435,
+                "38": 16.100141,
+                "50": 30.049404
+              }
+            },
+            {
+              "sourceId": "n0618",
+              "timeSec": 55.321875,
+              "bands": {
+                "28": 94.061046,
+                "40": 60.847937,
+                "52": 17.687461
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rests": [
+    {
+      "id": "R01",
+      "startSec": 2.47,
+      "endSec": 2.79,
+      "protected": true,
+      "stemEnergyRatio": 0.0008,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R02",
+      "startSec": 3.55,
+      "endSec": 3.85,
+      "protected": true,
+      "stemEnergyRatio": 0.0008,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R03",
+      "startSec": 5.89,
+      "endSec": 6.21,
+      "protected": true,
+      "stemEnergyRatio": 0.0079,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R04",
+      "startSec": 6.83,
+      "endSec": 7.28,
+      "protected": true,
+      "stemEnergyRatio": 0.0012,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R05",
+      "startSec": 16.17,
+      "endSec": 16.92,
+      "protected": true,
+      "stemEnergyRatio": 0.0011,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R06",
+      "startSec": 17.88,
+      "endSec": 18.32,
+      "protected": true,
+      "stemEnergyRatio": 0.006,
+      "instrumentVerified": false
+    }
+  ]
+}

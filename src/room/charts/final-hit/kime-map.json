@@ -1,0 +1,1151 @@
+{
+  "schemaVersion": "1.0.0",
+  "songId": "final-hit",
+  "policy": "protected-accents-before-fillers",
+  "audioSha256": "8502b7d6ce574ea8a38681962997bca96ec7b5c54e3c114f2d3abc54968e2aa2",
+  "events": [
+    {
+      "id": "A01",
+      "groupId": "K01",
+      "sourceId": "n0009",
+      "timeSec": 2.207292,
+      "sourceMidi": 43,
+      "midi": 43,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0009"
+      ],
+      "firstTimeSec": 2.207292,
+      "pairDelayMs": 0,
+      "guardStartSec": 2.027292,
+      "guardEndSec": 2.347292,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A02",
+      "groupId": "K01",
+      "sourceId": "n0024",
+      "timeSec": 3.925,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0024"
+      ],
+      "firstTimeSec": 3.925,
+      "pairDelayMs": 0,
+      "guardStartSec": 3.745,
+      "guardEndSec": 4.065,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A03",
+      "groupId": "K02",
+      "sourceId": "n0055",
+      "timeSec": 7.294792,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0055"
+      ],
+      "firstTimeSec": 7.294792,
+      "pairDelayMs": 0,
+      "guardStartSec": 7.114792,
+      "guardEndSec": 7.434792,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A04",
+      "groupId": "K03",
+      "sourceId": "n0081",
+      "timeSec": 9.142708,
+      "sourceMidi": 48,
+      "midi": 48,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0081"
+      ],
+      "firstTimeSec": 9.142708,
+      "pairDelayMs": 0,
+      "guardStartSec": 8.962708,
+      "guardEndSec": 9.282708,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A05",
+      "groupId": "K03",
+      "sourceId": "n0153",
+      "timeSec": 13.88125,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0153"
+      ],
+      "firstTimeSec": 13.88125,
+      "pairDelayMs": 0,
+      "guardStartSec": 13.70125,
+      "guardEndSec": 14.02125,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A06",
+      "groupId": "K04",
+      "sourceId": "n0200",
+      "timeSec": 17.425,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0200"
+      ],
+      "firstTimeSec": 17.425,
+      "pairDelayMs": 0,
+      "guardStartSec": 17.245,
+      "guardEndSec": 17.565,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A07",
+      "groupId": "K05",
+      "sourceId": "n0239",
+      "timeSec": 21.45625,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0239"
+      ],
+      "firstTimeSec": 21.45625,
+      "pairDelayMs": 0,
+      "guardStartSec": 21.27625,
+      "guardEndSec": 21.59625,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P01",
+      "groupId": "K06",
+      "sourceId": "n0251",
+      "timeSec": 23.060417,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0250",
+        "n0251"
+      ],
+      "firstTimeSec": 22.966667,
+      "pairDelayMs": 93.75,
+      "guardStartSec": 22.866667,
+      "guardEndSec": 23.320417,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P02",
+      "groupId": "K06",
+      "sourceId": "n0256",
+      "timeSec": 23.501042,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0254",
+        "n0256"
+      ],
+      "firstTimeSec": 23.408333,
+      "pairDelayMs": 92.709,
+      "guardStartSec": 23.308333,
+      "guardEndSec": 23.761042,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P03",
+      "groupId": "K06",
+      "sourceId": "n0270",
+      "timeSec": 24.779167,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0269",
+        "n0270"
+      ],
+      "firstTimeSec": 24.697917,
+      "pairDelayMs": 81.25,
+      "guardStartSec": 24.597917,
+      "guardEndSec": 25.039167,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P04",
+      "groupId": "K06",
+      "sourceId": "n0276",
+      "timeSec": 25.209375,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0273",
+        "n0276"
+      ],
+      "firstTimeSec": 25.116667,
+      "pairDelayMs": 92.708,
+      "guardStartSec": 25.016667,
+      "guardEndSec": 25.469375,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P05",
+      "groupId": "K06",
+      "sourceId": "n0292",
+      "timeSec": 26.4875,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0290",
+        "n0292"
+      ],
+      "firstTimeSec": 26.383333,
+      "pairDelayMs": 104.167,
+      "guardStartSec": 26.283333,
+      "guardEndSec": 26.7475,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P06",
+      "groupId": "K06",
+      "sourceId": "n0298",
+      "timeSec": 26.916667,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0295",
+        "n0298"
+      ],
+      "firstTimeSec": 26.835417,
+      "pairDelayMs": 81.25,
+      "guardStartSec": 26.735417,
+      "guardEndSec": 27.176667,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A08",
+      "groupId": "K07",
+      "sourceId": "n0308",
+      "timeSec": 27.952083,
+      "sourceMidi": 48,
+      "midi": 48,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0308"
+      ],
+      "firstTimeSec": 27.952083,
+      "pairDelayMs": 0,
+      "guardStartSec": 27.772083,
+      "guardEndSec": 28.092083,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A09",
+      "groupId": "K07",
+      "sourceId": "n0320",
+      "timeSec": 28.520833,
+      "sourceMidi": 48,
+      "midi": 48,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0320"
+      ],
+      "firstTimeSec": 28.520833,
+      "pairDelayMs": 0,
+      "guardStartSec": 28.340833,
+      "guardEndSec": 28.660833,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P07",
+      "groupId": "K08",
+      "sourceId": "n0325",
+      "timeSec": 30.344792,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0324",
+        "n0325"
+      ],
+      "firstTimeSec": 30.263542,
+      "pairDelayMs": 81.25,
+      "guardStartSec": 30.163542,
+      "guardEndSec": 30.604792,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P08",
+      "groupId": "K08",
+      "sourceId": "n0328",
+      "timeSec": 30.773958,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0327",
+        "n0328"
+      ],
+      "firstTimeSec": 30.68125,
+      "pairDelayMs": 92.708,
+      "guardStartSec": 30.58125,
+      "guardEndSec": 31.033958,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P09",
+      "groupId": "K08",
+      "sourceId": "n0333",
+      "timeSec": 31.215625,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0332",
+        "n0333"
+      ],
+      "firstTimeSec": 31.145833,
+      "pairDelayMs": 69.792,
+      "guardStartSec": 31.045833,
+      "guardEndSec": 31.475625,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P10",
+      "groupId": "K08",
+      "sourceId": "n0342",
+      "timeSec": 32.064583,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0340",
+        "n0342"
+      ],
+      "firstTimeSec": 31.959375,
+      "pairDelayMs": 105.208,
+      "guardStartSec": 31.859375,
+      "guardEndSec": 32.324583,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P11",
+      "groupId": "K08",
+      "sourceId": "n0345",
+      "timeSec": 32.482292,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0344",
+        "n0345"
+      ],
+      "firstTimeSec": 32.389583,
+      "pairDelayMs": 92.709,
+      "guardStartSec": 32.289583,
+      "guardEndSec": 32.742292,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P12",
+      "groupId": "K08",
+      "sourceId": "n0362",
+      "timeSec": 33.771875,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0360",
+        "n0362"
+      ],
+      "firstTimeSec": 33.678125,
+      "pairDelayMs": 93.75,
+      "guardStartSec": 33.578125,
+      "guardEndSec": 34.031875,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P13",
+      "groupId": "K09",
+      "sourceId": "n0364",
+      "timeSec": 34.189583,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0363",
+        "n0364"
+      ],
+      "firstTimeSec": 34.108333,
+      "pairDelayMs": 81.25,
+      "guardStartSec": 34.008333,
+      "guardEndSec": 34.449583,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P14",
+      "groupId": "K09",
+      "sourceId": "n0367",
+      "timeSec": 34.63125,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0366",
+        "n0367"
+      ],
+      "firstTimeSec": 34.55,
+      "pairDelayMs": 81.25,
+      "guardStartSec": 34.45,
+      "guardEndSec": 34.89125,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P15",
+      "groupId": "K09",
+      "sourceId": "n0373",
+      "timeSec": 35.071875,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0372",
+        "n0373"
+      ],
+      "firstTimeSec": 34.95625,
+      "pairDelayMs": 115.625,
+      "guardStartSec": 34.85625,
+      "guardEndSec": 35.331875,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P16",
+      "groupId": "K09",
+      "sourceId": "n0376",
+      "timeSec": 35.502083,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0375",
+        "n0376"
+      ],
+      "firstTimeSec": 35.397917,
+      "pairDelayMs": 104.166,
+      "guardStartSec": 35.297917,
+      "guardEndSec": 35.762083,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P17",
+      "groupId": "K09",
+      "sourceId": "n0382",
+      "timeSec": 35.920833,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0380",
+        "n0382"
+      ],
+      "firstTimeSec": 35.816667,
+      "pairDelayMs": 104.166,
+      "guardStartSec": 35.716667,
+      "guardEndSec": 36.180833,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P18",
+      "groupId": "K09",
+      "sourceId": "n0386",
+      "timeSec": 36.3625,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0384",
+        "n0386"
+      ],
+      "firstTimeSec": 36.245833,
+      "pairDelayMs": 116.667,
+      "guardStartSec": 36.145833,
+      "guardEndSec": 36.6225,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A10",
+      "groupId": "K10",
+      "sourceId": "n0392",
+      "timeSec": 37.09375,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0392"
+      ],
+      "firstTimeSec": 37.09375,
+      "pairDelayMs": 0,
+      "guardStartSec": 36.91375,
+      "guardEndSec": 37.23375,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A11",
+      "groupId": "K10",
+      "sourceId": "n0418",
+      "timeSec": 39.254167,
+      "sourceMidi": 43,
+      "midi": 43,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0418"
+      ],
+      "firstTimeSec": 39.254167,
+      "pairDelayMs": 0,
+      "guardStartSec": 39.074167,
+      "guardEndSec": 39.394167,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A12",
+      "groupId": "K11",
+      "sourceId": "n0446",
+      "timeSec": 41.403125,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0446"
+      ],
+      "firstTimeSec": 41.403125,
+      "pairDelayMs": 0,
+      "guardStartSec": 41.223125,
+      "guardEndSec": 41.543125,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A13",
+      "groupId": "K11",
+      "sourceId": "n0525",
+      "timeSec": 45.772917,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0525"
+      ],
+      "firstTimeSec": 45.772917,
+      "pairDelayMs": 0,
+      "guardStartSec": 45.592917,
+      "guardEndSec": 45.912917,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A14",
+      "groupId": "K12",
+      "sourceId": "n0558",
+      "timeSec": 48.014583,
+      "sourceMidi": 33,
+      "midi": 33,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0558"
+      ],
+      "firstTimeSec": 48.014583,
+      "pairDelayMs": 0,
+      "guardStartSec": 47.834583,
+      "guardEndSec": 48.154583,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P19",
+      "groupId": "K13",
+      "sourceId": "n0583",
+      "timeSec": 52.208333,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0580",
+        "n0583"
+      ],
+      "firstTimeSec": 52.092708,
+      "pairDelayMs": 115.625,
+      "guardStartSec": 51.992708,
+      "guardEndSec": 52.468333,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P20",
+      "groupId": "K13",
+      "sourceId": "n0599",
+      "timeSec": 53.496875,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0597",
+        "n0599"
+      ],
+      "firstTimeSec": 53.392708,
+      "pairDelayMs": 104.167,
+      "guardStartSec": 53.292708,
+      "guardEndSec": 53.756875,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "P21",
+      "groupId": "K13",
+      "sourceId": "n0618",
+      "timeSec": 55.321875,
+      "sourceMidi": 52,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0617",
+        "n0618"
+      ],
+      "firstTimeSec": 55.216667,
+      "pairDelayMs": 105.208,
+      "guardStartSec": 55.116667,
+      "guardEndSec": 55.581875,
+      "pitchMapping": "octave-compatible-accent",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A15",
+      "groupId": "K14",
+      "sourceId": "n0641",
+      "timeSec": 58.203125,
+      "sourceMidi": 47,
+      "midi": 47,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0641"
+      ],
+      "firstTimeSec": 58.203125,
+      "pairDelayMs": 0,
+      "guardStartSec": 58.023125,
+      "guardEndSec": 58.343125,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    },
+    {
+      "id": "A16",
+      "groupId": "K14",
+      "sourceId": "n0645",
+      "timeSec": 58.795833,
+      "sourceMidi": 40,
+      "midi": 40,
+      "kind": "slap",
+      "protected": true,
+      "requiredDifficulties": [
+        "easy",
+        "normal",
+        "hard"
+      ],
+      "representedSourceIds": [
+        "n0645"
+      ],
+      "firstTimeSec": 58.795833,
+      "pairDelayMs": 0,
+      "guardStartSec": 58.615833,
+      "guardEndSec": 58.935833,
+      "pitchMapping": "native-audio-candidate",
+      "pitchVerified": false,
+      "techniqueVerified": false
+    }
+  ],
+  "rests": [
+    {
+      "id": "R01",
+      "startSec": 2.47,
+      "endSec": 2.79,
+      "protected": true,
+      "stemEnergyRatio": 0.0008,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R02",
+      "startSec": 3.55,
+      "endSec": 3.85,
+      "protected": true,
+      "stemEnergyRatio": 0.0008,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R03",
+      "startSec": 5.89,
+      "endSec": 6.21,
+      "protected": true,
+      "stemEnergyRatio": 0.0079,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R04",
+      "startSec": 6.83,
+      "endSec": 7.28,
+      "protected": true,
+      "stemEnergyRatio": 0.0012,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R05",
+      "startSec": 16.17,
+      "endSec": 16.92,
+      "protected": true,
+      "stemEnergyRatio": 0.0011,
+      "instrumentVerified": false
+    },
+    {
+      "id": "R06",
+      "startSec": 17.88,
+      "endSec": 18.32,
+      "protected": true,
+      "stemEnergyRatio": 0.006,
+      "instrumentVerified": false
+    }
+  ],
+  "groups": [
+    {
+      "id": "K01",
+      "startSec": 0.0,
+      "endSec": 5.5,
+      "title": "冒頭の刻み・短いアクセント",
+      "kind": "opening_riff",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "0.7/0.9/1.25/2.95/3.9/4.46s 付近に低中域の明瞭なアタック。2.47–2.79sと3.55–3.85sで35–250Hzが一時的に非常に薄い",
+      "arrangement": "初期リフの短い低域休止を保護し、直後の強い音を残す"
+    },
+    {
+      "id": "K02",
+      "startSec": 5.5,
+      "endSec": 8.2,
+      "title": "短い連打から強拍へ移る切り替え",
+      "kind": "bass_drop_then_fill",
+      "priority": "high-review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "5.89–6.21sと6.83–7.28sで低域が大幅に減少。高い周波数帯のアタックは残り、7.3秒付近から低域が復帰",
+      "arrangement": "ベースを無理に連打させず、休止→復帰の形を残す。間の細かい音は他楽器の可能性"
+    },
+    {
+      "id": "K03",
+      "startSec": 8.2,
+      "endSec": 16.0,
+      "title": "間を作るリフと短い応答",
+      "kind": "staccato_and_space",
+      "priority": "review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "9.06/9.49/10.34/11.2/12.49/13.78/15.16s 近辺にアタック。楽器帰属は未確定",
+      "arrangement": "休符を詰めずにリズムの輪郭を残す"
+    },
+    {
+      "id": "K04",
+      "startSec": 16.2,
+      "endSec": 18.6,
+      "title": "細かいアタックが続くフィル候補",
+      "kind": "bass_drop_and_rapid_other_instrument",
+      "priority": "high-review",
+      "confidence": "bass/instrument ambiguous",
+      "evidence": "16.17–16.92sと17.88–18.32sで35–250Hzが隣接区間に比べ非常に薄い。中高域の細かいアタックは継続",
+      "arrangement": "ベースが引く瞬間を優先保存。他楽器フィルをベース譜面に大量転記しない"
+    },
+    {
+      "id": "K05",
+      "startSec": 18.7,
+      "endSec": 22.7,
+      "title": "低音のキメと次の反復への導入",
+      "kind": "transition",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "20.1–20.9s低域のアタックと22.0–22.65sの短い連続アタック",
+      "arrangement": "次の反復に入る直前の空白とアクセントを残す"
+    },
+    {
+      "id": "K06",
+      "startSec": 22.7,
+      "endSec": 27.0,
+      "title": "ポパ型2音キメの初期反復",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "D3→E3の自動推定2音パターンが6回。間隔0.08–0.10秒。裏拍寄り",
+      "arrangement": "フレーズ単位で保護。Easyは代表位置、Normal/Hardは主アクセントを残す"
+    },
+    {
+      "id": "K07",
+      "startSec": 27.0,
+      "endSec": 30.0,
+      "title": "細かなリズム変化・切り返し候補",
+      "kind": "rhythmic_fill",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "27.05–29.63s付近で約0.1/0.2秒間隔の連続アタック",
+      "arrangement": "重要な切り返し点を優先。すべてのアタックをノーツ化しない"
+    },
+    {
+      "id": "K08",
+      "startSec": 30.1,
+      "endSec": 34.0,
+      "title": "ポパ型キメの再登場・変奏",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "30.26,30.68,31.15,31.96,32.39,33.68sのD3→E3短2音が6回検出",
+      "arrangement": "音符の時刻を表拍へ丸めない。Normal/Hardは主アクセントを優先"
+    },
+    {
+      "id": "K09",
+      "startSec": 34.05,
+      "endSec": 36.65,
+      "title": "最も規則的なポパ連続6回",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "34.11–36.25sの6回、約0.42–0.44秒ごとにD3→E3候補。後音約0.08–0.12秒遅れ。おおむね裏拍寄りの2音パターンで、2音目まで約0.1秒",
+      "arrangement": "この曲の最重要保護フレーズ。Easyは毎2回に1回、Normal/Hardは全6アクセントが基準"
+    },
+    {
+      "id": "K10",
+      "startSec": 36.65,
+      "endSec": 41.0,
+      "title": "音域を下げるようなベースの切り返し候補",
+      "kind": "low_register_turnaround",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "37.84s E1/E2同時候補、38.9–39.5s G1/G2成分、低域の複数アタック",
+      "arrangement": "同時検出音をそのままオクターブ奏法と認定しない。根音移動の輪郭を残す"
+    },
+    {
+      "id": "K11",
+      "startSec": 41.0,
+      "endSec": 46.1,
+      "title": "短い繰り返しと強いフレーズ終端",
+      "kind": "stabs_repeated",
+      "priority": "high-review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "41.0–41.7sにB1/B2候補、44.6–46.0sにもB1/B2成分。倍音/他楽器と未分離",
+      "arrangement": "押す音数は抑え、反復のリズムとフレーズ終端を優先"
+    },
+    {
+      "id": "K12",
+      "startSec": 46.1,
+      "endSec": 50.8,
+      "title": "低音の間合いと強いアクセント",
+      "kind": "stabs_and_space",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "47.93s低中域の強い立上り、48–50sには間隔のある複数のアタック",
+      "arrangement": "強い一音の直前を埋めずに空ける"
+    },
+    {
+      "id": "K13",
+      "startSec": 50.8,
+      "endSec": 55.9,
+      "title": "ポパ型フレーズ回帰＋連続フィル",
+      "kind": "signature_reprise",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "52.09,53.39,55.22sにD3→E3候補。53.5–55.97sには別種の細かな反復",
+      "arrangement": "戻ってきた共通キメを残しつつ、終盤の細かい装飾は間引く"
+    },
+    {
+      "id": "K14",
+      "startSec": 55.9,
+      "endSec": 60.0,
+      "title": "終盤の細かい連打と締め候補",
+      "kind": "ending_accents",
+      "priority": "high-review",
+      "confidence": "drum/guitar/bass ambiguous",
+      "evidence": "55–57sと59.2–59.8sに約0.1秒の密集アタック。低域だけのベース奏法ではない可能性",
+      "arrangement": "ドラムの連打をベースにコピーせず、ベースの最終アクセントを特定して残す"
+    }
+  ]
+}

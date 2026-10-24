@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { BASS_SONGS, BASS_TECHNIQUE_STUDY, BASS_TECHNIQUE_STUDIES, BASS_DURATION } from "../../src/room/bassGame";
+import { BASS_VISUAL_CONFIG } from "../../src/room/bassVisuals";
+import { FINAL_HIT_CHARTS } from "../../src/room/finalHitTrack";
 import { BASS_FRETBOARD } from "../../src/room/bassFretboard";
 import { collectPageErrors, enterRoom, savedPosition } from "./helpers/room";
 
@@ -15,7 +17,7 @@ async function prepare(page: Page) {
   // still decodes the two MP3 buffers and creates/starts every Web Audio voice.
   await page.addInitScript(() => {
     const Original = window.AudioContext;
-    const starts: { rate: number; offset: number; duration: number; loop: boolean }[] = [];
+    const starts: { rate: number; offset: number; duration: number; loop: boolean; when: number }[] = [];
     (window as any).bassStarts = starts;
     const bends: { rate: number; when: number; voice: number }[] = [];
     (window as any).bassBends = bends;
@@ -28,7 +30,7 @@ async function prepare(page: Page) {
         const ramp = voice.playbackRate.linearRampToValueAtTime.bind(voice.playbackRate);
         voice.playbackRate.linearRampToValueAtTime = (rate, when) => { bends.push({ rate, when, voice: voiceIndex }); return ramp(rate, when); };
         voice.start = (when = 0, offset = 0, duration?: number) => {
-          starts.push({ rate: voice.playbackRate.value, offset, duration: voice.buffer?.duration ?? 0, loop: voice.loop });
+          starts.push({ rate: voice.playbackRate.value, offset, duration: voice.buffer?.duration ?? 0, loop: voice.loop, when });
           start(when, offset, duration);
         };
         return voice;
@@ -231,7 +233,7 @@ test("新曲を選び、オフセット付き譜面・原曲音源・停止再�
   const room = await prepare(page);
   await page.getByRole("combobox", { name: "曲を選択" }).selectOption("final-hit");
   await expect(room).toHaveAttribute("data-bass-song", "final-hit");
-  await expect(page.locator(".bass-draft-summary")).toContainText("53音");
+  await expect(page.locator(".bass-draft-summary")).toContainText(`${FINAL_HIT_CHARTS.easy.notes.length}音`);
   await expect(page.locator("[data-bass-fret]")).toHaveCount(24);
   await page.getByRole("spinbutton", { name: "新曲の譜面オフセット（ミリ秒）" }).fill("120");
   await expect(room).toHaveAttribute("data-bass-audio-offset", "0.12");
@@ -324,7 +326,7 @@ async function studyStart(page: Page) {
 
 for (const [difficulty, width, height] of [["easy", 375, 667], ["normal", 390, 844], ["hard", 430, 932]] as const) {
   test(`最終のヒット ${difficulty} ${width}px 全音入力・上下スラップ・音源同期・SSリザルト`, { tag: "@bass" }, async ({ page }) => {
-    test.setTimeout(240_000); // 全114音を実3D上で入力するため、通常の部分操作テストより長い。
+    test.setTimeout(240_000); // 全曲を実3D上で入力するため、通常の部分操作テストより長い。
     const errors = collectPageErrors(page);
     await page.setViewportSize({ width, height });
     const room = await prepare(page);
@@ -350,14 +352,30 @@ for (const [difficulty, width, height] of [["easy", 375, 667], ["normal", 390, 8
       const now = await page.evaluate(() => performance.now());
       const delta = started + (song.countdownSeconds + note.time) * 1000 - now;
       if (delta > 0) await page.clock.fastForward(delta);
+      if (note.kimeGroupId === "K09") {
+        const marker = page.locator(`[data-bass-note="${note.id}"]`);
+        await expect(marker).toHaveAttribute("data-kime-id", note.kimeId!);
+        await expect(marker).toHaveAttribute("data-protected", "true");
+        const x = Number(await marker.locator("text").first().getAttribute("x"));
+        expect(Math.abs(x - BASS_VISUAL_CONFIG.judgeX)).toBeLessThan(12);
+        const charge = page.locator(`[data-bass-fret][data-charge-note="${note.id}"]`);
+        await expect(charge).toHaveAttribute("data-kime-id", note.kimeId!);
+        expect(Number(await charge.getAttribute("data-charge"))).toBeGreaterThan(0.96);
+        if (note.kimeId === "P15") await page.screenshot({ path: `/tmp/final-hit-${difficulty}-kime.png` });
+      }
       await hit(page, note.midi, index + 1);
       if (note.kind === "slap") await hit(page, note.midi, index + 1, "move", index % 2 ? 35 : -35, index % 2 ? -7 : 7);
       await hit(page, note.midi, index + 1, "up");
     }
     await expect(room).toHaveAttribute("data-bass-hits", String(song.notes.length));
     expect(await samplerStarts(page)).toHaveLength(song.notes.length);
-    const mix = await page.evaluate(() => ((window as any).bassStarts as { rate: number; offset: number; duration: number }[]).find(n => n.offset === 0 && n.duration > 59));
+    const mix = await page.evaluate(() => ((window as any).bassStarts as { rate: number; offset: number; duration: number; when: number }[]).find(n => n.offset === 0 && n.duration > 59));
     expect(mix?.rate).toBe(1); expect(mix?.duration).toBeCloseTo(60.0135, 2);
+    const voices = await page.evaluate(() => ((window as any).bassStarts as { offset: number; rate: number; when: number }[]).filter(n => n.offset === 0.317));
+    for (const [i, note] of song.notes.entries()) {
+      expect(voices[i].when - mix!.when).toBeCloseTo(note.time, 2);
+      expect(voices[i].rate).toBeCloseTo(2 ** ((note.midi - 31) / 12), 4);
+    }
     await page.clock.fastForward(2000);
     await expect(room).toHaveAttribute("data-bass-phase", "result");
     await expect(page.locator(".bass-result-rank")).toHaveText("SS");
@@ -642,3 +660,49 @@ for (const [width, height] of [[375, 667], [390, 844], [430, 932]]) {
     await page.clock.runFor(16); await page.screenshot({ path: `/tmp/bass-v21-${width}.png` });
   });
 }
+
+test("34〜37秒の原曲ミックスと3難易度のキメ入力音を同時レンダリングする", { tag: "@bass" }, async ({ page }) => {
+  await page.goto("/");
+  const profiles = (["easy", "normal", "hard"] as const).map(difficulty => ({ difficulty,
+    notes: FINAL_HIT_CHARTS[difficulty].notes.filter(n => "kimeGroupId" in n && n.kimeGroupId === "K09").map(n => ({ time: n.timeSec, midi: n.midi })) }));
+  const reports = await page.evaluate(async profiles => {
+    const modulePath = "/src/room/bassSustain.ts";
+    const { createBassSustainBuffer } = await import(modulePath) as typeof import("../../src/room/bassSustain");
+    const [mixBytes, sampleBytes] = await Promise.all(["final-hit.mp3", "garden-party-bass.mp3"].map(async file => (await fetch(`/src/assets/audio/${file}`)).arrayBuffer()));
+    const render = async (notes: { time: number; midi: number }[]) => {
+      const context = new OfflineAudioContext(1, 3 * 48000, 48000);
+      const [mix, sample] = await Promise.all([context.decodeAudioData(mixBytes.slice(0)), context.decodeAudioData(sampleBytes.slice(0))]);
+      const backing = context.createBufferSource(); backing.buffer = mix; backing.connect(context.destination); backing.start(0, 34);
+      const sustain = createBassSustainBuffer(context, sample);
+      for (const note of notes) {
+        const source = context.createBufferSource(), gain = context.createGain();
+        source.buffer = sustain.buffer; source.playbackRate.value = 2 ** ((note.midi - 31) / 12);
+        source.connect(gain).connect(context.destination);
+        const time = note.time - 34;
+        gain.gain.setValueAtTime(0.3, time); gain.gain.setValueAtTime(0.3, time + 0.12); gain.gain.linearRampToValueAtTime(0, time + 0.145);
+        source.start(time, 0.317); source.stop(time + 0.15);
+      }
+      return (await context.startRendering()).getChannelData(0);
+    };
+    const backing = await render([]), reports = [];
+    for (const profile of profiles) {
+      const combined = await render(profile.notes);
+      let outsideDelta = 0;
+      for (let i = 0; i < combined.length; i++) {
+        const time = i / 48000;
+        if (!profile.notes.some(n => time >= n.time - 34 - 1 / 48000 && time <= n.time - 34 + 0.151)) outsideDelta = Math.max(outsideDelta, Math.abs(combined[i] - backing[i]));
+      }
+      const attacks = profile.notes.map(n => {
+        const at = Math.ceil((n.time - 34) * 48000), size = 2400;
+        return Math.sqrt(combined.slice(at, at + size).reduce((sum, value, i) => sum + (value - backing[at + i]) ** 2, 0) / size);
+      });
+      reports.push({ difficulty: profile.difficulty, count: profile.notes.length, attacks, outsideDelta });
+    }
+    return reports;
+  }, profiles);
+  for (const report of reports) {
+    expect(report.count).toBe(report.difficulty === "easy" ? 3 : 6);
+    expect(report.outsideDelta).toBeLessThan(0.000001); // 元の2音と休符は変更されない。
+    for (const attack of report.attacks) expect(attack).toBeGreaterThan(0.005);
+  }
+});

@@ -1,11 +1,12 @@
 {
   "analysisPath": "docs/analysis/final-hit-audio.json",
+  "policy": "protected-accents-before-fillers",
   "limits": {
     "easy": {
       "maxPerSecond": 2,
       "minInterval": 0.55,
-      "reachSeconds": 0.15,
-      "slapRatio": 0.68
+      "reachSeconds": 0.14,
+      "slapRatio": 0.7
     },
     "normal": {
       "maxPerSecond": 3,
@@ -14,60 +15,144 @@
       "slapRatio": 0.74
     },
     "hard": {
-      "maxPerSecond": 4,
-      "minInterval": 0.26,
+      "maxPerSecond": null,
+      "minInterval": 0.2,
       "reachSeconds": 0.045,
       "slapRatio": 0.8
     }
   },
   "reports": {
     "easy": {
-      "total": 53,
+      "total": 49,
       "maxPerSecond": 2,
-      "minInterval": 0.5572920000000003,
+      "minInterval": 0.5687500000000014,
       "kinds": {
-        "tap": 17,
+        "tap": 15,
         "hold": 0,
-        "slap": 36,
+        "slap": 34,
         "slide": 0
       },
-      "slapRatio": 0.6792452830188679,
-      "minMidi": 33,
-      "maxMidi": 48,
-      "start": 2.207292,
-      "end": 58.795833
-    },
-    "normal": {
-      "total": 81,
-      "maxPerSecond": 3,
-      "minInterval": 0.3708330000000011,
-      "kinds": {
-        "tap": 21,
-        "hold": 0,
-        "slap": 60,
-        "slide": 0
-      },
-      "slapRatio": 0.7407407407407407,
-      "minMidi": 33,
-      "maxMidi": 48,
-      "start": 2.207292,
-      "end": 58.795833
-    },
-    "hard": {
-      "total": 114,
-      "maxPerSecond": 4,
-      "minInterval": 0.26666600000000074,
-      "kinds": {
-        "tap": 23,
-        "hold": 0,
-        "slap": 91,
-        "slide": 0
-      },
-      "slapRatio": 0.7982456140350878,
+      "slapRatio": 0.6938775510204082,
       "minMidi": 33,
       "maxMidi": 48,
       "start": 1.126042,
-      "end": 58.795833
+      "end": 58.795833,
+      "protectedCount": 28,
+      "signatureMotifs": [
+        "P01",
+        "P03",
+        "P05",
+        "P07",
+        "P09",
+        "P11",
+        "P13",
+        "P15",
+        "P17",
+        "P19",
+        "P20",
+        "P21"
+      ],
+      "mainRepeatAnchors": [
+        34.189583,
+        35.071875,
+        35.920833
+      ]
+    },
+    "normal": {
+      "total": 76,
+      "maxPerSecond": 3,
+      "minInterval": 0.3708330000000011,
+      "kinds": {
+        "tap": 20,
+        "hold": 0,
+        "slap": 56,
+        "slide": 0
+      },
+      "slapRatio": 0.7368421052631579,
+      "minMidi": 33,
+      "maxMidi": 48,
+      "start": 1.126042,
+      "end": 58.795833,
+      "protectedCount": 37,
+      "signatureMotifs": [
+        "P01",
+        "P02",
+        "P03",
+        "P04",
+        "P05",
+        "P06",
+        "P07",
+        "P08",
+        "P09",
+        "P10",
+        "P11",
+        "P12",
+        "P13",
+        "P14",
+        "P15",
+        "P16",
+        "P17",
+        "P18",
+        "P19",
+        "P20",
+        "P21"
+      ],
+      "mainRepeatAnchors": [
+        34.189583,
+        34.63125,
+        35.071875,
+        35.502083,
+        35.920833,
+        36.3625
+      ]
+    },
+    "hard": {
+      "total": 112,
+      "maxPerSecond": 4,
+      "minInterval": 0.2083329999999961,
+      "kinds": {
+        "tap": 22,
+        "hold": 0,
+        "slap": 90,
+        "slide": 0
+      },
+      "slapRatio": 0.8035714285714286,
+      "minMidi": 30,
+      "maxMidi": 48,
+      "start": 1.126042,
+      "end": 58.795833,
+      "protectedCount": 37,
+      "signatureMotifs": [
+        "P01",
+        "P02",
+        "P03",
+        "P04",
+        "P05",
+        "P06",
+        "P07",
+        "P08",
+        "P09",
+        "P10",
+        "P11",
+        "P12",
+        "P13",
+        "P14",
+        "P15",
+        "P16",
+        "P17",
+        "P18",
+        "P19",
+        "P20",
+        "P21"
+      ],
+      "mainRepeatAnchors": [
+        34.189583,
+        34.63125,
+        35.071875,
+        35.502083,
+        35.920833,
+        36.3625
+      ]
     }
   }
 }

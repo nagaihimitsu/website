@@ -1,11 +1,12 @@
 import type { BassDifficulty, BassNote, BassSong } from "./bassGame";
 import { BASS_STRINGS } from "./bassFretboard";
 import { validateBassSlide } from "./bassSlide";
+import { validateFinalHitKime } from "./finalHitKime";
 
 export const FINAL_HIT_LIMITS = Object.freeze({
-  easy: { maxPerSecond: 2, minInterval: 0.55, reachSeconds: 0.15, slapRatio: 0.68 },
+  easy: { maxPerSecond: 2, minInterval: 0.55, reachSeconds: 0.14, slapRatio: 0.7 },
   normal: { maxPerSecond: 3, minInterval: 0.36, reachSeconds: 0.075, slapRatio: 0.74 },
-  hard: { maxPerSecond: 4, minInterval: 0.26, reachSeconds: 0.045, slapRatio: 0.8 },
+  hard: { maxPerSecond: null, minInterval: 0.2, reachSeconds: 0.045, slapRatio: 0.8 },
 });
 
 /** 弦飛びとフレット移動、スラップ後の移動に余裕を残す。 */
@@ -28,10 +29,13 @@ export function finalHitChartStats(notes: readonly BassNote[]) {
     slapRatio: notes.length ? kinds.slap / notes.length : 0,
     minMidi: notes.length ? Math.min(...notes.map(n => n.midi)) : null,
     maxMidi: notes.length ? Math.max(...notes.map(n => n.midi)) : null,
-    start: notes[0]?.time ?? 0, end: Math.max(0, ...notes.map(n => n.endTime ?? n.time)) };
+    start: notes[0]?.time ?? 0, end: Math.max(0, ...notes.map(n => n.endTime ?? n.time)),
+    protectedCount: notes.filter(note => note.protected).length,
+    signatureMotifs: notes.filter(note => note.kimeId?.startsWith("P")).map(note => note.kimeId!),
+    mainRepeatAnchors: notes.filter(note => note.kimeGroupId === "K09").map(note => note.time) };
 }
 
-export function validateFinalHitChart(song: Pick<BassSong, "notes" | "duration" | "difficulty">) {
+export function validateFinalHitChart(song: Pick<BassSong, "notes" | "duration" | "difficulty"> & { importInfo?: { audioOffsetSec: number } }) {
   const { notes, difficulty, duration } = song;
   const fail = (message: string) => { throw new Error(`最終のヒット ${difficulty}: ${message}`); };
   if (!notes.length) fail("譜面が空です");
@@ -50,7 +54,9 @@ export function validateFinalHitChart(song: Pick<BassSong, "notes" | "duration" 
     if (previous.endTime !== undefined && note.time < previous.endTime + 0.16 - 1e-8) fail("保持・スライド後の解除時間不足");
   }
   const stats = finalHitChartStats(notes);
-  if (stats.maxPerSecond > FINAL_HIT_LIMITS[difficulty].maxPerSecond) fail("任意の1秒間の入力上限超過");
+  const cap = FINAL_HIT_LIMITS[difficulty].maxPerSecond;
+  if (cap !== null && stats.maxPerSecond > cap) fail("任意の1秒間の入力上限超過");
   if (stats.slapRatio < 0.6) fail("スラップの割合不足");
+  validateFinalHitKime(notes, difficulty, song.importInfo?.audioOffsetSec ?? 0);
   return stats;
 }

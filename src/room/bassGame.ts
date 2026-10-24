@@ -39,6 +39,11 @@ export interface BassPhrase {
 }
 export type BassNoteKind = "tap" | "hold" | "slap" | "slide";
 export interface BassNote {
+  kimeId?: string;
+  kimeGroupId?: string;
+  protected?: boolean;
+  sourceMidi?: number;
+  pitchMapping?: string;
   sourceId?: string;
   sourceTimeSec?: number;
   sourceDurationSec?: number;

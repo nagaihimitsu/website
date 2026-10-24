@@ -1,0 +1,570 @@
+{
+  "title": "最終のヒット：キメ候補の全曲マップ",
+  "sourceAudio": "最終のヒット.mp3",
+  "audioDurationSec": 60.048,
+  "detectedTempoBpmApprox": 140,
+  "tempoCaution": "MIDI tempo metadata reported 120 BPM but acoustic beat interval is about 0.429s, corresponding to about 140 BPM; verify timing/alignment before chart export",
+  "method": [
+    "Original 60s mixed MP3 frequency-band transient analysis",
+    "Review previous automatically transcribed mixed-MIDI note events",
+    "Short D3->E3 pair pattern search"
+  ],
+  "limitations": [
+    "No isolated bass stem; percussive drum and electric guitar attacks cannot be conclusively separated",
+    "MIDI note names and octaves might include harmonics or other instruments",
+    "Kime candidates except repeat motif require attentive manual instrument verification",
+    "No final playable chart/pitch assigned"
+  ],
+  "groups": [
+    {
+      "id": "K01",
+      "startSec": 0.0,
+      "endSec": 5.5,
+      "title": "冒頭の刻み・短いアクセント",
+      "kind": "opening_riff",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "0.7/0.9/1.25/2.95/3.9/4.46s 付近に低中域の明瞭なアタック。2.47–2.79sと3.55–3.85sで35–250Hzが一時的に非常に薄い",
+      "arrangement": "初期リフの短い低域休止を保護し、直後の強い音を残す"
+    },
+    {
+      "id": "K02",
+      "startSec": 5.5,
+      "endSec": 8.2,
+      "title": "短い連打から強拍へ移る切り替え",
+      "kind": "bass_drop_then_fill",
+      "priority": "high-review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "5.89–6.21sと6.83–7.28sで低域が大幅に減少。高い周波数帯のアタックは残り、7.3秒付近から低域が復帰",
+      "arrangement": "ベースを無理に連打させず、休止→復帰の形を残す。間の細かい音は他楽器の可能性"
+    },
+    {
+      "id": "K03",
+      "startSec": 8.2,
+      "endSec": 16.0,
+      "title": "間を作るリフと短い応答",
+      "kind": "staccato_and_space",
+      "priority": "review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "9.06/9.49/10.34/11.2/12.49/13.78/15.16s 近辺にアタック。楽器帰属は未確定",
+      "arrangement": "休符を詰めずにリズムの輪郭を残す"
+    },
+    {
+      "id": "K04",
+      "startSec": 16.2,
+      "endSec": 18.6,
+      "title": "細かいアタックが続くフィル候補",
+      "kind": "bass_drop_and_rapid_other_instrument",
+      "priority": "high-review",
+      "confidence": "bass/instrument ambiguous",
+      "evidence": "16.17–16.92sと17.88–18.32sで35–250Hzが隣接区間に比べ非常に薄い。中高域の細かいアタックは継続",
+      "arrangement": "ベースが引く瞬間を優先保存。他楽器フィルをベース譜面に大量転記しない"
+    },
+    {
+      "id": "K05",
+      "startSec": 18.7,
+      "endSec": 22.7,
+      "title": "低音のキメと次の反復への導入",
+      "kind": "transition",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "20.1–20.9s低域のアタックと22.0–22.65sの短い連続アタック",
+      "arrangement": "次の反復に入る直前の空白とアクセントを残す"
+    },
+    {
+      "id": "K06",
+      "startSec": 22.7,
+      "endSec": 27.0,
+      "title": "ポパ型2音キメの初期反復",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "D3→E3の自動推定2音パターンが6回。間隔0.08–0.10秒。裏拍寄り",
+      "arrangement": "フレーズ単位で保護。Easyは代表位置、Normal/Hardは主アクセントを残す"
+    },
+    {
+      "id": "K07",
+      "startSec": 27.0,
+      "endSec": 30.0,
+      "title": "細かなリズム変化・切り返し候補",
+      "kind": "rhythmic_fill",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "27.05–29.63s付近で約0.1/0.2秒間隔の連続アタック",
+      "arrangement": "重要な切り返し点を優先。すべてのアタックをノーツ化しない"
+    },
+    {
+      "id": "K08",
+      "startSec": 30.1,
+      "endSec": 34.0,
+      "title": "ポパ型キメの再登場・変奏",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "30.26,30.68,31.15,31.96,32.39,33.68sのD3→E3短2音が6回検出",
+      "arrangement": "音符の時刻を表拍へ丸めない。Normal/Hardは主アクセントを優先"
+    },
+    {
+      "id": "K09",
+      "startSec": 34.05,
+      "endSec": 36.65,
+      "title": "最も規則的なポパ連続6回",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "34.11–36.25sの6回、約0.42–0.44秒ごとにD3→E3候補。後音約0.08–0.12秒遅れ。おおむね裏拍寄りの2音パターンで、2音目まで約0.1秒",
+      "arrangement": "この曲の最重要保護フレーズ。Easyは毎2回に1回、Normal/Hardは全6アクセントが基準"
+    },
+    {
+      "id": "K10",
+      "startSec": 36.65,
+      "endSec": 41.0,
+      "title": "音域を下げるようなベースの切り返し候補",
+      "kind": "low_register_turnaround",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "37.84s E1/E2同時候補、38.9–39.5s G1/G2成分、低域の複数アタック",
+      "arrangement": "同時検出音をそのままオクターブ奏法と認定しない。根音移動の輪郭を残す"
+    },
+    {
+      "id": "K11",
+      "startSec": 41.0,
+      "endSec": 46.1,
+      "title": "短い繰り返しと強いフレーズ終端",
+      "kind": "stabs_repeated",
+      "priority": "high-review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "41.0–41.7sにB1/B2候補、44.6–46.0sにもB1/B2成分。倍音/他楽器と未分離",
+      "arrangement": "押す音数は抑え、反復のリズムとフレーズ終端を優先"
+    },
+    {
+      "id": "K12",
+      "startSec": 46.1,
+      "endSec": 50.8,
+      "title": "低音の間合いと強いアクセント",
+      "kind": "stabs_and_space",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "47.93s低中域の強い立上り、48–50sには間隔のある複数のアタック",
+      "arrangement": "強い一音の直前を埋めずに空ける"
+    },
+    {
+      "id": "K13",
+      "startSec": 50.8,
+      "endSec": 55.9,
+      "title": "ポパ型フレーズ回帰＋連続フィル",
+      "kind": "signature_reprise",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "52.09,53.39,55.22sにD3→E3候補。53.5–55.97sには別種の細かな反復",
+      "arrangement": "戻ってきた共通キメを残しつつ、終盤の細かい装飾は間引く"
+    },
+    {
+      "id": "K14",
+      "startSec": 55.9,
+      "endSec": 60.0,
+      "title": "終盤の細かい連打と締め候補",
+      "kind": "ending_accents",
+      "priority": "high-review",
+      "confidence": "drum/guitar/bass ambiguous",
+      "evidence": "55–57sと59.2–59.8sに約0.1秒の密集アタック。低域だけのベース奏法ではない可能性",
+      "arrangement": "ドラムの連打をベースにコピーせず、ベースの最終アクセントを特定して残す"
+    }
+  ],
+  "signatureMotifCount": 21,
+  "signatureMotifs": [
+    {
+      "id": "P01",
+      "groupId": "K06",
+      "firstApproxSec": 22.97,
+      "secondApproxSec": 23.064,
+      "intraPairDelayMs": 9,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 23.064,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P02",
+      "groupId": "K06",
+      "firstApproxSec": 23.41,
+      "secondApproxSec": 23.503,
+      "intraPairDelayMs": 9,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 23.503,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P03",
+      "groupId": "K06",
+      "firstApproxSec": 24.7,
+      "secondApproxSec": 24.781,
+      "intraPairDelayMs": 8,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 24.781,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P04",
+      "groupId": "K06",
+      "firstApproxSec": 25.12,
+      "secondApproxSec": 25.213,
+      "intraPairDelayMs": 9,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 25.213,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P05",
+      "groupId": "K06",
+      "firstApproxSec": 26.38,
+      "secondApproxSec": 26.484,
+      "intraPairDelayMs": 10,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 26.484,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P06",
+      "groupId": "K06",
+      "firstApproxSec": 26.84,
+      "secondApproxSec": 26.921,
+      "intraPairDelayMs": 8,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 26.921,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P07",
+      "groupId": "K08",
+      "firstApproxSec": 30.26,
+      "secondApproxSec": 30.341,
+      "intraPairDelayMs": 8,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 30.341,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P08",
+      "groupId": "K08",
+      "firstApproxSec": 30.68,
+      "secondApproxSec": 30.773,
+      "intraPairDelayMs": 9,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 30.773,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P09",
+      "groupId": "K08",
+      "firstApproxSec": 31.15,
+      "secondApproxSec": 31.22,
+      "intraPairDelayMs": 7,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 31.22,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P10",
+      "groupId": "K08",
+      "firstApproxSec": 31.96,
+      "secondApproxSec": 32.065,
+      "intraPairDelayMs": 10,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 32.065,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P11",
+      "groupId": "K08",
+      "firstApproxSec": 32.39,
+      "secondApproxSec": 32.483,
+      "intraPairDelayMs": 9,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 32.483,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P12",
+      "groupId": "K08",
+      "firstApproxSec": 33.68,
+      "secondApproxSec": 33.774,
+      "intraPairDelayMs": 9,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 33.774,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P13",
+      "groupId": "K09",
+      "firstApproxSec": 34.11,
+      "secondApproxSec": 34.191,
+      "intraPairDelayMs": 8,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 34.191,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P14",
+      "groupId": "K09",
+      "firstApproxSec": 34.55,
+      "secondApproxSec": 34.631,
+      "intraPairDelayMs": 8,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 34.631,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P15",
+      "groupId": "K09",
+      "firstApproxSec": 34.96,
+      "secondApproxSec": 35.076,
+      "intraPairDelayMs": 12,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 35.076,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P16",
+      "groupId": "K09",
+      "firstApproxSec": 35.4,
+      "secondApproxSec": 35.504,
+      "intraPairDelayMs": 10,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 35.504,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P17",
+      "groupId": "K09",
+      "firstApproxSec": 35.82,
+      "secondApproxSec": 35.924,
+      "intraPairDelayMs": 10,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 35.924,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P18",
+      "groupId": "K09",
+      "firstApproxSec": 36.25,
+      "secondApproxSec": 36.367,
+      "intraPairDelayMs": 12,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 36.367,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P19",
+      "groupId": "K13",
+      "firstApproxSec": 52.09,
+      "secondApproxSec": 52.206,
+      "intraPairDelayMs": 12,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 52.206,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P20",
+      "groupId": "K13",
+      "firstApproxSec": 53.39,
+      "secondApproxSec": 53.494,
+      "intraPairDelayMs": 10,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 53.494,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    },
+    {
+      "id": "P21",
+      "groupId": "K13",
+      "firstApproxSec": 55.22,
+      "secondApproxSec": 55.325,
+      "intraPairDelayMs": 10,
+      "midiSuggestedNotes": [
+        "D3",
+        "E3"
+      ],
+      "noteVerification": "unverified; extracted from mixed-audio MIDI",
+      "bassTechniqueVerification": "unverified",
+      "suggestedGameplayAnchorSec": 55.325,
+      "suggestedGameplay": "one slap accent at second note; keep first as backing/ghost if necessary",
+      "manualAudioCheckRequired": true
+    }
+  ],
+  "chartGuidelines": {
+    "preserveSignatureRhythm": true,
+    "quantizeToEasyEighths": false,
+    "eventCapPerOneSecond": {
+      "easy": 2,
+      "normal": 3,
+      "hard": 4
+    },
+    "difficultyLogic": "Easy samples representative motif accents, Normal preserves repeated accents, Hard preserves repeat plus chosen transition accents without exceeding limits",
+    "audioSourceOfUnplayedShortLeadingNotes": "backing / optional quiet ghost note; do not trigger second tap within 0.1s on touchscreen"
+  },
+  "bassLowFrequencyBreaks": [
+    {
+      "startSec": 2.47,
+      "endSec": 2.79,
+      "description": "冒頭の短い低域の間",
+      "measurement": "Energy near 35-250Hz drops sharply compared with adjoining 0.3s windows; not proof of all bass instrument silence",
+      "bassRestVerification": "provisional"
+    },
+    {
+      "startSec": 3.55,
+      "endSec": 3.85,
+      "description": "初期リフ内の休符候補",
+      "measurement": "Energy near 35-250Hz drops sharply compared with adjoining 0.3s windows; not proof of all bass instrument silence",
+      "bassRestVerification": "provisional"
+    },
+    {
+      "startSec": 5.89,
+      "endSec": 6.21,
+      "description": "短い音の抜き",
+      "measurement": "Energy near 35-250Hz drops sharply compared with adjoining 0.3s windows; not proof of all bass instrument silence",
+      "bassRestVerification": "provisional"
+    },
+    {
+      "startSec": 6.83,
+      "endSec": 7.28,
+      "description": "約0.45秒の低域ブレイク→7.3秒付近で復帰",
+      "measurement": "Energy near 35-250Hz drops sharply compared with adjoining 0.3s windows; not proof of all bass instrument silence",
+      "bassRestVerification": "provisional"
+    },
+    {
+      "startSec": 16.17,
+      "endSec": 16.92,
+      "description": "約0.75秒の低域ブレイク→16.9秒付近で復帰",
+      "measurement": "Energy near 35-250Hz drops sharply compared with adjoining 0.3s windows; not proof of all bass instrument silence",
+      "bassRestVerification": "provisional"
+    },
+    {
+      "startSec": 17.88,
+      "endSec": 18.32,
+      "description": "約0.44秒の低域ブレイク→18.4秒付近で復帰",
+      "measurement": "Energy near 35-250Hz drops sharply compared with adjoining 0.3s windows; not proof of all bass instrument silence",
+      "bassRestVerification": "provisional"
+    }
+  ],
+  "musicalFinding": "Offbeat-positioned short paired accents across 23-27,30-37,52-55; plus several obvious low-frequency dropouts near 2.5,3.6,5.9,6.8,16.2,17.9 seconds. Both attacks and rests define the kime.",
+  "audioSyncWarning": "Do not grid-quantize the second hit: D3 to E3 paired delay roughly 0.07-0.12 sec, first events predominantly near ~0.44 beats phase within the approximate 140BPM beat."
+}

@@ -1,0 +1,15 @@
+﻿id,startSec,endSec,title,kind,priority,confidence,evidence,arrangement
+K01,0.0,5.5,冒頭の刻み・短いアクセント,opening_riff,medium,mixed-audio candidate,0.7/0.9/1.25/2.95/3.9/4.46s 付近に低中域の明瞭なアタック。2.47–2.79sと3.55–3.85sで35–250Hzが一時的に非常に薄い,初期リフの短い低域休止を保護し、直後の強い音を残す
+K02,5.5,8.2,短い連打から強拍へ移る切り替え,bass_drop_then_fill,high-review,mixed-audio candidate,5.89–6.21sと6.83–7.28sで低域が大幅に減少。高い周波数帯のアタックは残り、7.3秒付近から低域が復帰,ベースを無理に連打させず、休止→復帰の形を残す。間の細かい音は他楽器の可能性
+K03,8.2,16.0,間を作るリフと短い応答,staccato_and_space,review,mixed-audio candidate,9.06/9.49/10.34/11.2/12.49/13.78/15.16s 近辺にアタック。楽器帰属は未確定,休符を詰めずにリズムの輪郭を残す
+K04,16.2,18.6,細かいアタックが続くフィル候補,bass_drop_and_rapid_other_instrument,high-review,bass/instrument ambiguous,16.17–16.92sと17.88–18.32sで35–250Hzが隣接区間に比べ非常に薄い。中高域の細かいアタックは継続,ベースが引く瞬間を優先保存。他楽器フィルをベース譜面に大量転記しない
+K05,18.7,22.7,低音のキメと次の反復への導入,transition,medium,mixed-audio candidate,20.1–20.9s低域のアタックと22.0–22.65sの短い連続アタック,次の反復に入る直前の空白とアクセントを残す
+K06,22.7,27.0,ポパ型2音キメの初期反復,signature_double_hit,mandatory,high rhythmic recurrence; instrument/pitch provisional,D3→E3の自動推定2音パターンが6回。間隔0.08–0.10秒。裏拍寄り,フレーズ単位で保護。Easyは代表位置、Normal/Hardは主アクセントを残す
+K07,27.0,30.0,細かなリズム変化・切り返し候補,rhythmic_fill,medium,mixed-audio candidate,27.05–29.63s付近で約0.1/0.2秒間隔の連続アタック,重要な切り返し点を優先。すべてのアタックをノーツ化しない
+K08,30.1,34.0,ポパ型キメの再登場・変奏,signature_double_hit,mandatory,high rhythmic recurrence; instrument/pitch provisional,"30.26,30.68,31.15,31.96,32.39,33.68sのD3→E3短2音が6回検出",音符の時刻を表拍へ丸めない。Normal/Hardは主アクセントを優先
+K09,34.05,36.65,最も規則的なポパ連続6回,signature_double_hit,mandatory,high rhythmic recurrence; instrument/pitch provisional,34.11–36.25sの6回、約0.42–0.44秒ごとにD3→E3候補。後音約0.08–0.12秒遅れ。おおむね裏拍寄りの2音パターンで、2音目まで約0.1秒,この曲の最重要保護フレーズ。Easyは毎2回に1回、Normal/Hardは全6アクセントが基準
+K10,36.65,41.0,音域を下げるようなベースの切り返し候補,low_register_turnaround,medium,mixed-audio candidate,37.84s E1/E2同時候補、38.9–39.5s G1/G2成分、低域の複数アタック,同時検出音をそのままオクターブ奏法と認定しない。根音移動の輪郭を残す
+K11,41.0,46.1,短い繰り返しと強いフレーズ終端,stabs_repeated,high-review,mixed-audio candidate,41.0–41.7sにB1/B2候補、44.6–46.0sにもB1/B2成分。倍音/他楽器と未分離,押す音数は抑え、反復のリズムとフレーズ終端を優先
+K12,46.1,50.8,低音の間合いと強いアクセント,stabs_and_space,medium,mixed-audio candidate,47.93s低中域の強い立上り、48–50sには間隔のある複数のアタック,強い一音の直前を埋めずに空ける
+K13,50.8,55.9,ポパ型フレーズ回帰＋連続フィル,signature_reprise,mandatory,high rhythmic recurrence; instrument/pitch provisional,"52.09,53.39,55.22sにD3→E3候補。53.5–55.97sには別種の細かな反復",戻ってきた共通キメを残しつつ、終盤の細かい装飾は間引く
+K14,55.9,60.0,終盤の細かい連打と締め候補,ending_accents,high-review,drum/guitar/bass ambiguous,55–57sと59.2–59.8sに約0.1秒の密集アタック。低域だけのベース奏法ではない可能性,ドラムの連打をベースにコピーせず、ベースの最終アクセントを特定して残す

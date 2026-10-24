@@ -4,48 +4,162 @@
   "difficulty": "hard",
   "audioOffsetSec": 0,
   "audioSyncVerified": false,
-  "source": "原MIDIとKUIELab推定ベースを照合したゲーム用編曲。運指・奏法は推定。耳で確認済みではない。",
+  "source": "提供キメ分析・原MIDI・原音と推定ステムの比較に基づくゲーム編曲。キメを先に保護。音高・奏法は推定であり聴音確定ではない。",
   "sourceSha256": "8502b7d6ce574ea8a38681962997bca96ec7b5c54e3c114f2d3abc54968e2aa2",
   "sections": [
     {
-      "start": 0,
-      "end": 8.6,
-      "label": "導入・E/Bの応答"
+      "id": "K01",
+      "startSec": 0,
+      "endSec": 5.5,
+      "title": "冒頭の刻み・短いアクセント",
+      "kind": "opening_riff",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "0.7/0.9/1.25/2.95/3.9/4.46s 付近に低中域の明瞭なアタック。2.47–2.79sと3.55–3.85sで35–250Hzが一時的に非常に薄い",
+      "arrangement": "初期リフの短い低域休止を保護し、直後の強い音を残す"
     },
     {
-      "start": 8.6,
-      "end": 16.6,
-      "label": "C/Gの変化"
+      "id": "K02",
+      "startSec": 5.5,
+      "endSec": 8.2,
+      "title": "短い連打から強拍へ移る切り替え",
+      "kind": "bass_drop_then_fill",
+      "priority": "high-review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "5.89–6.21sと6.83–7.28sで低域が大幅に減少。高い周波数帯のアタックは残り、7.3秒付近から低域が復帰",
+      "arrangement": "ベースを無理に連打させず、休止→復帰の形を残す。間の細かい音は他楽器の可能性"
     },
     {
-      "start": 16.6,
-      "end": 24.2,
-      "label": "BとF#の反復"
+      "id": "K03",
+      "startSec": 8.2,
+      "endSec": 16,
+      "title": "間を作るリフと短い応答",
+      "kind": "staccato_and_space",
+      "priority": "review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "9.06/9.49/10.34/11.2/12.49/13.78/15.16s 近辺にアタック。楽器帰属は未確定",
+      "arrangement": "休符を詰めずにリズムの輪郭を残す"
     },
     {
-      "start": 24.2,
-      "end": 32.2,
-      "label": "高音の応答からEへ"
+      "id": "K04",
+      "startSec": 16.2,
+      "endSec": 18.6,
+      "title": "細かいアタックが続くフィル候補",
+      "kind": "bass_drop_and_rapid_other_instrument",
+      "priority": "high-review",
+      "confidence": "bass/instrument ambiguous",
+      "evidence": "16.17–16.92sと17.88–18.32sで35–250Hzが隣接区間に比べ非常に薄い。中高域の細かいアタックは継続",
+      "arrangement": "ベースが引く瞬間を優先保存。他楽器フィルをベース譜面に大量転記しない"
     },
     {
-      "start": 32.2,
-      "end": 40.7,
-      "label": "E/BとGの変奏"
+      "id": "K05",
+      "startSec": 18.7,
+      "endSec": 22.7,
+      "title": "低音のキメと次の反復への導入",
+      "kind": "transition",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "20.1–20.9s低域のアタックと22.0–22.65sの短い連続アタック",
+      "arrangement": "次の反復に入る直前の空白とアクセントを残す"
     },
     {
-      "start": 40.7,
-      "end": 48.2,
-      "label": "C/Bのアクセント"
+      "id": "K06",
+      "startSec": 22.7,
+      "endSec": 27,
+      "title": "ポパ型2音キメの初期反復",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "D3→E3の自動推定2音パターンが6回。間隔0.08–0.10秒。裏拍寄り",
+      "arrangement": "フレーズ単位で保護。Easyは代表位置、Normal/Hardは主アクセントを残す"
     },
     {
-      "start": 48.2,
-      "end": 52.2,
-      "label": "間奏・入力を休ませる"
+      "id": "K07",
+      "startSec": 27,
+      "endSec": 30,
+      "title": "細かなリズム変化・切り返し候補",
+      "kind": "rhythmic_fill",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "27.05–29.63s付近で約0.1/0.2秒間隔の連続アタック",
+      "arrangement": "重要な切り返し点を優先。すべてのアタックをノーツ化しない"
     },
     {
-      "start": 52.2,
-      "end": 60.0135,
-      "label": "D/Eの応答と終止"
+      "id": "K08",
+      "startSec": 30.1,
+      "endSec": 34,
+      "title": "ポパ型キメの再登場・変奏",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "30.26,30.68,31.15,31.96,32.39,33.68sのD3→E3短2音が6回検出",
+      "arrangement": "音符の時刻を表拍へ丸めない。Normal/Hardは主アクセントを優先"
+    },
+    {
+      "id": "K09",
+      "startSec": 34.05,
+      "endSec": 36.65,
+      "title": "最も規則的なポパ連続6回",
+      "kind": "signature_double_hit",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "34.11–36.25sの6回、約0.42–0.44秒ごとにD3→E3候補。後音約0.08–0.12秒遅れ。おおむね裏拍寄りの2音パターンで、2音目まで約0.1秒",
+      "arrangement": "この曲の最重要保護フレーズ。Easyは毎2回に1回、Normal/Hardは全6アクセントが基準"
+    },
+    {
+      "id": "K10",
+      "startSec": 36.65,
+      "endSec": 41,
+      "title": "音域を下げるようなベースの切り返し候補",
+      "kind": "low_register_turnaround",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "37.84s E1/E2同時候補、38.9–39.5s G1/G2成分、低域の複数アタック",
+      "arrangement": "同時検出音をそのままオクターブ奏法と認定しない。根音移動の輪郭を残す"
+    },
+    {
+      "id": "K11",
+      "startSec": 41,
+      "endSec": 46.1,
+      "title": "短い繰り返しと強いフレーズ終端",
+      "kind": "stabs_repeated",
+      "priority": "high-review",
+      "confidence": "mixed-audio candidate",
+      "evidence": "41.0–41.7sにB1/B2候補、44.6–46.0sにもB1/B2成分。倍音/他楽器と未分離",
+      "arrangement": "押す音数は抑え、反復のリズムとフレーズ終端を優先"
+    },
+    {
+      "id": "K12",
+      "startSec": 46.1,
+      "endSec": 50.8,
+      "title": "低音の間合いと強いアクセント",
+      "kind": "stabs_and_space",
+      "priority": "medium",
+      "confidence": "mixed-audio candidate",
+      "evidence": "47.93s低中域の強い立上り、48–50sには間隔のある複数のアタック",
+      "arrangement": "強い一音の直前を埋めずに空ける"
+    },
+    {
+      "id": "K13",
+      "startSec": 50.8,
+      "endSec": 55.9,
+      "title": "ポパ型フレーズ回帰＋連続フィル",
+      "kind": "signature_reprise",
+      "priority": "mandatory",
+      "confidence": "high rhythmic recurrence; instrument/pitch provisional",
+      "evidence": "52.09,53.39,55.22sにD3→E3候補。53.5–55.97sには別種の細かな反復",
+      "arrangement": "戻ってきた共通キメを残しつつ、終盤の細かい装飾は間引く"
+    },
+    {
+      "id": "K14",
+      "startSec": 55.9,
+      "endSec": 60,
+      "title": "終盤の細かい連打と締め候補",
+      "kind": "ending_accents",
+      "priority": "high-review",
+      "confidence": "drum/guitar/bass ambiguous",
+      "evidence": "55–57sと59.2–59.8sに約0.1秒の密集アタック。低域だけのベース奏法ではない可能性",
+      "arrangement": "ドラムの連打をベースにコピーせず、ベースの最終アクセントを特定して残す"
     }
   ],
   "notes": [
@@ -56,16 +170,32 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
       "id": 8,
       "sourceId": "n0009",
       "timeSec": 2.207292,
       "midi": 43,
+      "string": 0,
+      "fret": 0,
+      "kind": "slap",
+      "sourceMidi": 43,
+      "kimeId": "A01",
+      "kimeGroupId": "K01",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
+    },
+    {
+      "id": 18,
+      "sourceId": "n0019",
+      "timeSec": 2.927083,
+      "midi": 41,
       "string": 1,
-      "fret": 5,
-      "kind": "slap"
+      "fret": 3,
+      "kind": "slap",
+      "sourceMidi": 41
     },
     {
       "id": 20,
@@ -74,7 +204,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 23,
@@ -83,16 +214,32 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A02",
+      "kimeGroupId": "K01",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 30,
       "sourceId": "n0031",
       "timeSec": 4.321875,
       "midi": 43,
-      "string": 1,
-      "fret": 5,
-      "kind": "slap"
+      "string": 0,
+      "fret": 0,
+      "kind": "slap",
+      "sourceMidi": 43
+    },
+    {
+      "id": 33,
+      "sourceId": "n0034",
+      "timeSec": 4.541667,
+      "midi": 45,
+      "string": 0,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 36,
@@ -101,16 +248,8 @@
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
-    },
-    {
-      "id": 37,
-      "sourceId": "n0038",
-      "timeSec": 5.076042,
-      "midi": 40,
-      "string": 1,
-      "fret": 2,
-      "kind": "tap"
+      "kind": "slap",
+      "sourceMidi": 40
     },
     {
       "id": 40,
@@ -119,16 +258,18 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
-      "id": 46,
-      "sourceId": "n0047",
-      "timeSec": 5.761458,
-      "midi": 36,
-      "string": 2,
-      "fret": 3,
-      "kind": "tap"
+      "id": 44,
+      "sourceId": "n0045",
+      "timeSec": 5.644792,
+      "midi": 48,
+      "string": 0,
+      "fret": 5,
+      "kind": "tap",
+      "sourceMidi": 48
     },
     {
       "id": 48,
@@ -137,7 +278,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 54,
@@ -146,7 +288,12 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A03",
+      "kimeGroupId": "K02",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 57,
@@ -155,7 +302,8 @@
       "midi": 46,
       "string": 0,
       "fret": 3,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 46
     },
     {
       "id": 65,
@@ -164,7 +312,8 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 71,
@@ -173,7 +322,8 @@
       "midi": 44,
       "string": 0,
       "fret": 1,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 44
     },
     {
       "id": 80,
@@ -182,7 +332,12 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "tap"
+      "kind": "slap",
+      "sourceMidi": 48,
+      "kimeId": "A04",
+      "kimeGroupId": "K03",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 85,
@@ -191,7 +346,8 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 48
     },
     {
       "id": 89,
@@ -200,7 +356,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 94,
@@ -209,7 +366,8 @@
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 40
     },
     {
       "id": 100,
@@ -218,7 +376,8 @@
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 40
     },
     {
       "id": 108,
@@ -227,16 +386,28 @@
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 43
     },
     {
-      "id": 117,
-      "sourceId": "n0118",
-      "timeSec": 12.244792,
+      "id": 115,
+      "sourceId": "n0116",
+      "timeSec": 12.116667,
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "slap"
+      "kind": "tap",
+      "sourceMidi": 43
+    },
+    {
+      "id": 120,
+      "sourceId": "n0121",
+      "timeSec": 12.3375,
+      "midi": 43,
+      "string": 1,
+      "fret": 5,
+      "kind": "tap",
+      "sourceMidi": 43
     },
     {
       "id": 126,
@@ -245,7 +416,8 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 48
     },
     {
       "id": 134,
@@ -254,7 +426,8 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 48
     },
     {
       "id": 139,
@@ -263,7 +436,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 152,
@@ -272,7 +446,22 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A05",
+      "kimeGroupId": "K03",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
+    },
+    {
+      "id": 154,
+      "sourceId": "n0155",
+      "timeSec": 14.15,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
       "id": 159,
@@ -281,7 +470,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 166,
@@ -290,7 +480,8 @@
       "midi": 42,
       "string": 1,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 42
     },
     {
       "id": 173,
@@ -299,7 +490,8 @@
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 43
     },
     {
       "id": 179,
@@ -308,7 +500,8 @@
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 43
     },
     {
       "id": 186,
@@ -317,7 +510,8 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 48
     },
     {
       "id": 194,
@@ -326,7 +520,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
       "id": 199,
@@ -335,7 +530,12 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "tap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A06",
+      "kimeGroupId": "K04",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 206,
@@ -344,7 +544,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
       "id": 214,
@@ -353,7 +554,8 @@
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 43
     },
     {
       "id": 217,
@@ -362,7 +564,8 @@
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 43
     },
     {
       "id": 218,
@@ -371,25 +574,38 @@
       "midi": 42,
       "string": 1,
       "fret": 4,
-      "kind": "slap"
+      "kind": "tap",
+      "sourceMidi": 42
     },
     {
-      "id": 225,
-      "sourceId": "n0226",
-      "timeSec": 19.783333,
+      "id": 223,
+      "sourceId": "n0224",
+      "timeSec": 19.64375,
       "midi": 42,
       "string": 1,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 42
     },
     {
-      "id": 228,
-      "sourceId": "n0229",
-      "timeSec": 20.097917,
+      "id": 227,
+      "sourceId": "n0228",
+      "timeSec": 19.958333,
       "midi": 42,
       "string": 1,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 42
+    },
+    {
+      "id": 232,
+      "sourceId": "n0233",
+      "timeSec": 20.422917,
+      "midi": 30,
+      "string": 3,
+      "fret": 2,
+      "kind": "tap",
+      "sourceMidi": 30
     },
     {
       "id": 234,
@@ -398,16 +614,22 @@
       "midi": 42,
       "string": 1,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 42
     },
     {
-      "id": 237,
-      "sourceId": "n0238",
-      "timeSec": 21.363542,
+      "id": 238,
+      "sourceId": "n0239",
+      "timeSec": 21.45625,
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A07",
+      "kimeGroupId": "K05",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 239,
@@ -416,7 +638,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 241,
@@ -425,25 +648,36 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
-      "id": 247,
-      "sourceId": "n0248",
-      "timeSec": 22.94375,
-      "midi": 45,
-      "string": 0,
+      "id": 250,
+      "sourceId": "n0251",
+      "timeSec": 23.060417,
+      "midi": 40,
+      "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P01",
+      "kimeGroupId": "K06",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 254,
-      "sourceId": "n0255",
+      "id": 255,
+      "sourceId": "n0256",
       "timeSec": 23.501042,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P02",
+      "kimeGroupId": "K06",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 258,
@@ -452,43 +686,36 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
-      "id": 261,
-      "sourceId": "n0262",
-      "timeSec": 24.35,
-      "midi": 47,
-      "string": 0,
-      "fret": 4,
-      "kind": "slap"
-    },
-    {
-      "id": 270,
-      "sourceId": "n0271",
-      "timeSec": 24.790625,
+      "id": 269,
+      "sourceId": "n0270",
+      "timeSec": 24.779167,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P03",
+      "kimeGroupId": "K06",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 274,
-      "sourceId": "n0275",
+      "id": 275,
+      "sourceId": "n0276",
       "timeSec": 25.209375,
-      "midi": 47,
-      "string": 0,
-      "fret": 4,
-      "kind": "slap"
-    },
-    {
-      "id": 280,
-      "sourceId": "n0281",
-      "timeSec": 25.766667,
-      "midi": 45,
-      "string": 0,
+      "midi": 40,
+      "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P04",
+      "kimeGroupId": "K06",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 284,
@@ -497,52 +724,46 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
-      "id": 288,
-      "sourceId": "n0289",
-      "timeSec": 26.383333,
+      "id": 291,
+      "sourceId": "n0292",
+      "timeSec": 26.4875,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P05",
+      "kimeGroupId": "K06",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 297,
+      "sourceId": "n0298",
+      "timeSec": 26.916667,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P06",
+      "kimeGroupId": "K06",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 301,
+      "sourceId": "n0302",
+      "timeSec": 27.254167,
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "tap"
-    },
-    {
-      "id": 292,
-      "sourceId": "n0293",
-      "timeSec": 26.719792,
-      "midi": 47,
-      "string": 0,
-      "fret": 4,
-      "kind": "slap"
-    },
-    {
-      "id": 298,
-      "sourceId": "n0299",
-      "timeSec": 27.033333,
-      "midi": 45,
-      "string": 0,
-      "fret": 2,
-      "kind": "slap"
-    },
-    {
-      "id": 302,
-      "sourceId": "n0303",
-      "timeSec": 27.369792,
-      "midi": 45,
-      "string": 0,
-      "fret": 2,
-      "kind": "tap"
-    },
-    {
-      "id": 304,
-      "sourceId": "n0305",
-      "timeSec": 27.683333,
-      "midi": 45,
-      "string": 0,
-      "fret": 2,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 45
     },
     {
       "id": 307,
@@ -551,7 +772,12 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "tap"
+      "kind": "slap",
+      "sourceMidi": 48,
+      "kimeId": "A08",
+      "kimeGroupId": "K07",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 319,
@@ -560,7 +786,12 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "tap"
+      "kind": "slap",
+      "sourceMidi": 48,
+      "kimeId": "A09",
+      "kimeGroupId": "K07",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 321,
@@ -569,70 +800,78 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
-      "id": 325,
-      "sourceId": "n0326",
-      "timeSec": 30.35625,
+      "id": 324,
+      "sourceId": "n0325",
+      "timeSec": 30.344792,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P07",
+      "kimeGroupId": "K08",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 328,
-      "sourceId": "n0329",
-      "timeSec": 30.785417,
+      "id": 327,
+      "sourceId": "n0328",
+      "timeSec": 30.773958,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P08",
+      "kimeGroupId": "K08",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 330,
-      "sourceId": "n0331",
-      "timeSec": 31.134375,
-      "midi": 38,
-      "string": 1,
-      "fret": 0,
-      "kind": "slap"
-    },
-    {
-      "id": 337,
-      "sourceId": "n0338",
-      "timeSec": 31.65625,
+      "id": 332,
+      "sourceId": "n0333",
+      "timeSec": 31.215625,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P09",
+      "kimeGroupId": "K08",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 340,
-      "sourceId": "n0341",
+      "id": 341,
+      "sourceId": "n0342",
       "timeSec": 32.064583,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P10",
+      "kimeGroupId": "K08",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 345,
-      "sourceId": "n0346",
-      "timeSec": 32.49375,
+      "id": 344,
+      "sourceId": "n0345",
+      "timeSec": 32.482292,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
-    },
-    {
-      "id": 349,
-      "sourceId": "n0350",
-      "timeSec": 32.830208,
-      "midi": 45,
-      "string": 0,
-      "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P11",
+      "kimeGroupId": "K08",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 355,
@@ -641,52 +880,106 @@
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 40
     },
     {
-      "id": 360,
-      "sourceId": "n0361",
+      "id": 361,
+      "sourceId": "n0362",
       "timeSec": 33.771875,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P12",
+      "kimeGroupId": "K08",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
-      "id": 368,
-      "sourceId": "n0369",
-      "timeSec": 34.735417,
-      "midi": 47,
-      "string": 0,
-      "fret": 4,
-      "kind": "slap"
-    },
-    {
-      "id": 373,
-      "sourceId": "n0374",
-      "timeSec": 35.211458,
-      "midi": 33,
-      "string": 2,
-      "fret": 0,
-      "kind": "slap"
-    },
-    {
-      "id": 382,
-      "sourceId": "n0383",
-      "timeSec": 36.048958,
-      "midi": 33,
-      "string": 2,
-      "fret": 0,
-      "kind": "slap"
-    },
-    {
-      "id": 387,
-      "sourceId": "n0388",
-      "timeSec": 36.640625,
+      "id": 363,
+      "sourceId": "n0364",
+      "timeSec": 34.189583,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P13",
+      "kimeGroupId": "K09",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 366,
+      "sourceId": "n0367",
+      "timeSec": 34.63125,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P14",
+      "kimeGroupId": "K09",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 372,
+      "sourceId": "n0373",
+      "timeSec": 35.071875,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P15",
+      "kimeGroupId": "K09",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 375,
+      "sourceId": "n0376",
+      "timeSec": 35.502083,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P16",
+      "kimeGroupId": "K09",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 381,
+      "sourceId": "n0382",
+      "timeSec": 35.920833,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P17",
+      "kimeGroupId": "K09",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
+    },
+    {
+      "id": 385,
+      "sourceId": "n0386",
+      "timeSec": 36.3625,
+      "midi": 40,
+      "string": 1,
+      "fret": 2,
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P18",
+      "kimeGroupId": "K09",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 391,
@@ -695,7 +988,12 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A10",
+      "kimeGroupId": "K10",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 394,
@@ -704,7 +1002,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 401,
@@ -713,7 +1012,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 407,
@@ -722,7 +1022,8 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 408,
@@ -731,25 +1032,22 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 417,
       "sourceId": "n0418",
       "timeSec": 39.254167,
       "midi": 43,
-      "string": 0,
-      "fret": 0,
-      "kind": "slap"
-    },
-    {
-      "id": 423,
-      "sourceId": "n0424",
-      "timeSec": 39.684375,
-      "midi": 43,
-      "string": 0,
-      "fret": 0,
-      "kind": "slap"
+      "string": 1,
+      "fret": 5,
+      "kind": "slap",
+      "sourceMidi": 43,
+      "kimeId": "A11",
+      "kimeGroupId": "K10",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 430,
@@ -758,7 +1056,8 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 432,
@@ -767,7 +1066,8 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 437,
@@ -776,7 +1076,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 445,
@@ -785,7 +1086,12 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A12",
+      "kimeGroupId": "K11",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 449,
@@ -794,34 +1100,18 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
-      "id": 452,
-      "sourceId": "n0453",
-      "timeSec": 42.136458,
-      "midi": 40,
-      "string": 1,
-      "fret": 2,
-      "kind": "slap"
-    },
-    {
-      "id": 458,
-      "sourceId": "n0459",
-      "timeSec": 42.554167,
+      "id": 457,
+      "sourceId": "n0458",
+      "timeSec": 42.333333,
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "slap"
-    },
-    {
-      "id": 464,
-      "sourceId": "n0465",
-      "timeSec": 42.879167,
-      "midi": 43,
-      "string": 1,
-      "fret": 5,
-      "kind": "tap"
+      "kind": "slap",
+      "sourceMidi": 43
     },
     {
       "id": 469,
@@ -830,16 +1120,18 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 48
     },
     {
-      "id": 477,
-      "sourceId": "n0478",
-      "timeSec": 43.728125,
+      "id": 479,
+      "sourceId": "n0480",
+      "timeSec": 43.85625,
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 48
     },
     {
       "id": 487,
@@ -848,7 +1140,8 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 48
     },
     {
       "id": 495,
@@ -857,7 +1150,8 @@
       "midi": 38,
       "string": 2,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 38
     },
     {
       "id": 502,
@@ -866,7 +1160,8 @@
       "midi": 48,
       "string": 0,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 48
     },
     {
       "id": 509,
@@ -875,7 +1170,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
       "id": 517,
@@ -884,7 +1180,22 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
+    },
+    {
+      "id": 524,
+      "sourceId": "n0525",
+      "timeSec": 45.772917,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A13",
+      "kimeGroupId": "K11",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 528,
@@ -893,7 +1204,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 543,
@@ -902,7 +1214,8 @@
       "midi": 45,
       "string": 0,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 45
     },
     {
       "id": 548,
@@ -911,25 +1224,32 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
-      "id": 551,
-      "sourceId": "n0552",
-      "timeSec": 47.607292,
-      "midi": 36,
-      "string": 2,
-      "fret": 3,
-      "kind": "slap"
+      "id": 550,
+      "sourceId": "n0551",
+      "timeSec": 47.375,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "tap",
+      "sourceMidi": 47
     },
     {
       "id": 557,
       "sourceId": "n0558",
       "timeSec": 48.014583,
       "midi": 33,
-      "string": 2,
-      "fret": 0,
-      "kind": "slap"
+      "string": 3,
+      "fret": 5,
+      "kind": "slap",
+      "sourceMidi": 33,
+      "kimeId": "A14",
+      "kimeGroupId": "K12",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 561,
@@ -938,7 +1258,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 565,
@@ -947,25 +1268,28 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 568,
       "sourceId": "n0569",
       "timeSec": 49.711458,
       "midi": 38,
-      "string": 2,
-      "fret": 5,
-      "kind": "slap"
+      "string": 1,
+      "fret": 0,
+      "kind": "slap",
+      "sourceMidi": 38
     },
     {
-      "id": 573,
-      "sourceId": "n0574",
-      "timeSec": 50.198958,
-      "midi": 47,
+      "id": 570,
+      "sourceId": "n0571",
+      "timeSec": 50.070833,
+      "midi": 44,
       "string": 0,
-      "fret": 4,
-      "kind": "slap"
+      "fret": 1,
+      "kind": "slap",
+      "sourceMidi": 44
     },
     {
       "id": 576,
@@ -974,25 +1298,32 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
-      "id": 580,
-      "sourceId": "n0581",
-      "timeSec": 52.127083,
-      "midi": 38,
-      "string": 2,
-      "fret": 5,
-      "kind": "slap"
+      "id": 577,
+      "sourceId": "n0578",
+      "timeSec": 51.988542,
+      "midi": 47,
+      "string": 0,
+      "fret": 4,
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
-      "id": 585,
-      "sourceId": "n0586",
-      "timeSec": 52.65,
+      "id": 582,
+      "sourceId": "n0583",
+      "timeSec": 52.208333,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P19",
+      "kimeGroupId": "K13",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 588,
@@ -1001,16 +1332,22 @@
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 40
     },
     {
-      "id": 594,
-      "sourceId": "n0595",
-      "timeSec": 53.277083,
+      "id": 598,
+      "sourceId": "n0599",
+      "timeSec": 53.496875,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P20",
+      "kimeGroupId": "K13",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 602,
@@ -1019,7 +1356,8 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47
     },
     {
       "id": 606,
@@ -1028,16 +1366,22 @@
       "midi": 43,
       "string": 1,
       "fret": 5,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 43
     },
     {
-      "id": 618,
-      "sourceId": "n0619",
-      "timeSec": 55.4375,
+      "id": 617,
+      "sourceId": "n0618",
+      "timeSec": 55.321875,
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 52,
+      "kimeId": "P21",
+      "kimeGroupId": "K13",
+      "protected": true,
+      "pitchMapping": "octave-compatible-accent"
     },
     {
       "id": 628,
@@ -1046,7 +1390,8 @@
       "midi": 39,
       "string": 1,
       "fret": 1,
-      "kind": "tap"
+      "kind": "tap",
+      "sourceMidi": 39
     },
     {
       "id": 638,
@@ -1055,7 +1400,8 @@
       "midi": 39,
       "string": 1,
       "fret": 1,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 39
     },
     {
       "id": 640,
@@ -1064,7 +1410,12 @@
       "midi": 47,
       "string": 0,
       "fret": 4,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 47,
+      "kimeId": "A15",
+      "kimeGroupId": "K14",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     },
     {
       "id": 644,
@@ -1073,7 +1424,12 @@
       "midi": 40,
       "string": 1,
       "fret": 2,
-      "kind": "slap"
+      "kind": "slap",
+      "sourceMidi": 40,
+      "kimeId": "A16",
+      "kimeGroupId": "K14",
+      "protected": true,
+      "pitchMapping": "native-audio-candidate"
     }
   ]
 }
