@@ -1,48 +1,48 @@
 {
   "AFG": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       66.496586,
       34.164262
     ]
   },
   "ALB": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       20.11384,
       40.654855
     ]
   },
   "DZA": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       2.808241,
       27.397406
     ]
   },
   "ASM": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -170.747153,
       -14.32671
     ]
   },
   "AND": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       1.539409,
       42.547643
     ]
   },
   "AGO": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       17.984249,
       -12.182762
     ]
   },
   "AIA": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -63.026361,
       18.242979
@@ -56,7 +56,7 @@
     ]
   },
   "ATG": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -61.806764,
       17.076401
@@ -70,105 +70,105 @@
     ]
   },
   "ARM": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       44.800564,
       40.459077
     ]
   },
   "ABW": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -69.972795,
       12.5174
     ]
   },
   "AUS": {
-    "region": "Oceania",
+    "region": "Australia and New Zealand",
     "point": [
       134.04972,
       -24.129522
     ]
   },
   "AUT": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       14.130515,
       47.518859
     ]
   },
   "AZE": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       47.210994,
       40.402387
     ]
   },
   "BHS": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -77.146688,
       26.401789
     ]
   },
   "BHR": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       50.554816,
       26.055972
     ]
   },
   "BGD": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       89.684963,
       24.214956
     ]
   },
   "BRB": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -59.568966,
       13.163709
     ]
   },
   "BLR": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       28.417701,
       53.821888
     ]
   },
   "BEL": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       5.368446,
       50.255764
     ]
   },
   "BLZ": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -88.712962,
       17.202068
     ]
   },
   "BEN": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       2.352018,
       10.324775
     ]
   },
   "BMU": {
-    "region": "North America",
+    "region": "Northern America",
     "point": [
       -64.763573,
       32.296592
     ]
   },
   "BTN": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       90.040294,
       27.536685
@@ -182,14 +182,14 @@
     ]
   },
   "BIH": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       17.670283,
       43.792059
     ]
   },
   "BWA": {
-    "region": "Africa",
+    "region": "Southern Africa",
     "point": [
       24.179216,
       -22.102634
@@ -211,84 +211,84 @@
     ]
   },
   "IOT": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       71.348349,
       -6.190826
     ]
   },
   "BRN": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       114.551943,
       4.448298
     ]
   },
   "BGR": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       25.15709,
       42.508785
     ]
   },
   "BFA": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -1.36388,
       12.673048
     ]
   },
   "BDI": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       29.917086,
       -3.332836
     ]
   },
   "KHM": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       104.50487,
       12.647584
     ]
   },
   "CMR": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       12.473488,
       4.585041
     ]
   },
   "CAN": {
-    "region": "North America",
+    "region": "Northern America",
     "point": [
       -101.9107,
       60.324287
     ]
   },
   "CPV": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -23.639434,
       15.074761
     ]
   },
   "CYM": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -81.24055,
       19.319862
     ]
   },
   "CAF": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       20.906897,
       6.989681
     ]
   },
   "TCD": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       18.645041,
       15.142959
@@ -302,21 +302,21 @@
     ]
   },
   "CHN": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       106.337289,
       32.498178
     ]
   },
   "CXR": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       105.67259,
       -10.490789
     ]
   },
   "CCK": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       96.830147,
       -12.159615
@@ -330,98 +330,98 @@
     ]
   },
   "COM": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       43.318094,
       -11.727683
     ]
   },
   "COG": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       15.9005,
       0.142331
     ]
   },
   "COD": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       23.458829,
       -1.858167
     ]
   },
   "COK": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -159.785675,
       -21.215993
     ]
   },
   "CRI": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -84.077922,
       10.0651
     ]
   },
   "CIV": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -5.568618,
       7.49139
     ]
   },
   "HRV": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       16.37241,
       45.805799
     ]
   },
   "CUB": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -77.975855,
       21.334024
     ]
   },
   "CYP": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       33.084182,
       34.913329
     ]
   },
   "CZE": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       15.377555,
       49.882364
     ]
   },
   "DNK": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       9.018163,
       55.966965
     ]
   },
   "DJI": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       42.498825,
       11.976343
     ]
   },
   "DMA": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -61.344958,
       15.458829
     ]
   },
   "DOM": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -70.653998,
       19.104137
@@ -435,42 +435,42 @@
     ]
   },
   "EGY": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       29.445837,
       26.186173
     ]
   },
   "SLV": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -88.890124,
       13.685371
     ]
   },
   "GNQ": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       8.9902,
       2.333
     ]
   },
   "ERI": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       38.285566,
       15.787401
     ]
   },
   "EST": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       25.867126,
       58.724865
     ]
   },
   "ETH": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       39.0886,
       8.032795
@@ -484,28 +484,28 @@
     ]
   },
   "FRO": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -7.058429,
       62.185604
     ]
   },
   "FJI": {
-    "region": "Oceania",
+    "region": "Melanesia",
     "point": [
       177.975427,
       -17.826099
     ]
   },
   "FIN": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       27.276449,
       63.252361
     ]
   },
   "FRA": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       2.552275,
       46.696113
@@ -519,56 +519,56 @@
     ]
   },
   "PYF": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -149.46157,
       -17.628081
     ]
   },
   "ATF": {
-    "region": "Africa",
+    "region": "Antarctica",
     "point": [
       69.122136,
       -49.303721
     ]
   },
   "GAB": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       11.835939,
       -0.437739
     ]
   },
   "GMB": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -14.998318,
       13.641721
     ]
   },
   "GEO": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       43.735724,
       41.870087
     ]
   },
   "DEU": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       9.678348,
       50.961733
     ]
   },
   "GHA": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -1.036941,
       7.717639
     ]
   },
   "GIB": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       -5.35,
       36.14
@@ -576,56 +576,56 @@
     "note": "地図形状なし · ジブラルタル付近の代表点"
   },
   "GRC": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       21.72568,
       39.492763
     ]
   },
   "GRL": {
-    "region": "North America",
+    "region": "Northern America",
     "point": [
       -39.335251,
       74.319387
     ]
   },
   "GRD": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -61.680461,
       12.113156
     ]
   },
   "GLP": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -61.433565,
       16.299332
     ]
   },
   "GUM": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       144.703614,
       13.354173
     ]
   },
   "GTM": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -90.497134,
       14.982133
     ]
   },
   "GIN": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -10.016402,
       10.618516
     ]
   },
   "GNB": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -14.52413,
       12.163712
@@ -639,518 +639,518 @@
     ]
   },
   "HTI": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -72.224051,
       19.263784
     ]
   },
   "HMD": {
-    "region": "Africa",
+    "region": "Antarctica",
     "point": [
       73.50521,
       -53.103462
     ]
   },
   "VAT": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       12.453418,
       41.903323
     ]
   },
   "HND": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -86.887604,
       14.794801
     ]
   },
   "HKG": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       114.097769,
       22.448829
     ]
   },
   "HUN": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       19.447867,
       47.086841
     ]
   },
   "ISL": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -18.673711,
       64.779286
     ]
   },
   "IND": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       79.358105,
       22.686852
     ]
   },
   "IDN": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       101.892949,
       -0.954404
     ]
   },
   "IRN": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       54.931495,
       32.166225
     ]
   },
   "IRQ": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       43.26181,
       33.09403
     ]
   },
   "IRL": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -7.798588,
       53.078726
     ]
   },
   "ISR": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       34.847915,
       30.911148
     ]
   },
   "ITA": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       11.076907,
       44.732482
     ]
   },
   "JAM": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -77.318767,
       18.137124
     ]
   },
   "JPN": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       138.44217,
       36.142538
     ]
   },
   "JOR": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       36.375991,
       30.805025
     ]
   },
   "KAZ": {
-    "region": "Asia",
+    "region": "Central Asia",
     "point": [
       68.685548,
       49.054149
     ]
   },
   "KEN": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       37.907632,
       0.549043
     ]
   },
   "KIR": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       -157.384577,
       1.820437
     ]
   },
   "PRK": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       126.444516,
       39.885252
     ]
   },
   "KOR": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       128.129504,
       36.384924
     ]
   },
   "KWT": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       47.313999,
       29.413628
     ]
   },
   "KGZ": {
-    "region": "Asia",
+    "region": "Central Asia",
     "point": [
       74.532637,
       41.66854
     ]
   },
   "LAO": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       102.533912,
       19.431821
     ]
   },
   "LVA": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       25.458723,
       57.066872
     ]
   },
   "LBN": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       35.992892,
       34.133368
     ]
   },
   "LSO": {
-    "region": "Africa",
+    "region": "Southern Africa",
     "point": [
       28.246639,
       -29.480158
     ]
   },
   "LBR": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -9.460379,
       6.447177
     ]
   },
   "LBY": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       18.011015,
       26.638944
     ]
   },
   "LIE": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       9.559439,
       47.111405
     ]
   },
   "LTU": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       24.089932,
       55.103703
     ]
   },
   "LUX": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       6.07762,
       49.733732
     ]
   },
   "MAC": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       113.556038,
       22.129735
     ]
   },
   "MDG": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       46.704241,
       -18.628288
     ]
   },
   "MWI": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       33.608082,
       -13.386737
     ]
   },
   "MYS": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       113.83708,
       2.528667
     ]
   },
   "MDV": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       73.507554,
       4.174441
     ]
   },
   "MLI": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -2.038455,
       18.692713
     ]
   },
   "MLT": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       14.433005,
       35.892886
     ]
   },
   "MHL": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       171.193609,
       7.082568
     ]
   },
   "MTQ": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -61.055657,
       14.711979
     ]
   },
   "MRT": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -9.740299,
       19.587062
     ]
   },
   "MUS": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       57.565848,
       -20.299506
     ]
   },
   "MYT": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       45.151319,
       -12.774755
     ]
   },
   "MEX": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -102.289448,
       23.919988
     ]
   },
   "FSM": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       158.234019,
       6.887553
     ]
   },
   "MDA": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       28.487904,
       47.434999
     ]
   },
   "MCO": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       7.398291,
       43.739652
     ]
   },
   "MNG": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       104.150405,
       45.997488
     ]
   },
   "MSR": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -62.188252,
       16.73717
     ]
   },
   "MAR": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       -7.187296,
       31.650723
     ]
   },
   "MOZ": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       37.83789,
       -13.94323
     ]
   },
   "MMR": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       95.804497,
       21.573855
     ]
   },
   "NAM": {
-    "region": "Africa",
+    "region": "Southern Africa",
     "point": [
       17.108166,
       -20.575298
     ]
   },
   "NRU": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       166.932644,
       -0.520261
     ]
   },
   "NPL": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       83.639914,
       28.297925
     ]
   },
   "NLD": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       5.61144,
       52.422211
     ]
   },
   "NCL": {
-    "region": "Oceania",
+    "region": "Melanesia",
     "point": [
       165.084004,
       -21.064697
     ]
   },
   "NZL": {
-    "region": "Oceania",
+    "region": "Australia and New Zealand",
     "point": [
       172.787,
       -39.759
     ]
   },
   "NIC": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -85.069347,
       12.670697
     ]
   },
   "NER": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       9.504356,
       17.446195
     ]
   },
   "NGA": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       7.50322,
       9.439799
     ]
   },
   "NIU": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -169.862565,
       -19.045956
     ]
   },
   "NFK": {
-    "region": "Oceania",
+    "region": "Australia and New Zealand",
     "point": [
       167.954531,
       -29.033042
     ]
   },
   "MNP": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       145.734397,
       15.188188
     ]
   },
   "MKD": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       21.555839,
       41.558223
     ]
   },
   "NOR": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       9.679975,
       61.357092
     ]
   },
   "OMN": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       57.336553,
       22.120427
     ]
   },
   "PAK": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       68.545632,
       29.328389
     ]
   },
   "PLW": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       134.580157,
       7.518252
     ]
   },
   "PSE": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       35.283558,
       32.225357
     ]
   },
   "PAN": {
-    "region": "North America",
+    "region": "Central America",
     "point": [
       -80.352106,
       8.72198
     ]
   },
   "PNG": {
-    "region": "Oceania",
+    "region": "Melanesia",
     "point": [
       143.910216,
       -5.695285
@@ -1171,224 +1171,224 @@
     ]
   },
   "PHL": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       122.465,
       11.198
     ]
   },
   "PCN": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -128.317536,
       -24.364576
     ]
   },
   "POL": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       19.490468,
       51.990316
     ]
   },
   "PRT": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       -8.271745,
       39.606677
     ]
   },
   "PRI": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -66.481065,
       18.234668
     ]
   },
   "QAT": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       51.143509,
       25.237383
     ]
   },
   "REU": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       55.535699,
       -21.113488
     ]
   },
   "ROU": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       24.972624,
       45.733237
     ]
   },
   "RUS": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       44.686469,
       58.249357
     ]
   },
   "RWA": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       30.103894,
       -1.897196
     ]
   },
   "SHN": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -5.71262,
       -15.950487
     ]
   },
   "KNA": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -62.757975,
       17.336558
     ]
   },
   "LCA": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -60.980094,
       13.892371
     ]
   },
   "SPM": {
-    "region": "North America",
+    "region": "Northern America",
     "point": [
       -56.332352,
       47.040344
     ]
   },
   "VCT": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -61.3359,
       13.0879
     ]
   },
   "WSM": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -172.438241,
       -13.639139
     ]
   },
   "SMR": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       12.441206,
       43.933916
     ]
   },
   "STP": {
-    "region": "Africa",
+    "region": "Middle Africa",
     "point": [
       7.021,
       0.9709
     ]
   },
   "SAU": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       44.6996,
       23.806908
     ]
   },
   "SEN": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -14.778586,
       15.138125
     ]
   },
   "SYC": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       55.480175,
       -4.676659
     ]
   },
   "SLE": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       -11.763677,
       8.617449
     ]
   },
   "SGP": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       103.816925,
       1.366587
     ]
   },
   "SVK": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       19.049868,
       48.734044
     ]
   },
   "SVN": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       14.915312,
       46.06076
     ]
   },
   "SLB": {
-    "region": "Oceania",
+    "region": "Melanesia",
     "point": [
       159.170468,
       -8.029548
     ]
   },
   "SOM": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       45.19238,
       3.568925
     ]
   },
   "ZAF": {
-    "region": "Africa",
+    "region": "Southern Africa",
     "point": [
       23.665734,
       -29.708776
     ]
   },
   "SGS": {
-    "region": "South America",
+    "region": "Antarctica",
     "point": [
       -31.063179,
       -55.683402
     ]
   },
   "ESP": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       -3.464718,
       40.090953
     ]
   },
   "LKA": {
-    "region": "Asia",
+    "region": "Southern Asia",
     "point": [
       80.704823,
       7.581097
     ]
   },
   "SDN": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       29.260657,
       16.330746
@@ -1402,175 +1402,175 @@
     ]
   },
   "SJM": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       18.080737,
       78.778287
     ]
   },
   "SWZ": {
-    "region": "Africa",
+    "region": "Southern Africa",
     "point": [
       31.467264,
       -26.533676
     ]
   },
   "SWE": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       19.01705,
       65.85918
     ]
   },
   "CHE": {
-    "region": "Europe",
+    "region": "Western Europe",
     "point": [
       7.463965,
       46.719114
     ]
   },
   "SYR": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       38.277783,
       35.006636
     ]
   },
   "TWN": {
-    "region": "Asia",
+    "region": "Eastern Asia",
     "point": [
       120.868204,
       23.652408
     ]
   },
   "TJK": {
-    "region": "Asia",
+    "region": "Central Asia",
     "point": [
       72.587276,
       38.199835
     ]
   },
   "TZA": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       34.959183,
       -6.051866
     ]
   },
   "THA": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       101.073198,
       15.45974
     ]
   },
   "TLS": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       125.854679,
       -8.803705
     ]
   },
   "TGO": {
-    "region": "Africa",
+    "region": "Western Africa",
     "point": [
       1.058113,
       8.80722
     ]
   },
   "TKL": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -172.48629,
       -8.561824
     ]
   },
   "TON": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -175.163014,
       -21.210026
     ]
   },
   "TTO": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -60.9184,
       10.9989
     ]
   },
   "TUN": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       9.007881,
       33.687263
     ]
   },
   "TUR": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       34.508268,
       39.345388
     ]
   },
   "TKM": {
-    "region": "Asia",
+    "region": "Central Asia",
     "point": [
       58.676647,
       39.855246
     ]
   },
   "TCA": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -71.752704,
       21.81663
     ]
   },
   "TUV": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       179.209587,
       -8.513717
     ]
   },
   "UGA": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       32.948555,
       1.972589
     ]
   },
   "UKR": {
-    "region": "Europe",
+    "region": "Eastern Europe",
     "point": [
       32.140865,
       49.724739
     ]
   },
   "ARE": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       54.547256,
       23.466285
     ]
   },
   "GBR": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -1.402032,
       52.60981
     ]
   },
   "USA": {
-    "region": "North America",
+    "region": "Northern America",
     "point": [
       -97.482602,
       39.538479
     ]
   },
   "UMI": {
-    "region": "Oceania",
+    "region": "Micronesia",
     "point": [
       -177.37,
       28.21
@@ -1585,14 +1585,14 @@
     ]
   },
   "UZB": {
-    "region": "Asia",
+    "region": "Central Asia",
     "point": [
       64.005429,
       41.693603
     ]
   },
   "VUT": {
-    "region": "Oceania",
+    "region": "Melanesia",
     "point": [
       166.908762,
       -15.37153
@@ -1606,140 +1606,140 @@
     ]
   },
   "VNM": {
-    "region": "Asia",
+    "region": "South-Eastern Asia",
     "point": [
       105.387292,
       21.715416
     ]
   },
   "VGB": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -64.63661,
       18.426606
     ]
   },
   "VIR": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -64.779172,
       17.746706
     ]
   },
   "WLF": {
-    "region": "Oceania",
+    "region": "Polynesia",
     "point": [
       -178.137436,
       -14.286415
     ]
   },
   "ESH": {
-    "region": "Africa",
+    "region": "Northern Africa",
     "point": [
       -12.630304,
       23.967592
     ]
   },
   "YEM": {
-    "region": "Asia",
+    "region": "Western Asia",
     "point": [
       45.874383,
       15.328226
     ]
   },
   "ZMB": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       26.395298,
       -14.660804
     ]
   },
   "ZWE": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       29.925444,
       -18.91164
     ]
   },
   "ALA": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       19.869671,
       60.156467
     ]
   },
   "BES": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -63.1334,
       17.5438
     ]
   },
   "CUW": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -68.920578,
       12.145039
     ]
   },
   "GGY": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -2.561736,
       49.463533
     ]
   },
   "IMN": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -4.530069,
       54.220833
     ]
   },
   "JEY": {
-    "region": "Europe",
+    "region": "Northern Europe",
     "point": [
       -2.090146,
       49.220808
     ]
   },
   "MNE": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       19.143727,
       42.803101
     ]
   },
   "BLM": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -62.833193,
       17.901987
     ]
   },
   "MAF": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -63.049399,
       18.081302
     ]
   },
   "SRB": {
-    "region": "Europe",
+    "region": "Southern Europe",
     "point": [
       21.421523,
       43.849527
     ]
   },
   "SXM": {
-    "region": "North America",
+    "region": "Caribbean",
     "point": [
       -63.070133,
       18.04088
     ]
   },
   "SSD": {
-    "region": "Africa",
+    "region": "Eastern Africa",
     "point": [
       30.390151,
       7.230477

@@ -61,4 +61,6 @@ npm run verify:sources
 
 世界地図だけを固定ソースから再生成する場合は、`npm run verify:sources` の後に `npm run catalogs:world`。変換ツールmapshaper 0.7.88はこのときのみ取得し、通常の開発依存には含めません。生成後はデータ検証と地図のブラウザテストを実行してください。
 
-WORLDの地域分類と代表点は同じ固定Natural Earthの表示属性から抽出し、別の `world-view.json` に同梱。地理的重心の平均ではなくLABEL_X／LABEL_Yを使う。形状のない3地域のみ概略点を補い、BVT（3.35E,54.42S）、GIB（5.35W,36.14N）、UMI（ミッドウェー177.37W,28.21N）と表示上の注記を保存する。UMIの代表点は分散した島々の中心を意味しない。[更新手順](COLLECTION_MODES.md)。
+WORLDの地域分類（SUBREGION）と代表点は同じ固定Natural Earthの表示属性から抽出し、別の `world-view.json` に同梱。地理的重心の平均ではなくLABEL_X／LABEL_Yを使う。形状のない3地域のみ概略点を補い、BVT（3.35E,54.42S）、GIB（5.35W,36.14N）、UMI（ミッドウェー177.37W,28.21N）と表示上の注記を保存する。UMIの代表点は分散した島々の中心を意味しない。[更新手順](COLLECTION_MODES.md)。
+
+地域は大陸単位から23の小地域へ細分化した。日本語名・順序・外洋の島々の例外と境界地域の扱いは [WORLDの地域分類](WORLD_REGIONS.md) を参照。統治国の所在へ海外領土を集約せず、既存249IDと訪問TXTは維持する。

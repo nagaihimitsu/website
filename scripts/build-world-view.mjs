@@ -16,12 +16,17 @@ for (const feature of JSON.parse(bytes).features) {
 }
 const extras = {
   BVT: { region: "Antarctica", point: [3.35, -54.42], note: "地図形状なし · ブーベ島付近の代表点" },
-  GIB: { region: "Europe", point: [-5.35, 36.14], note: "地図形状なし · ジブラルタル付近の代表点" },
-  UMI: { region: "Oceania", point: [-177.37, 28.21], note: "地図形状なし · 分散する島々のうちミッドウェーを代表点として表示" },
+  GIB: { region: "Southern Europe", point: [-5.35, 36.14], note: "地図形状なし · ジブラルタル付近の代表点" },
+  UMI: { region: "Micronesia", point: [-177.37, 28.21], note: "地図形状なし · 分散する島々のうちミッドウェーを代表点として表示" },
 };
+// 元資料の「外洋」は小地域ではないため、所在する地理区域へ明示的に割り当てる。
+// 南極周辺の島は南極とまとめ、統治国の所在による分類や重複登録を避ける。
+const oceanRegions = { SGS: "Antarctica", ATF: "Antarctica", HMD: "Antarctica", IOT: "Eastern Africa" };
 const result = Object.fromEntries(countries.map(c => {
   const p = groups.get(c.id)?.properties;
   if (!p && !extras[c.id]) throw new Error(`表示属性なし: ${c.id}`);
-  return [c.id, p ? { region: p.CONTINENT === "Seven seas (open ocean)" ? (p.REGION_UN === "Americas" ? "South America" : p.REGION_UN) : p.CONTINENT, point: [p.LABEL_X, p.LABEL_Y] } : extras[c.id]];
+  const region = p?.SUBREGION === "Seven seas (open ocean)" ? oceanRegions[c.id] : p?.SUBREGION;
+  if (p && !region) throw new Error(`小地域分類なし: ${c.id}`);
+  return [c.id, p ? { region, point: [p.LABEL_X, p.LABEL_Y] } : extras[c.id]];
 }));
 fs.writeFileSync("src/catalogs/world-view.json", JSON.stringify(result, null, 2) + "\n");

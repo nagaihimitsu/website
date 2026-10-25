@@ -5,40 +5,25 @@ on:
   workflow_dispatch:
     inputs:
       validation:
-        description: "Validation scope: visual, links, movement, NPC, outdoors, music, records, room/refactor or full"
+        description: "変更範囲に必要な検証。buildはビルドのみ、fullは共有基盤などの全体検証用"
         type: choice
         required: true
-        default: full
-        options: [full, visual, links, movement, records, npc, outdoors, music, room, refactor]
+        default: build
+        options: [build, world-regions, world, visual, links, movement, records, npc, outdoors, music, room, refactor, full]
 permissions:
   contents: read
   pages: write
   id-token: write
 jobs:
-  world-webkit:
-    concurrency:
-      group: world-webkit-${{ github.ref }}
-      cancel-in-progress: true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps webkit
-      - name: Validate WORLD layout in WebKit
-        run: npx playwright test --config playwright.world-webkit.config.ts
   build:
     # 検証は最新コミットを優先し、公開ジョブの完了を妨げない。
     concurrency:
       group: atlas-build-${{ github.ref }}
       cancel-in-progress: true
-    needs: world-webkit
     runs-on: ubuntu-latest
+    env:
+      # 変更箇所のテストはローカルまたは手動で範囲指定し、通常pushでは重複実行しない。
+      VALIDATION_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.validation || 'build' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,12 +31,16 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - if: env.VALIDATION_SCOPE != 'build'
+        run: npx playwright install --with-deps chromium
       - name: Validate selected scope
-        env:
-          # Pushes retain the full suite; manual runs use the same scopes as local work.
-          VALIDATION_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.validation || 'full' }}
+        if: env.VALIDATION_SCOPE != 'build'
         run: npm run test:scope -- "$VALIDATION_SCOPE"
+      - if: env.VALIDATION_SCOPE == 'world' || env.VALIDATION_SCOPE == 'full'
+        run: npx playwright install --with-deps webkit
+      - name: Validate WORLD layout in WebKit
+        if: env.VALIDATION_SCOPE == 'world' || env.VALIDATION_SCOPE == 'full'
+        run: npx playwright test --config playwright.world-webkit.config.ts
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

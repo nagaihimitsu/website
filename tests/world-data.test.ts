@@ -31,7 +31,22 @@ describe("WORLD表示アダプター", () => {
     expect(Math.abs(view("FJI").point[0])).toBeGreaterThan(160);
     expect(view("RUS").point[0]).toBeGreaterThan(30);
     expect(view("GBR").point[0]).toBeGreaterThan(-10);
-    expect(view("JPN").region).toBe("Asia");
+    expect(view("JPN").region).toBe("Eastern Asia");
     expect(view("UMI").note).toContain("ミッドウェー");
+  });
+  it("小地域と境界地域・海外領土を一意に分類する", () => {
+    expect(worldRegions).toHaveLength(23);
+    const expected = {
+      JPN: "Eastern Asia", TWN: "Eastern Asia", THA: "South-Eastern Asia", IND: "Southern Asia",
+      IRN: "Southern Asia", KAZ: "Central Asia", TUR: "Western Asia", CYP: "Western Asia",
+      RUS: "Eastern Europe", GBR: "Northern Europe", FRA: "Western Europe", GIB: "Southern Europe",
+      MEX: "Central America", CUB: "Caribbean", GUF: "South America", USA: "Northern America",
+      EGY: "Northern Africa", IOT: "Eastern Africa", ZAF: "Southern Africa",
+      AUS: "Australia and New Zealand", FJI: "Melanesia", UMI: "Micronesia", WSM: "Polynesia",
+      ATA: "Antarctica", BVT: "Antarctica", SGS: "Antarctica", ATF: "Antarctica", HMD: "Antarctica",
+    };
+    for (const [id, region] of Object.entries(expected)) {
+      expect(countryView(catalogs.world.find(entry => entry.id === id)!)).toMatchObject({ region });
+    }
   });
 });

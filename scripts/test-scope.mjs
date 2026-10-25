@@ -16,6 +16,8 @@ const roomUnits = readdirSync(new URL("../tests/", import.meta.url))
   .sort()
   .map((file) => `tests/${file}`);
 const scopes = {
+  "world-regions": { units: ["tests/world-data.test.ts"], browser: ["tests/e2e/world-regions.spec.ts"] },
+  world: { units: ["tests/world-data.test.ts"], browser: ["tests/e2e/world-mode.spec.ts", "tests/e2e/world-regions.spec.ts"] },
   visual: { browser: [roomSpecs[0], "--grep", "@visual"] },
   links: { browser: [roomSpecs[0], roomSpecs[1], "--grep", "@links|@visual"] },
   movement: {

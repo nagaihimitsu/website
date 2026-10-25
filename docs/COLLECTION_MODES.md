@@ -28,8 +28,10 @@ TXT9ファイルとマスターは変更しない。`loadArchive` が1回読み�
 
 `Globe` のpaper表示は既存react-globe.glを使用。HTMLラベル層に日本語名を載せ、球面の座標・回転・ズーム・遮蔽に追従させる。カメラ補間は既存pointOfViewの500ms、経度180度以内の経路を使い、新しい選択で古い補間を中断する。カメラ情報はrefとDOM診断属性に保存し、毎フレームReact状態を更新しない。
 
-代表点・地域は `world-view.json` の表示用アダプター。既存の固定Natural Earth 5.1.2と同じSHA-256のソースからCONTINENT／LABEL_X／LABEL_Yを抽出し、国が複数地理単位に分かれる場合は最大面積の単位を使う。Seven seas分類はREGION_UN（Americasは南米）を使用。形状のないBVT・GIB・UMIは概略代表点を明記し、UMIはミッドウェーを代表とする。実績を推測・追加する処理はない。
+代表点・地域は `world-view.json` の表示用アダプター。既存の固定Natural Earth 5.1.2と同じSHA-256のソースからSUBREGION／LABEL_X／LABEL_Yを抽出し、国が複数地理単位に分かれる場合は最大面積の単位を使う。東アジア・東南アジアなど23の小地域を使用し、外洋の島々のみ所在地域へ明示的に割り当てる。[分類方針・境界地域・例外](WORLD_REGIONS.md)を正本とする。形状のないBVT・GIB・UMIは概略代表点を明記し、UMIはミッドウェーを代表とする。実績を推測・追加する処理はない。
 
 再生成は `node scripts/build-world-view.mjs /固定ソース/world.json`。参照元URLとSHAは `scripts/catalogs/sources.json` に固定。既存の国・地図マスターやTXTを再生成しない。表示リセットは向き・ズーム・選択・ラベルを初期化し、検索・フィルター・地域開閉は保持する。
 
 `data-world-ready`、`data-view-lat/lng/altitude` は地球儀の検証用診断属性。選択IDはWORLDルートとラベル・行にも記録する。ブラウザ検証は `world-mode.spec.ts`、Safari系レイアウトは `playwright.world-webkit.config.ts` を使う。WebKit/LinuxのGPUの有無に依存させず、WebKit試験は2Dで可変高さ・縦横表示・タッチ選択を確認し、地球儀の実ピンチはChromiumのCDPタッチ入力で確認する。iPhone実機での検証とは区別する。
+
+地域分類だけの変更は `npm run test:scope -- world-regions` で確認する。地球儀の描画・ジェスチャーや楽器は変更していなければ再試験しない。画面操作の変更には `world`、共有の入口・カメラの変更には対応する部屋テストを追加で選ぶ。通常pushはビルドのみで、必要な確認と記録は変更時に行う。

@@ -2,8 +2,17 @@ import metadata from "../catalogs/world-view.json";
 import { catalogs } from "../data/catalogs";
 import type { Entry } from "../data/model";
 export const worldRegions = [
-  ["Asia", "アジア"], ["Europe", "ヨーロッパ"], ["North America", "北アメリカ"],
-  ["South America", "南アメリカ"], ["Africa", "アフリカ"], ["Oceania", "オセアニア"], ["Antarctica", "南極"],
+  ["Eastern Asia", "東アジア"], ["South-Eastern Asia", "東南アジア"], ["Southern Asia", "南アジア"],
+  ["Central Asia", "中央アジア"], ["Western Asia", "西アジア"],
+  ["Northern Europe", "北ヨーロッパ"], ["Western Europe", "西ヨーロッパ"],
+  ["Eastern Europe", "東ヨーロッパ"], ["Southern Europe", "南ヨーロッパ"],
+  ["Northern America", "北アメリカ"], ["Central America", "中央アメリカ"],
+  ["Caribbean", "カリブ海地域"], ["South America", "南アメリカ"],
+  ["Northern Africa", "北アフリカ"], ["Western Africa", "西アフリカ"], ["Middle Africa", "中部アフリカ"],
+  ["Eastern Africa", "東アフリカ"], ["Southern Africa", "南部アフリカ"],
+  ["Australia and New Zealand", "オーストラリア・ニュージーランド"],
+  ["Melanesia", "メラネシア"], ["Micronesia", "ミクロネシア"], ["Polynesia", "ポリネシア"],
+  ["Antarctica", "南極・南極周辺"],
 ] as const;
 export interface CountryView { region: string; point: [number, number]; note?: string; }
 const views: Record<string, CountryView> = {};

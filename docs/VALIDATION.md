@@ -509,3 +509,15 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 ### WORLD改修の公開結果
 
 ソースコミット `47c4b8e` の [Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40178095117) は、WebKitの2Dレイアウト1件、単体27ファイル393件、Chromiumの全69件、`/website/` 配下の本番配信1件、本番ビルド、Pages deployがすべて成功。Chromium全件は23.4分で完了した。2026-10-25 09:15 UTCにdeploy成功と公開先 `https://nagaihimitsu.github.io/website/` をログで確認した。WORLDの直URLは `https://nagaihimitsu.github.io/website/#/room/world`。WebKitはGPU非対応を模擬した2Dレイアウトの確認であり、iPhone実機の3D操作検証は未実施。この追記だけのコミットは公開コードを変更しない。
+
+## 2026-10-25 — WORLDの小地域分類と検証範囲の見直し
+
+添付AGENTS.mdと今回のユーザー指定を確認。開始時は作業ツリーに既存変更なし。README・COLLECTION_MODES・DATA_SOURCES・生成元・関連テストを調査。MAINTENANCE資料はこのチェックアウトに存在しないため関連資料を更新する。
+
+- 大陸7区分からNatural Earth SUBREGIONを基本とする23の小地域へ変更。アジアは東・東南・南・中央・西の5区分。根拠・境界・外洋の例外・全件数をWORLD_REGIONSへ記載。
+- SHA照合済みの既存固定ソースから表示属性だけを再生成。国マスター・ID・代表点・地図形状・TXTは維持し、訪問国数の算出を変更しない。
+- ユーザー指定に従い、変更の影響がない楽器などのテストを毎回実行しない。通常push・手動公開の既定値はbuild（既存本番ビルドのみ）とし、必要なテストは変更時に範囲指定して確認・記録する。WORLDのWebKitジョブも常時実行をやめ、手動world/full指定時だけ実行する。全体テストは削除せず、共有基盤など影響がある場合の明示実行として残す。
+- 変更前：WORLD分類の単体3件成功。変更後：分類の単体4件と、小地域の件数・検索・選択・全249件を確認する2D一覧のブラウザ1件が成功。今回未変更の楽器・地球儀描画・ジェスチャー・JAPAN・POKÉDEXは再試験しない。
+- READMEの公開・検証手順、COLLECTION_MODESの生成属性・変更案内、DATA_SOURCESの分類説明、既存WORLDテスト内の地域名参照も同じ変更で更新。
+
+本番ビルド成功（既存のデータ・譜面検証、ライセンス生成、TypeScript、Vite）。変更前後のJSONを比較し、249ID・全代表点・注記が同一でregionだけが変更されたことを確認。world-regionsのdry-runは分類単体と専用一覧1件だけを選択し、楽器・全体テストを含まない。公開CIのbuild設定はテストステップを起動せず、ローカルのビルドコマンドは従来どおりnpm run buildを使用する。

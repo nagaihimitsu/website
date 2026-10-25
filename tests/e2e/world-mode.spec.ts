@@ -73,7 +73,7 @@ test('2D逆連動は一覧だけを展開・スクロールし、3Dへ選択を�
   expect((await page.locator('.world-viewport').boundingBox())?.y).toBeCloseTo(before!.y,1);
   // 逆選択後の自動スクロールは一度だけ。手動の探索・地域開閉を奪わない。
   await page.locator('.world-country-list').evaluate(node=>{node.scrollTop=0;});
-  const asia=page.getByRole('button',{name:/アジア.*件/});
+  const asia=page.getByRole('button',{name:/東アジア.*件/});
   await asia.click();
   await expect(asia).toHaveAttribute('aria-expanded','false');
   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
