@@ -521,3 +521,5 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 - READMEの公開・検証手順、COLLECTION_MODESの生成属性・変更案内、DATA_SOURCESの分類説明、既存WORLDテスト内の地域名参照も同じ変更で更新。
 
 本番ビルド成功（既存のデータ・譜面検証、ライセンス生成、TypeScript、Vite）。変更前後のJSONを比較し、249ID・全代表点・注記が同一でregionだけが変更されたことを確認。world-regionsのdry-runは分類単体と専用一覧1件だけを選択し、楽器・全体テストを含まない。公開CIのbuild設定はテストステップを起動せず、ローカルのビルドコマンドは従来どおりnpm run buildを使用する。
+
+公開結果：ソース `b0db1af` の [Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40181196324) は本番ビルドとdeployが成功。通常pushの条件に従い、Chromium／WebKitのインストール・テストステップはskippedとなり、全体・楽器のテストを重複実行していないことをジョブ結果で確認した。2026-10-25 09:35 UTCに公開先 `https://nagaihimitsu.github.io/website/` をdeployログで確認。必要な分類4件・一覧1件は上記のローカル結果を今回の検証とし、過去の全体テスト成功を今回の結果として扱わない。この追記のみのコミットは公開コードを変更しない。
