@@ -561,3 +561,5 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 - README、ROOM_CONCEPT、ROOM_PHOTO_FRAME、COLLECTION_MODES、JAPAN_MODEと範囲定義の参照名を現行の展示へ更新。JAPAN範囲は日本ポスターのケース名に追従し、今回未変更のモードUI・楽器のテストは実行しない。
 
 本番ビルド成功（既存のデータ・譜面検証、ライセンス、TypeScript、Vite）。今回は配置・サイズとそれに必要なクリック・接近方向だけを変更し、追加の単体テストや全体UIテストは作成・実行しない。公開は通常のビルド・deploy結果を確認する。
+
+公開結果：ソース `60f4dce` の [Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40187832072) は本番ビルドとdeployが成功。2026-10-25 11:12 UTCに `https://nagaihimitsu.github.io/website/` への公開をログで確認した。今回の差分ではモードUIのWebKitや全体テストは起動せず、配置に関係するローカルの実物クリック2件とPC／スマホの画像確認を今回の検証とする。この追記のみのコミットは公開コードを変更しない。
