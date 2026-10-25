@@ -1,6 +1,6 @@
 # デスクの写真立て
 
-ノート・ペン・コーヒーカップを撤去し、デスク右側に木製の写真立てを置きました。左側のランプと図鑑のスマートフォンはそのままです。
+ノート・ペン・コーヒーカップを撤去し、デスク右側に木製の写真立てを置きました。左側のランプは維持し、隣の図鑑端末は2026-10-25の配置改修で台座ごと0.58倍へ縮小しました。写真立て自体の大きさ・配置は維持しています。
 
 ## 造形と配置
 
@@ -31,3 +31,5 @@ SHA-256: `50f01a47efe5698efbd34d101ac7a8bf03bf09ee948cbb14bad9564047837fa3`
 [デスク全体](screenshots/photo-frame-room-desk.png) ／ [部屋での近接表示](screenshots/photo-frame-room-close.png) ／ [背面と支え脚](screenshots/photo-frame-room-back.png)
 
 本番ビルドの表示：[PC](screenshots/photo-frame-app-desktop.png) ／ [390px幅](screenshots/photo-frame-app-mobile.png) ／ [デスク方向・PC](screenshots/photo-frame-app-desk-desktop.png) ／ [デスク方向・390px幅](screenshots/photo-frame-app-desk-mobile.png)。部屋の描画と写真の読み込みを確認し、詳細は [検証記録](VALIDATION.md) にまとめています。
+
+過去の確認画像は撮影当時の端末サイズを含みます。現行の図鑑との比率・位置は [コレクション展示の更新方法](ROOM_COLLECTION_OBJECTS.md) と今回の検証記録を参照してください。

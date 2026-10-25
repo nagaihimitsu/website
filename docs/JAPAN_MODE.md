@@ -33,7 +33,7 @@ WORLDと旧独立ページは `japanMode` を使わず、従来の倍率・移�
 
 ## 確認と更新
 
-`npm run test:scope -- japan` は日本のデータ・範囲計算の単体と、JAPANのPC／タッチ操作、日本模型からの実物起動・ホームへの復元だけを選ぶ。楽器・WORLD・POKÉDEXのブラウザテストは含めない。複数モードを往復する既存ケースのJAPAN側の期待も新仕様へ更新したが、今回の実行対象とは分ける。
+`npm run test:scope -- japan` は日本のデータ・範囲計算の単体と、JAPANのPC／タッチ操作、ベッド上の日本ポスターからの実物起動・ホームへの復元だけを選ぶ。楽器・WORLD・POKÉDEXのブラウザテストは含めない。複数モードを往復する既存ケースのJAPAN側の期待も新仕様へ更新したが、今回の実行対象とは分ける。
 
 Safari系は `playwright.japan-webkit.config.ts` でJAPANの2Dレイアウト2件を確認する。LinuxのGPUの有無に依存しないようWebGL非対応を模擬する。CDPによる実タッチのピンチ／スワイプはChromiumの専用ケースで確認する。iPhone実機での検証とは区別する。
 

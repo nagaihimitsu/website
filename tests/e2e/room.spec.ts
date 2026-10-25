@@ -464,7 +464,7 @@ test("図鑑端末本体をクリックすると図鑑を開く", { tag: "@links
     facing: -0.3085,
   });
   await enterRoom(page);
-  const glass = await projectRoomPoint(page, [2.72, 1.96, -2.41]);
+  const glass = await projectRoomPoint(page, [2.73, 1.845, -2.425]);
   expect(Math.abs(glass.normalized.x)).toBeLessThan(1);
   expect(Math.abs(glass.normalized.y)).toBeLessThan(1);
   await page.mouse.click(glass.x, glass.y);

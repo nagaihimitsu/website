@@ -678,7 +678,7 @@ function initializeRoomEngine(
     }
     // Approach from the visible face, avoiding a flight through room furniture.
     const destination = portal.lookAt.clone().add(
-      section === "japan" ? new THREE.Vector3(-.15, 1.8, .15) :
+      section === "japan" ? new THREE.Vector3(0, .15, 2.2) :
       section === "pokemon" ? new THREE.Vector3(0, 0.35, 1.5) : new THREE.Vector3(0, 0.45, 2.2));
     const rotation = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(destination, portal.lookAt, camera.up),

@@ -81,12 +81,13 @@ test('3D地球儀の実物クリックから起動し部屋を保持', async ({p
   await expect(page.locator('.room-canvas canvas')).toBeVisible();
 });
 
-test('日本模型の実物クリックと地図・一覧の連動', async ({page}) => {
-  await savedPosition(page, {x:3.1,z:1.8,yaw:-.5,pitch:.4});
+test('日本ポスターの実物クリックと地図・一覧の連動', async ({page}) => {
+  await savedPosition(page, {x:-1.9,z:-.8,yaw:.2,pitch:.08});
   await enterRoom(page);
   const before = await position(page), origin = await page.evaluate(() => performance.timeOrigin);
   const canvas = await page.locator('.room-canvas canvas').elementHandle();
-  const point = await projectRoomPoint(page, [4.15,1.72,.05]);
+  const point = await projectRoomPoint(page, [-3.35,2.7,-3.879]);
+  await page.screenshot({path:"/tmp/room-japan-poster-before-open.png"});
   await page.mouse.click(point.x,point.y);
   await expect(page.locator('.japan-mode')).toBeVisible({timeout:15000});
   const map = page.locator('.mode-scroll:visible .map-surface > svg');

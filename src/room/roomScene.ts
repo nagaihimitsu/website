@@ -577,8 +577,12 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     deskSurface - 0.33,
     0.56,
   );
-  // Phone on a fine angled stand: flat metal sides, pill camera cutout, no brand mark.
-  const phone = group(-0.45, deskSurface + 0.59, 0.2, desk);
+  // 写真立てより少し低い図鑑端末。台座・本体・選択範囲を同じ親で縮小する。
+  const terminal = group(-0.45, deskSurface, 0.2, desk);
+  terminal.name = "pokedex-stand";
+  terminal.scale.setScalar(0.58);
+  const phone = group(0, 0.82, 0, terminal);
+  phone.name = "pokedex-terminal";
   phone.rotation.x = -0.2;
   phone.rotation.y = -0.18;
   const titanium = mat("#a95142", 0.65, 0.1);
@@ -615,43 +619,12 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   rounded(.24, .05, .03, dark, .01, phone, 0, -.7, .11);
   rounded(0.014, 0.14, 0.027, titanium, 0.006, phone, -0.38, 0.18, 0);
   rounded(0.014, 0.2, 0.027, titanium, 0.006, phone, 0.38, 0.12, 0);
-  rounded(
-    0.5,
-    0.045,
-    0.36,
-    titanium,
-    0.02,
-    desk,
-    -0.45,
-    deskSurface + 0.03,
-    0.07,
-  );
-  rounded(
-    0.25,
-    0.3,
-    0.045,
-    titanium,
-    0.02,
-    desk,
-    -0.45,
-    deskSurface + 0.17,
-    -0.01,
-  );
+  rounded(0.5, 0.045, 0.36, titanium, 0.02, terminal, 0, 0.03, -0.13);
+  rounded(0.25, 0.3, 0.045, titanium, 0.02, terminal, 0, 0.17, -0.21);
   desk.updateMatrixWorld(true);
-  portal(
-    "pokemon",
-    phone,
-    furniturePoint(desk, [
-      phone.position.x - 0.03,
-      phone.position.y + 0.87,
-      phone.position.z + 0.07,
-    ]),
-    furniturePoint(desk, [
-      phone.position.x - 0.03,
-      phone.position.y + 0.01,
-      phone.position.z + 0.02,
-    ]),
-  );
+  portal("pokemon", phone,
+    furniturePoint(phone, [0, 0.85, 0.08]),
+    furniturePoint(phone, [0, 0, 0.08]));
   // Invisible hit volume belongs to the phone, comfortably wider than the physical glass.
   const hitMaterial = new THREE.MeshBasicMaterial({
     transparent: true,
@@ -730,7 +703,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     ),
   );
 
-  // A mountain model and field books in a low, open console.
+  // 既存の低い棚と本は装飾・足場として残す。日本地図の入口はベッド上の壁へ移す。
   const consoleLayout = furnitureLayout.console;
   const console = createFurnitureGroup(scene, consoleLayout);
   for (const y of consoleLayout.shelfHeights)
@@ -766,27 +739,26 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   }
   rounded(0.69, 0.14, 0.72, linen, 0.015, console, 0, 1.03, 0.05);
   rounded(0.76, 0.09, 0.78, blue, 0.015, console, 0.02, 1.16, 0.02);
-  const mountain = group(
-    0,
-    consoleLayout.shelfHeights[2] + consoleLayout.shelf.height / 2 + 0.02,
-    0,
-    console,
-  );
-  rounded(1.05, .1, 1.12, woodDark, .04, mountain);
+  // 頭側の壁に、既存の地図テクスチャを歪めず使う薄い額装ポスターを掛ける。
+  const mountain = group(bedLayout.position[0], 2.7, -3.92);
+  mountain.name = "japan-wall-poster";
+  rounded(1.24, 1.78, 0.06, woodDark, 0.025, mountain);
+  rounded(1.17, 1.69, 0.01, cream, 0.012, mountain, 0, 0, 0.034);
   const japanTexture = scope.own(createJapanMapTexture(archive.achieved.japan));
   const japanMaterial = scope.own(new THREE.MeshStandardMaterial({ map: japanTexture, roughness: .94 }));
-  const japanModel = new THREE.Mesh(scope.own(new THREE.PlaneGeometry(.728, 1.04)), japanMaterial);
-  japanModel.rotation.x = -Math.PI / 2;
-  japanModel.position.y = .058;
+  const japanModel = new THREE.Mesh(scope.own(new THREE.PlaneGeometry(1.12, 1.6)), japanMaterial);
+  japanModel.position.z = 0.041;
   mountain.add(japanModel);
-  // 小さな山を地図の周りに置き、百名山の展示としても読めるようにする。
-  for (const x of [-.34, 0, .34]) {
-    const peak = new THREE.Mesh(scope.own(new THREE.ConeGeometry(.09, .17, 5)), green);
-    peak.position.set(x, .14, .48); mountain.add(peak);
+  // 額の下辺に小さな山の意匠を残し、百名山の入口としても識別できるようにする。
+  const peakShape = new THREE.Shape().moveTo(-0.025, -0.02).lineTo(0, 0.025).lineTo(0.025, -0.02).closePath();
+  const peakGeometry = scope.own(new THREE.ShapeGeometry(peakShape));
+  for (const x of [-0.08, 0, 0.08]) {
+    const peak = new THREE.Mesh(peakGeometry, green);
+    peak.position.set(x, -0.84, 0.043); mountain.add(peak);
   }
   portal("japan", mountain,
-    furniturePoint(console, [0, mountain.position.y + 1.07, 0]),
-    furniturePoint(console, [0, mountain.position.y + .05, 0]));
+    furniturePoint(mountain, [0, 0.95, 0.05]),
+    furniturePoint(mountain, [0, 0, 0.05]));
   obstacles.push(
     furnitureObstacle(
       "mountain-console",
