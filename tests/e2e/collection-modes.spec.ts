@@ -115,7 +115,9 @@ test('日本模型の実物クリックと地図・一覧の連動', async ({pag
 
 test('モードの直URLから戻るとURLもホームへ復帰', async ({page}) => {
   await page.goto('/#/room/pokemon');
-  await expect(page.locator('.pokemon-grid')).toBeVisible();
+  // 直URLはホーム描画を停止して起動するため、部屋のreadyではなく図鑑UIを待つ。
+  // 初回の部屋モジュール読込・同期モデル生成を含む上限は他の直URL試験と揃える。
+  await expect(page.locator('.pokemon-grid')).toBeVisible({timeout:30000});
   await page.getByRole('button',{name:'部屋に戻る'}).click();
   await expect(page).toHaveURL(/#\/$/);
   await expect(page.locator('.collection-modes')).toBeHidden();
