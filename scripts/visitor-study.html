@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visitor geometry study</title>
+    <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f3f0ed}canvas{display:block}</style>
+  </head>
+  <body>
+    <script type="module">
+      // 開発専用。部屋と同じモデルを一定の照明・縮尺で確認する。
+      import * as THREE from "three";
+      import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+      import { createVisitor } from "../src/room/art/visitor.ts";
+      const params = new URLSearchParams(location.search);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#f3f0ed");
+      const renderer = new THREE.WebGLRenderer({antialias:true});
+      renderer.setSize(innerWidth,innerHeight);
+      renderer.setPixelRatio(1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.12;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.VSMShadowMap;
+      document.body.append(renderer.domElement);
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const room = new RoomEnvironment();
+      const environment = pmrem.fromScene(room,0.04);
+      scene.environment = environment.texture;
+      scene.environmentIntensity = 0.55;
+      room.dispose(); pmrem.dispose();
+      scene.add(new THREE.HemisphereLight("#fffaf6","#a39c96",0.75));
+      const light = new THREE.DirectionalLight("#fff8f0",1.0);
+      light.position.set(-1.5,3,2);
+      light.castShadow = true;
+      light.shadow.mapSize.set(2048,2048);
+      Object.assign(light.shadow.camera,{left:-1,right:1,top:1.6,bottom:-0.4,near:0.1,far:8});
+      light.shadow.radius=20; light.shadow.blurSamples=16; light.shadow.bias=-0.0001;
+      light.shadow.normalBias=0.0005;
+      scene.add(light);
+      RectAreaLightUniformsLib.init();
+      const softbox = new THREE.RectAreaLight("#fff8f2",3,2,2);
+      softbox.position.set(-1.5,1.5,2); softbox.lookAt(0,0.7,0); scene.add(softbox);
+      const fill = new THREE.DirectionalLight("#e6ebff",0.55); fill.position.set(2,1,0); scene.add(fill);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.ShadowMaterial({opacity:0.13}));
+      floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+      const visitor = createVisitor(); scene.add(visitor.group); visitor.animate(0,true);
+      const views={front:0,quarter:35,side:90,"left-side":-90,back:180,"rear-quarter":145};
+      const angle=(views[params.get("view")||"quarter"]??35)*Math.PI/180;
+      const face=params.get("focus")==="face";
+      const height=face?0.56:1.5,width=height*innerWidth/innerHeight;
+      const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,0.01,20);
+      const target=face?1.065:0.645;
+      camera.position.set(Math.sin(angle)*3,target+0.10,Math.cos(angle)*3);
+      camera.lookAt(0,target,0);
+      renderer.render(scene,camera);
+      document.body.dataset.ready="true";
+      window.visitorStudy={renderer,camera,scene,visitor};
+      addEventListener("pagehide",()=>{visitor.dispose();environment.dispose();renderer.dispose()});
+    </script>
+  </body>
+</html>

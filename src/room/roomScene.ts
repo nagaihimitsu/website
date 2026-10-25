@@ -10,6 +10,7 @@ import type {
 import { createBreakables } from "./art/breakables";
 import { createCharacter } from "./art/character";
 import { createBird } from "./art/bird";
+import { createVisitor } from "./art/visitor";
 import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
@@ -1012,6 +1013,23 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const bird = scope.own(createBird());
   scene.add(bird.group);
 
+  // 参考画像の女の子も、主人公・小鳥と同じ実体のある立体キャラクター。
+  // 保存位置の検証・小鳥の生成より前に登録し、両者が自然に避けるようにする。
+  const visitor = scope.own(createVisitor());
+  visitor.group.name = "room-visitor";
+  visitor.group.scale.setScalar(2);
+  // 拡大した裾と机の間にも、歩いて回り込める間隔を残す。
+  visitor.group.position.set(1.85, 0.012, -0.70);
+  visitor.group.rotation.y = -0.20;
+  scene.add(visitor.group);
+  visitor.group.updateWorldMatrix(true, true);
+  // 髪・裾・バッグまで含め、待機中のわずかな揺れにも余裕を持たせる。
+  const visitorBounds = new THREE.Box3().setFromObject(visitor.group).expandByScalar(0.036);
+  const visitorCentre = visitorBounds.getCenter(new THREE.Vector3());
+  const visitorSize = visitorBounds.getSize(new THREE.Vector3());
+  obstruction("room-visitor", visitorCentre.x, visitorCentre.z,
+    visitorSize.x, visitorSize.z, visitorBounds.max.y);
+
   return {
     scene,
     avatar,
@@ -1064,6 +1082,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
       lastAnimationTime = time;
       doorMotion.animate(delta, reducedMotion);
       fractureSystem.animate(delta, reducedMotion);
+      visitor.animate(time, reducedMotion);
       for (const entry of portals) {
         const target = entry.object.userData.active ? 1.025 : 1;
         const scale = reducedMotion
