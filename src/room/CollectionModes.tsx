@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Archive, Entry, Section } from "../data/model";
+import { WorldMode } from "./WorldMode";
 import { Collection } from "../components/Collection";
 import { DetailPanel } from "../components/DetailPanel";
 import "./collectionModes.css";
@@ -29,12 +30,12 @@ export function CollectionModes({ archive, mode, onClose }: { archive: Archive; 
   }, [mode, onClose]);
   const section: Section | undefined = selected && mode === "mountains" && !selected.id.startsWith("m") ? "japan" : mode ?? undefined;
   return <>
-    <div className="collection-modes app-collection" hidden={!mode} role="region" aria-label="コレクションモード">
-      <header className="mode-toolbar"><button ref={close} onClick={onClose}>← 部屋に戻る</button><span>PERSONAL ATLAS / {mode === "mountains" ? "JAPAN" : mode?.toUpperCase()}</span><span className="mode-hint">ESC · CLOSE</span></header>
-      {visited.map(value => <div key={value} className="mode-scroll" hidden={mode !== value}>
-        <Collection section={value} archive={archive} embedded active={mode === value} onSelect={setSelected} />
+    <div className={`collection-modes app-collection${mode === "world" ? " is-world-mode" : ""}`} hidden={!mode} role="region" aria-label="コレクションモード">
+      <header className="mode-toolbar"><button ref={close} onClick={onClose}>← 部屋に戻る</button>{mode === "world" ? <><h1>WORLD</h1><div className="world-total page-count"><strong>{archive.achieved.world.size}</strong><span>国・地域を訪問</span></div></> : <><span>PERSONAL ATLAS / {mode === "mountains" ? "JAPAN" : mode?.toUpperCase()}</span><span className="mode-hint">ESC · CLOSE</span></>}</header>
+      {visited.map(value => <div key={value} className={`mode-scroll${value === "world" ? " world-mode-host" : ""}`} hidden={mode !== value}>
+        {value === "world" ? <WorldMode archive={archive} active={mode === value} /> : <Collection section={value} archive={archive} embedded active={mode === value} onSelect={setSelected} />}
       </div>)}
-      {selected && section && <DetailPanel key={`${section}-${selected.id}`} entry={selected} section={section} archive={archive} onClose={() => setSelected(undefined)} />}
+      {selected && section && mode !== "world" && <DetailPanel key={`${section}-${selected.id}`} entry={selected} section={section} archive={archive} onClose={() => setSelected(undefined)} />}
     </div>
   </>;
 }

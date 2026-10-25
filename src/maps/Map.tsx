@@ -38,6 +38,9 @@ export function Map({
   initialView,
   onViewChange,
   showVisits = true,
+  focusPoint,
+  focusToken = 0,
+  onReset,
 }: {
   section: Section;
   achieved: Set<string>;
@@ -48,6 +51,9 @@ export function Map({
   initialView?: MapView;
   onViewChange?: (view: MapView) => void;
   showVisits?: boolean;
+  focusPoint?: [number, number];
+  focusToken?: number;
+  onReset?: () => void;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const [markerScale, setMarkerScale] = useState(1);
@@ -90,7 +96,7 @@ export function Map({
     return result;
   }, [section, preview, zoom, pan, width, height, markerScale, focus, achieved]);
   useEffect(() => {
-    if (preview || section !== "mountains" || !svg.current) return;
+    if (preview || !svg.current) return;
     // Marker symbols and touch targets keep their CSS-pixel size, including
     // letterboxed maps in the mobile sheet's three heights.
     const observer = new ResizeObserver(([entry]) => {
@@ -112,11 +118,22 @@ export function Map({
     return () => node?.removeEventListener("wheel", wheel);
   }, [preview]);
   useEffect(() => { onViewChange?.({ zoom, pan }); }, [zoom, pan, onViewChange]);
-  const previousFocus = useRef(focus);
+  const previousToken = useRef(focusToken);
+  const previousFocus = useRef(initialView ? focus : undefined);
   useEffect(() => {
-    if (previousFocus.current === focus) return;
+    if (previousFocus.current === focus && previousToken.current === focusToken) return;
+    previousToken.current = focusToken;
     previousFocus.current = focus;
     if (!focus || preview) return;
+    if (isWorld && focusPoint) {
+      const point = worldProjection(focusPoint);
+      if (point) {
+        const nextZoom = focus.hasGeometry === false ? 6 : 3.5;
+        setZoom(nextZoom);
+        setPan([(width / 2 - point[0]) * nextZoom, (height / 2 - point[1]) * nextZoom]);
+      }
+      return;
+    }
     const point = section === "mountains" && focus.coordinates ? mountainProjection(focus.coordinates as [number, number]) :
       null;
     if (section === "mountains" && point) {
@@ -124,7 +141,7 @@ export function Map({
       setZoom(nextZoom);
       setPan([(width / 2 - point[0]) * nextZoom, (height / 2 - point[1]) * nextZoom]);
     }
-  }, [focus, section, preview, width, height, isWorld]);
+  }, [focus, focusToken, focusPoint, section, preview, width, height, isWorld]);
   const select = (id: string) => {
     if (drag.current?.moved) return;
     const e = entries.get(id);
@@ -176,6 +193,7 @@ export function Map({
             onClick={() => {
               setZoom(1);
               setPan([0, 0]);
+              onReset?.();
             }}
           >
             ↺
@@ -280,7 +298,7 @@ export function Map({
               <path
                 key={`${id}-${i}`}
                 d={path(f)}
-                className={`land ${active && showVisits ? "visited" : ""} ${section === "mountains" ? "prefecture-layer" : ""}`}
+                className={`land ${active && showVisits ? "visited" : ""} ${section === "mountains" ? "prefecture-layer" : ""} ${focusPoint && focus?.id === id ? "selected-land" : ""}`}
                 data-id={id}
                 data-achieved={active}
                 tabIndex={!preview && onSelect && e ? 0 : undefined}
@@ -297,6 +315,12 @@ export function Map({
               </path>
             );
           })}
+          {isWorld && focus && focusPoint && (() => {
+            const point = worldProjection(focusPoint);
+            return point && <g className="world-map-label" transform={`translate(${point[0]} ${point[1]}) scale(${markerScale / zoom})`} pointerEvents="none">
+              <circle r="3" fill="#b17d32" /><text y="-12" textAnchor="middle">{focus.name}</text>
+            </g>;
+          })()}
           {section === "mountains" &&
             catalogs.mountains.map((m) => {
               const point = mountainProjection(

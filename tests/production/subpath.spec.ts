@@ -53,7 +53,9 @@ test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT�
   await expect(page.locator(".page-count strong")).toHaveText("1");
   await page.getByRole("searchbox").fill("日本");
   await page.locator(".entry").click();
-  const image = page.locator(".photo-main img");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.locator(".world-records summary").click();
+  const image = page.locator(".world-records img");
   await expect(image).toHaveAttribute("src", "/website/photos/test/image.webp");
   await expect(image).toBeVisible();
   expect(

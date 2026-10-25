@@ -1,36 +1,11 @@
-import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { GlobeBoundary, canWebGL } from "./GlobeBoundary";
 import { catalogs, sections, labels, english } from "../data/catalogs";
 import { pokemonCounts } from "../data/parser";
 import type { Archive, Entry, Section } from "../data/model";
 import type { GlobeView } from "../maps/Globe";
 import { Map, type MapView } from "../maps/Map";
 const Globe = lazy(() => import("../maps/Globe"));
-class GlobeBoundary extends Component<
-  { children: ReactNode; onFail: () => void },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  componentDidCatch() {
-    this.props.onFail();
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
-function canWebGL() {
-  try {
-    const c = document.createElement("canvas");
-    const gl = c.getContext("webgl2") || c.getContext("webgl");
-    if (!gl) return false;
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-    return true;
-  } catch {
-    return false;
-  }
-}
 export function Collection({
   section,
   archive,

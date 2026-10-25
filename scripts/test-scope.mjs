@@ -33,7 +33,7 @@ const scopes = {
     units: ["tests/parser.test.ts", "tests/photos.test.ts"],
     browser: ["tests/e2e/site.spec.ts", "--grep", "@records"],
   },
-  room: { units: roomUnits, browser: [...roomSpecs, "tests/e2e/collection-modes.spec.ts"] },
+  room: { units: roomUnits, browser: [...roomSpecs, "tests/e2e/collection-modes.spec.ts", "tests/e2e/world-mode.spec.ts"] },
   outdoors: {
     units: roomUnits,
     browser: [roomSpecs[0], roomSpecs[2], roomSpecs[3], "--grep", "@outdoors|@movement|@npc|@visual"],

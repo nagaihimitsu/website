@@ -18,3 +18,18 @@ TXT9ファイルとマスターは変更しない。`loadArchive` が1回読み�
 展示のIDは `destinations.ts` の既存IDを維持。JAPANは `japan` の展示から `mountains` モードへ入る。従来の `mountains` ID定義は互換のため残すが、入口・メニューは3つとする。地球儀は背面中央より左へ寄せ、初期位置からの歩行経路と机・ベッドの配置を確保する。Instagramなど外部入口は既存処理を使う。
 
 スマートフォンのJAPAN一覧は最小・中間・最大ボタンとハンドルのスワイプで切り替える。地図・ハンドル・一覧のスクロール領域を分ける。造形・入力変更時は `collection-modes.spec.ts` と従来の部屋テストを両方確認する。
+
+
+## WORLDの固定表示と選択
+
+`WorldMode` が国選択・検索・訪問フィルター・地域の開閉を所有する。WORLDから共通DetailPanelへは通知せず、選択した国は地球儀／2D地図上のラベルと固定情報欄、一覧のハイライトで示す。実在する写真・日付は一覧内の訪問記録として展開し、ページやモーダルを開かない。旧 `#/world` は記録の互換ページとして維持する。
+
+`worldMode.css` は上下（広い画面は左右）のGridと `min-height: 0` で全体を `100dvh` 内に収める。検索・フィルターは一覧のスクロール領域の外に置く。`world-country-list` だけがスクロール可能。VisualViewportの高さ・オフセットにも追従し、アドレスバー／キーボードによる可視領域の変化を反映する。リスナーとCSS変数はモード終了時に解除する。逆選択のスクロールは一覧自身のscrollToで行い、祖先を動かすscrollIntoViewは使わない。選択情報は高さを固定し、国名によって地球儀の高さを変えない。
+
+`Globe` のpaper表示は既存react-globe.glを使用。HTMLラベル層に日本語名を載せ、球面の座標・回転・ズーム・遮蔽に追従させる。カメラ補間は既存pointOfViewの500ms、経度180度以内の経路を使い、新しい選択で古い補間を中断する。カメラ情報はrefとDOM診断属性に保存し、毎フレームReact状態を更新しない。
+
+代表点・地域は `world-view.json` の表示用アダプター。既存の固定Natural Earth 5.1.2と同じSHA-256のソースからCONTINENT／LABEL_X／LABEL_Yを抽出し、国が複数地理単位に分かれる場合は最大面積の単位を使う。Seven seas分類はREGION_UN（Americasは南米）を使用。形状のないBVT・GIB・UMIは概略代表点を明記し、UMIはミッドウェーを代表とする。実績を推測・追加する処理はない。
+
+再生成は `node scripts/build-world-view.mjs /固定ソース/world.json`。参照元URLとSHAは `scripts/catalogs/sources.json` に固定。既存の国・地図マスターやTXTを再生成しない。表示リセットは向き・ズーム・選択・ラベルを初期化し、検索・フィルター・地域開閉は保持する。
+
+`data-world-ready`、`data-view-lat/lng/altitude` は地球儀の検証用診断属性。選択IDはWORLDルートとラベル・行にも記録する。ブラウザ検証は `world-mode.spec.ts`、Safari系レイアウトは `playwright.world-webkit.config.ts` を使う。WebKit/LinuxのGPUの有無に依存させず、WebKit試験は2Dで可変高さ・縦横表示・タッチ選択を確認し、地球儀の実ピンチはChromiumのCDPタッチ入力で確認する。iPhone実機での検証とは区別する。

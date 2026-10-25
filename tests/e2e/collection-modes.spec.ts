@@ -4,7 +4,8 @@ import { enterRoom, position, savedPosition, projectRoomPoint } from "./helpers/
 async function openMode(page: import('@playwright/test').Page, label: string) {
   await page.getByRole('button', { name: '記録と設定を開く' }).click();
   await page.locator('.room-menu').getByRole('link', { name: label, exact: true }).click();
-  await expect(page.getByRole('region', {name: 'コレクションモード'})).toBeVisible();
+  // 500msのカメラ補間をソフトウェアWebGLでも描画し終えるまで待つ。
+  await expect(page.getByRole('region', {name: 'コレクションモード'})).toBeVisible({timeout:15000});
 }
 for (const mobile of [false, true]) test.describe(mobile ? "touch" : "desktop", () => {
   test.use({ viewport: mobile ? {width:390,height:844} : {width:1440,height:900}, hasTouch: mobile, isMobile: mobile });
@@ -71,8 +72,8 @@ for (const mobile of [false, true]) test.describe(mobile ? "touch" : "desktop", 
   await expect(page.locator('.collection-modes .land')).toHaveCount(250);
   await page.getByRole('searchbox').fill('日本');
   await page.locator('.mode-scroll:visible .entry').click();
-  await expect(page.getByRole('dialog')).toContainText('訪問済み');
-  await page.getByRole('button',{name:'詳細を閉じる'}).click();
+  await expect(page.locator('.world-selection')).toContainText('訪問済み');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.screenshot({path:`/tmp/collection-${mobile ? 'mobile':'desktop'}.png`});
   await page.getByRole('button',{name:'部屋に戻る'}).click();
   await expect(page.locator('canvas')).toHaveCount(1);

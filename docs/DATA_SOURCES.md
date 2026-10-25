@@ -60,3 +60,5 @@ npm run verify:sources
 通常の実績更新ではこのコマンドは不要です。将来基本種が追加された場合のみ、出典バージョン・件数・変換内容をレビューしてマスターと `provenance.json` を更新します。全国図鑑番号の連続性、100山の代表峰、47県の形状、別名の衝突を `npm run validate:data` で検証してください。
 
 世界地図だけを固定ソースから再生成する場合は、`npm run verify:sources` の後に `npm run catalogs:world`。変換ツールmapshaper 0.7.88はこのときのみ取得し、通常の開発依存には含めません。生成後はデータ検証と地図のブラウザテストを実行してください。
+
+WORLDの地域分類と代表点は同じ固定Natural Earthの表示属性から抽出し、別の `world-view.json` に同梱。地理的重心の平均ではなくLABEL_X／LABEL_Yを使う。形状のない3地域のみ概略点を補い、BVT（3.35E,54.42S）、GIB（5.35W,36.14N）、UMI（ミッドウェー177.37W,28.21N）と表示上の注記を保存する。UMIの代表点は分散した島々の中心を意味しない。[更新手順](COLLECTION_MODES.md)。
