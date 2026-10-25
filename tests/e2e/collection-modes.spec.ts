@@ -98,8 +98,9 @@ test('日本模型の実物クリックと地図・一覧の連動', async ({pag
   await expect(page.locator('.integrated-japan')).toBeVisible({timeout:15000});
   const map = page.locator('.mode-scroll:visible .map-surface > svg');
   const view = await map.locator(':scope > g').getAttribute('transform');
-  const scroll = await page.locator('.mode-scroll:visible').evaluate(node => node.scrollTop);
   await map.hover();
+  // Playwright may scroll the map into view before placing the mouse.
+  const scroll = await page.locator('.mode-scroll:visible').evaluate(node => node.scrollTop);
   await page.mouse.wheel(0, -100);
   await expect(map.locator(':scope > g')).not.toHaveAttribute('transform', view!);
   expect(await page.locator('.mode-scroll:visible').evaluate(node => node.scrollTop)).toBe(scroll);
