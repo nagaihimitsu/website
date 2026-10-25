@@ -1,0 +1,32 @@
+name: Validate changed JAPAN layout
+on:
+  push:
+    branches: [main]
+    # JAPANの表示・共用地図を変更したときだけ。楽器などの試験は起動しない。
+    paths:
+      - "src/room/JapanMode.tsx"
+      - "src/room/japanMode.css"
+      - "src/room/CollectionModes.tsx"
+      - "src/maps/Map.tsx"
+      - "src/maps/japanView.ts"
+      - "tests/e2e/japan-mode.spec.ts"
+      - "playwright.japan-webkit.config.ts"
+      - ".github/workflows/japan-layout.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: japan-layout-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  japan-webkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - run: npx playwright test --config playwright.japan-webkit.config.ts

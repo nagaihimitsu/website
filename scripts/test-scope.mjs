@@ -16,6 +16,7 @@ const roomUnits = readdirSync(new URL("../tests/", import.meta.url))
   .sort()
   .map((file) => `tests/${file}`);
 const scopes = {
+  japan: { units: ["tests/japan-view.test.ts"], browser: ["tests/e2e/japan-mode.spec.ts", "tests/e2e/collection-modes.spec.ts", "--grep", "JAPAN|日本模型"] },
   "world-regions": { units: ["tests/world-data.test.ts"], browser: ["tests/e2e/world-regions.spec.ts"] },
   world: { units: ["tests/world-data.test.ts"], browser: ["tests/e2e/world-mode.spec.ts", "tests/e2e/world-regions.spec.ts"] },
   visual: { browser: [roomSpecs[0], "--grep", "@visual"] },

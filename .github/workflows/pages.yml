@@ -9,7 +9,7 @@ on:
         type: choice
         required: true
         default: build
-        options: [build, world-regions, world, visual, links, movement, records, npc, outdoors, music, room, refactor, full]
+        options: [build, japan, world-regions, world, visual, links, movement, records, npc, outdoors, music, room, refactor, full]
 permissions:
   contents: read
   pages: write

@@ -1,0 +1,61 @@
+/* WORLDと同じ固定領域＋一覧内スクロール。JAPANだけに適用する。 */
+.collection-modes.is-japan-mode { position: fixed; top: var(--japan-offset-top, 0px); bottom: auto; height: var(--japan-viewport-height, 100dvh); max-height: var(--japan-viewport-height, 100dvh); overflow: hidden; }
+.is-japan-mode .mode-toolbar { flex: 0 0 auto; min-height: 64px; padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); gap: 12px; letter-spacing: 0; }
+.is-japan-mode .mode-toolbar h1 { margin: 0; font: 500 26px var(--display); letter-spacing: -.05em; }
+.japan-progress { display: flex; align-items: baseline; gap: 8px; color: #30483c; white-space: nowrap; }
+.japan-progress strong { font: 500 32px var(--display); }
+.japan-progress small { color: #52634e; font-size: 11px; }
+.japan-progress .prefecture-progress { font-size: 12px; color: #52634e; }
+.collection-modes .japan-mode-host { padding: 0; overflow: hidden; min-height: 0; flex: 1 1 0; }
+.japan-mode { display: grid; grid-template-rows: minmax(0, 55fr) minmax(0, 45fr); height: 100%; min-height: 0; overflow: hidden; color: #30483c; }
+.japan-map-pane { position: relative; min-height: 0; overflow: hidden; background: #f6f3ed; }
+.japan-mode .japan-map-pane .map-surface, .japan-mode .japan-map-pane .map-surface > svg { width: 100%; height: 100%; max-height: none; touch-action: none; }
+.japan-mode .map-coordinates, .japan-mode .map-legend { display: none; }
+.japan-mode .map-tools { top: 12px; right: max(12px, env(safe-area-inset-right)); background: #fbfaf6ef; border: 1px solid #a9b6a7; border-radius: 5px; }
+.japan-mode .map-tools button { color: #30483c; width: 44px; min-height: 44px; border-color: #cad3c4; }
+.japan-mode .prefecture-layer { fill: #e0e4da; stroke: #87977e; stroke-width: .65; }
+.japan-mode .prefecture-layer.visited { fill: #a9bea0 !important; }
+.japan-mode .mountain-marker { fill: #fffdf4; stroke: #4f6650; stroke-width: 1.5; }
+.japan-mode .mountain-marker.visited { fill: #27563b; stroke: #fffdf4; }
+.japan-mode .selected-marker > path { fill: #a46e24; stroke: #fffdf4 !important; stroke-width: 2px; }
+.japan-mode .mountain-label { font-size: 12px; stroke-width: 3px; }
+.japan-map-label { overflow: visible; pointer-events: none; }
+.japan-map-label > div { background: #fffff7f5; border: 1px solid #a9b6a7; border-radius: 5px; padding: 6px 10px; box-shadow: 0 2px 8px #263c2d20; text-align: center; color: #23482e; font: 12px sans-serif; }
+.japan-map-label strong { display: block; font-size: 15px; margin-bottom: 3px; }
+.japan-map-label span { display: block; line-height: 1.4; }
+.japan-map-hint { position: absolute; left: 12px; bottom: 6px; margin: 0; max-width: calc(100% - 24px); padding: 3px 7px; background: #f6f3edea; color: #52634e; font-size: 11px; pointer-events: none; }
+.japan-catalog { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: #fbfaf6; border-top: 1px solid #bfcbb8; }
+.japan-catalog-controls { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid #dce1d3; flex: 0 0 auto; gap: 8px; }
+.japan-catalog-controls > span { font-size: 11px; color: #61715d; }
+.japan-mode .segmented { padding: 2px; border-color: #bec9b8; }
+.japan-mode .segmented button { color: #425941; transition: none; }
+.japan-mode .segmented button[aria-pressed="true"] { color: #fffef5; background: #42684e; }
+.japan-mountain-list { min-height: 0; flex: 1 1 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.japan-mode .mountain-row { display: flex; align-items: center; width: 100%; min-height: 64px; gap: 12px; padding: 8px 6px; border-bottom: 1px solid #e2e6da; color: #30483c; text-align: left; background: transparent; }
+.japan-mode .mountain-row:hover { background: #edf1e7; }
+.japan-mode .mountain-row[aria-pressed="true"] { background: #e2eadc; outline: 2px solid #4f715d; outline-offset: -2px; }
+.mountain-number { flex: 0 0 26px; font: 11px var(--mono); color: #6f7c69; }
+.mountain-description { flex: 1; min-width: 0; }
+.mountain-description strong { display: block; font-size: 15px; font-weight: 500; }
+.mountain-meta { display: block; margin-top: 3px; font-size: 11px; color: #60725c; line-height: 1.4; }
+.mountain-status { font-size: 11px; white-space: nowrap; color: #697761; }
+.mountain-status.is-done { color: #27563b; }
+.japan-records { padding: 12px 0; font-size: 13px; }
+.japan-records summary { cursor: pointer; min-height: 32px; }
+.japan-records img { display: block; width: 100%; max-height: 220px; object-fit: contain; margin-block: 8px; }
+.room-home:has(.is-japan-mode) { height: 100dvh; }
+@media (min-width: 900px), (min-width: 650px) and (max-height: 500px) {
+  .japan-mode { grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .japan-catalog { border-top: 0; border-left: 1px solid #bfcbb8; }
+}
+@media (max-width: 480px) {
+  .is-japan-mode .mode-toolbar { padding-inline: 10px; gap: 6px; }
+  .is-japan-mode .mode-toolbar button { padding-inline: 12px; }
+  .is-japan-mode .mode-toolbar h1 { font-size: 21px; }
+  .japan-progress { gap: 3px; flex-wrap: wrap; justify-content: flex-end; max-width: 130px; }
+  .japan-progress strong { font-size: 26px; }
+  .japan-progress .prefecture-progress { flex: 0 0 100%; text-align: right; font-size: 10px; }
+  .japan-catalog-controls { padding: 6px 12px; }
+  .japan-mountain-list { padding-inline: 12px; }
+  .japan-mode .mountain-row { gap: 8px; }
+}

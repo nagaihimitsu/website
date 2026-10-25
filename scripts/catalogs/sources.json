@@ -22,5 +22,9 @@
   "mountains.ndjson": {
     "url": "https://raw.githubusercontent.com/codemountains/mountix/1325247de2465c10b5b01f71496dc26c96b2b240/migrations/data/mountix_db-mountains.json",
     "sha256": "9d12befc372c99949a2c5146c8ae1982d7c4bf0ebece9325242bcdccdeb233af"
+  },
+  "mountain-prefectures.json": {
+    "url": "https://raw.githubusercontent.com/startFromBottom/hyakumeizan-map/f5ff0c0d9097f96829450f5c9f46a47bb3b79c1f/public/data/hyakumeizan_full.json",
+    "sha256": "47e1900f296cf088288601e7447585876ee593ce7a1e355aafd38c6a52cc75f2"
   }
 }

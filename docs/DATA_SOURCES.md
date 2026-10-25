@@ -7,7 +7,7 @@
 | 世界の国境 | [Natural Earth 5.1.2](https://github.com/nvkelso/natural-earth-vector/tree/v5.1.2)、50m Admin 0 Map Units | Public domain。[利用条件](https://www.naturalearthdata.com/about/terms-of-use/)。属性削減、座標丸め、mapshaperで18%に簡略化（keep-shapes）。D3用にリング方向を統一。 |
 | 国・地域名とISOコード | [i18n-iso-countries 7.14.0](https://github.com/michaelwittig/node-i18n-iso-countries) | MIT。ISO 3166-1正式割当の249項目。パッケージ独自のXKは対象外。日本語名・英語名・別名を静的保存。 |
 | 日本47都道府県 | [jpn-atlas 1.0.2](https://github.com/biskwikman/jpn-atlas) | BSD-3-Clause。元資料は国土地理院「地球地図日本」2016（[公開案内](https://www.gsi.go.jp/kankyochiri/gm_jpn.html)、[国土地理院コンテンツ利用規約](https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html)）。本サイトは同データを加工して作成。投影済みTopoJSONを47県GeoJSONへ変換し、平面上0.3px相当で簡略化。 |
-| 日本百名山の代表峰・座標・標高 | [codemountains/mountix](https://github.com/codemountains/mountix)、コミット `1325247de2465c10b5b01f71496dc26c96b2b240` の `migrations/data/mountix_db-mountains.json` | MIT。各元レコードの地理院地図へのリンクを保存。推測した座標は使用せず、選定した代表峰の値をそのまま採用。 |
+| 日本百名山の代表峰・座標・標高・所属県 | [codemountains/mountix](https://github.com/codemountains/mountix)、コミット `1325247de2465c10b5b01f71496dc26c96b2b240` の `migrations/data/mountix_db-mountains.json` | MIT。各元レコードの地理院地図へのリンクを保存。推測した座標は使用せず、選定した代表峰の値をそのまま採用。 |
 | 全国図鑑の基本種 | [PokéAPI CSV](https://github.com/PokeAPI/pokeapi/tree/5ee47a9a9c1229632ec4b473a9c1c53026e005dd/data/v2/csv) の `pokemon_species.csv`、`pokemon_species_names.csv` | PokéAPI BSD-3-Clause。1〜1025、基本種全件・日本語（language_id=11）・英名・世代。フォームを別計上しない。 |
 
 ライセンス全文は `public/licenses/` に収録し、配信物にも含めます。Pokémonおよびキャラクター名はNintendo等の権利者の商標です。本サイトは非公式の個人記録です。キャラクター画像・スプライトは利用していません。ソフトウェアのOSSライセンスを画像の利用許諾とは扱いません。
@@ -64,3 +64,7 @@ npm run verify:sources
 WORLDの地域分類（SUBREGION）と代表点は同じ固定Natural Earthの表示属性から抽出し、別の `world-view.json` に同梱。地理的重心の平均ではなくLABEL_X／LABEL_Yを使う。形状のない3地域のみ概略点を補い、BVT（3.35E,54.42S）、GIB（5.35W,36.14N）、UMI（ミッドウェー177.37W,28.21N）と表示上の注記を保存する。UMIの代表点は分散した島々の中心を意味しない。[更新手順](COLLECTION_MODES.md)。
 
 地域は大陸単位から23の小地域へ細分化した。日本語名・順序・外洋の島々の例外と境界地域の扱いは [WORLDの地域分類](WORLD_REGIONS.md) を参照。統治国の所在へ海外領土を集約せず、既存249IDと訪問TXTは維持する。
+
+JAPANの所属県は既存mountixのregionを保ち、[startFromBottom/hyakumeizan-map](https://github.com/startFromBottom/hyakumeizan-map/blob/f5ff0c0d9097f96829450f5c9f46a47bb3b79c1f/public/data/hyakumeizan_full.json) の固定版 `f5ff0c0d9097f96829450f5c9f46a47bb3b79c1f` のprefectures_jaを照合して12座の不足県を補う。この版は既存provenance.jsonのcomparisonCommitと同じ。元プロジェクトはWikipedia日本語版・Wikidataを山のメタデータの出典とする。本サイトは県名という地理的事実だけを使用し、説明文・写真・画像・ルートは取り込まない。
+
+追加資料のSHA-256は `47e1900f296cf088288601e7447585876ee593ce7a1e355aafd38c6a52cc75f2`。表示用のmountain-prefectures.jsonへ分離し、元マスターのregion・座標・標高・ID・TXTは変更しない。資料の座標には粗い値もあるため表示座標として採用しない。再生成手順と範囲は [JAPANの構成](JAPAN_MODE.md)、不足分の全12座は [所属県照合](MOUNTAIN_AUDIT.md) を参照。

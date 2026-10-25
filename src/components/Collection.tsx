@@ -23,18 +23,12 @@ export function Collection({
   const mapView = useRef<MapView | undefined>(undefined);
   const globeView = useRef<GlobeView | undefined>(undefined);
   const [primaryQuery, setPrimaryQuery] = useState("");
-  const [prefectureQuery, setPrefectureQuery] = useState("");
   const [primaryFilter, setPrimaryFilter] = useState("all");
-  const [prefectureFilter, setPrefectureFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [mode, setMode] = useState<"2d" | "3d">(embedded && section === "world" && canWebGL() ? "3d" : "2d");
   const [notice, setNotice] = useState("");
   const [generation, setGeneration] = useState("all");
-  const [prefectures, setPrefectures] = useState(true);
-  const [prefectureOnly, setPrefectureOnly] = useState(false);
   const [selected, setSelected] = useState<Entry>();
-  const [sheet, setSheet] = useState("middle");
-  const [sheetStart, setSheetStart] = useState<number>();
   const choose = (entry: Entry) => {
     if (!filtered.some(value => value.id === entry.id)) {
       setQuery(""); setFilter("all");
@@ -42,12 +36,11 @@ export function Collection({
     setSelected(entry);
     onSelect(entry);
   };
-  const integrated = embedded && section === "mountains";
-  const listingSection = integrated && prefectureOnly ? "japan" : section;
-  const query = listingSection === "japan" && integrated ? prefectureQuery : primaryQuery;
-  const setQuery = listingSection === "japan" && integrated ? setPrefectureQuery : setPrimaryQuery;
-  const filter = listingSection === "japan" && integrated ? prefectureFilter : primaryFilter;
-  const setFilter = listingSection === "japan" && integrated ? setPrefectureFilter : setPrimaryFilter;
+  const listingSection = section;
+  const query = primaryQuery;
+  const setQuery = setPrimaryQuery;
+  const filter = primaryFilter;
+  const setFilter = setPrimaryFilter;
   const listAchieved = archive.achieved[listingSection];
   const achieved = archive.achieved[section];
   const pokemon = section === "pokemon";
@@ -98,7 +91,7 @@ export function Collection({
     } else fallback();
   };
   return (
-    <div className={`collection-content ${embedded ? "embedded-collection" : ""} ${integrated ? "integrated-japan" : ""}`} data-sheet={sheet}>
+    <div className={`collection-content ${embedded ? "embedded-collection" : ""}`}>
       <section className="page-intro">
         {!embedded && <a className="back-link" href="#/">
           ← 部屋に戻る
@@ -109,9 +102,9 @@ export function Collection({
               0{sections.indexOf(section) + 1} / COLLECTION
             </p>
             <h1 className={`collection-title title-${section}`}>
-              {integrated ? "Japan" : english[section]}
+              {english[section]}
             </h1>
-            <p className="collection-japanese">{integrated ? `日本百名山 · 訪問都道府県 ${archive.achieved.japan.size} / 47` : labels[section]}</p>
+            <p className="collection-japanese">{labels[section]}</p>
           </div>
           <div className="page-count">
             <strong>{achieved.size}</strong>
@@ -166,10 +159,6 @@ export function Collection({
               </span>
             )}
           </div>
-          {integrated && <div className="japan-layers">
-            <label><input type="checkbox" checked={prefectures} onChange={e => setPrefectures(e.target.checked)} />県の訪問色</label>
-            <label><input type="checkbox" checked={prefectureOnly} onChange={e => setPrefectureOnly(e.target.checked)} />県のみ表示</label>
-          </div>}
           {notice && (
             <p className="map-notice" role="status">
               {notice}
@@ -193,18 +182,11 @@ export function Collection({
               </Suspense>
             </GlobeBoundary>
           ) : (
-            <Map showVisits={!integrated || prefectures} initialView={mapView.current} onViewChange={value => { mapView.current = value; }} section={integrated && prefectureOnly ? "japan" : section} achieved={integrated && prefectureOnly ? archive.achieved.japan : achieved} prefectures={integrated && prefectures ? archive.achieved.japan : undefined} focus={selected} onSelect={choose} />
+            <Map initialView={mapView.current} onViewChange={value => { mapView.current = value; }} section={section} achieved={achieved} focus={selected} onSelect={choose} />
           )}
         </div>
       ) : null}
       <section className="catalog-section">
-        {integrated && <div className="sheet-grip" onPointerDown={e => { if ((e.target as Element).closest("button")) return; setSheetStart(e.clientY); e.currentTarget.setPointerCapture(e.pointerId); }} onPointerUp={e => {
-          if (sheetStart === undefined) return;
-          const levels = ["min", "middle", "max"];
-          const delta = e.clientY - sheetStart;
-          setSheet(levels[Math.max(0, Math.min(2, levels.indexOf(sheet) + (delta < -20 ? 1 : delta > 20 ? -1 : 0)))]);
-          setSheetStart(undefined);
-        }}><span aria-hidden="true">━━</span>{[ ["min", "最小"], ["middle", "中間"], ["max", "最大"] ].map(([value, label]) => <button key={value} aria-pressed={sheet === value} onClick={() => setSheet(value)}>{label}</button>)}</div>}
         <div className="catalog-header">
           <h2>
             {pokemon
