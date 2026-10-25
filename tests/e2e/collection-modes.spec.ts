@@ -74,7 +74,7 @@ for (const mobile of [false, true]) test.describe(mobile ? "touch" : "desktop", 
 test('3D地球儀の実物クリックから起動し部屋を保持', async ({page}) => {
   await savedPosition(page,{x:0,z:-.8,yaw:0});
   await enterRoom(page);
-  const point = await projectRoomPoint(page,[-0.8,2.12,-3.05]);
+  const point = await projectRoomPoint(page,[-0.15,2.12,-3.05]);
   await page.mouse.click(point.x,point.y);
   await expect(page.getByTestId('globe')).toBeVisible({timeout:30000});
   await page.getByRole('button',{name:'部屋に戻る'}).click();

@@ -535,16 +535,21 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     furnitureObstacle("bed-headboard", bed, bedLayout.headboard),
   );
 
-  // 展示物は3つ。壁の大判世界地図を、木製台座の地球儀に置き換える。
-  const globeStand = group(-0.8, 0, -3.05);
-  cylinder(.74, .85, .15, woodDark, globeStand, 0, .1, 0, 48);
+  // ベッドサイド棚と台座の間に30cmを確保し、棚への食い込みを避ける。
+  const globeStand = group(-0.15, 0, -3.05);
+  const globeBaseRadius = 0.85;
+  cylinder(.74, globeBaseRadius, .15, woodDark, globeStand, 0, .1, 0, 48);
   cylinder(.13, .22, 1.35, wood, globeStand, 0, .83, 0, 24);
   const globeTexture = scope.own(createGlobeTexture(archive.achieved.world));
   const globeMaterial = scope.own(new THREE.MeshStandardMaterial({ map: globeTexture, roughness: .8 }));
   const globeModel = sphere(.82, globeMaterial, globeStand, 0, 2.12, 0);
   globeModel.rotation.y = -Math.PI * .65;
-  portal("world", globeStand, new THREE.Vector3(-0.8, 3.1, -3.05), new THREE.Vector3(-0.8, 2.12, -3.05));
-  obstacles.push({ id: "globe-stand", x: -0.8, z: -3.05, width: 1.6, depth: 1.6, base: 0, top: 2.95 });
+  portal("world", globeStand,
+    furniturePoint(globeStand, [0, 3.1, 0]),
+    furniturePoint(globeStand, [0, 2.12, 0]));
+  // 描画と同じ台座径を使い、配置変更時も当たり判定を親へ追従させる。
+  obstruction("globe-stand", globeStand.position.x, globeStand.position.z,
+    globeBaseRadius * 2, globeBaseRadius * 2, 2.95);
 
   // Slim work desk and a clearly legible, original phone screen.
   const deskLayout = furnitureLayout.desk;
@@ -922,7 +927,8 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     }
     return g;
   };
-  const windowPlant = plant(-4.56, 0.82, 1.03, 0.85);
+  // カーテンの開口側へ寄せ、鉢と葉が布を貫通しない位置に置く。
+  const windowPlant = plant(-4.56, 0.82, 0.3, 0.85);
   registerBreakable(
     "window-planter",
     "窓辺の鉢",
