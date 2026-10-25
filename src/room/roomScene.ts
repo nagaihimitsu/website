@@ -1017,14 +1017,15 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   // 保存位置の検証・小鳥の生成より前に登録し、両者が自然に避けるようにする。
   const visitor = scope.own(createVisitor());
   visitor.group.name = "room-visitor";
-  visitor.group.scale.setScalar(2);
+  visitor.group.scale.setScalar(4 / 3);
   // 拡大した裾と机の間にも、歩いて回り込める間隔を残す。
   visitor.group.position.set(1.85, 0.012, -0.70);
   visitor.group.rotation.y = -0.20;
   scene.add(visitor.group);
   visitor.group.updateWorldMatrix(true, true);
   // 髪・裾・バッグまで含め、待機中のわずかな揺れにも余裕を持たせる。
-  const visitorBounds = new THREE.Box3().setFromObject(visitor.group).expandByScalar(0.036);
+  const visitorBounds = new THREE.Box3().setFromObject(visitor.group)
+    .expandByScalar(0.018 * visitor.group.scale.x);
   const visitorCentre = visitorBounds.getCenter(new THREE.Vector3());
   const visitorSize = visitorBounds.getSize(new THREE.Vector3());
   obstruction("room-visitor", visitorCentre.x, visitorCentre.z,
