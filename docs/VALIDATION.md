@@ -576,3 +576,5 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 - 最終の本番ビルド成功（既存のデータ・譜面・ライセンス検証、TypeScript、Vite）。追加の恒久テストは作成せず、未変更の楽器・モードUI・全体テストは実行しない。README、ROOM_CONCEPT、COLLECTION_MODES、ROOM_COLLECTION_OBJECTSの現行配置・変更案内と、この記録を同じ変更に含める。
 
 確認ログ・画像：`/tmp/room-organize-before.log`、`/tmp/room-organize-after.log`、`/tmp/room-organize-bounds-final.log`、`/tmp/room-organize-app.log`、`/tmp/room-organize-build-final.log`、`/tmp/room-organize-app-desktop.png`、`/tmp/room-organize-app-mobile.png`、`/tmp/room-organize-final-side.png`。これはローカルChromiumの確認で、スマートフォン実機検証ではない。公開結果は今回のActions実行で別途記録する。
+
+公開結果：ソース `599e95e` の [Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40189721361) は本番ビルドとdeployが成功。2026-10-25 11:39 UTCに `https://nagaihimitsu.github.io/website/` への公開をdeployログで確認した。通常公開の選択範囲・Chromium・WebKitのテストステップはskippedで、配置に無関係なテストを再実行していない。この追記だけのコミットは公開コードを変更しない。
