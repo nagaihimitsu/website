@@ -4,6 +4,8 @@ import sharp from "sharp";
 test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT・写真・ハッシュ再読み込みが動く", async ({
   page,
 }) => {
+  // 部屋と地球儀の初期化・再読込をソフトウェアWebGLでも検査する。
+  test.setTimeout(90000);
   const sourcePaths = ["public/data/訪問した国.txt", "public/data/記録_国.txt"];
   const sourcesBefore = await Promise.all(sourcePaths.map(path => readFile(path, "utf8")));
   // Synthetic records exist only in the isolated test build, never public/ or dist/.
@@ -35,16 +37,17 @@ test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT�
     .click();
   await expect(page.locator(".room-menu")).toBeVisible();
   for (const [section, label] of [
-    ["world", "世界地図を開く"],
-    ["japan", "日本地図を開く"],
-    ["mountains", "百名山を開く"],
-    ["pokemon", "スマートフォンでポケモン図鑑を開く"],
+    ["world", "地球儀を開く"],
+    ["mountains", "日本地図・百名山を開く"],
+    ["pokemon", "図鑑端末を開く"],
   ])
     await expect(
       page.locator(`.room-menu a[href="#/${section}"]`),
     ).toHaveAccessibleName(label);
-  await page.getByRole("link", { name: "世界地図を開く", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:4174/website/#/world");
+  const timeOrigin = await page.evaluate(() => performance.timeOrigin);
+  await page.getByRole("link", { name: "地球儀を開く", exact: true }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:4174/website/#/room/world");
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin);
   await expect(page.locator(".page-count strong")).toHaveText("1");
   await page.reload();
   await expect(page.locator(".page-count strong")).toHaveText("1");
@@ -58,6 +61,11 @@ test("本番ビルドを /website/ 配下から読み込み、3Dの部屋・TXT�
       (i: HTMLImageElement) => i.complete && i.naturalWidth === 64,
     ),
   ).toBe(true);
+  // 旧URLの直アクセスもサブパス配信のまま残す。
+  await page.goto("http://127.0.0.1:4174/website/#/world");
+  await page.reload();
+  await expect(page.locator(".page-count strong")).toHaveText("1");
+  await expect(page.locator('path[data-id="JPN"]')).toHaveAttribute("data-achieved", "true");
   expect(failed).toEqual([]);
   // Production records already include Japan. Compare both original files
   // exactly rather than assuming that the user's real records are empty.
