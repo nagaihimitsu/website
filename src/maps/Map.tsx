@@ -100,6 +100,17 @@ export function Map({
     observer.observe(svg.current);
     return () => observer.disconnect();
   }, [preview, section, width, height]);
+  useEffect(() => {
+    if (preview) return;
+    const node = svg.current;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setZoom(value => Math.max(1, Math.min(8, value * (event.deltaY < 0 ? 1.12 : 1 / 1.12))));
+    };
+    // React's passive wheel handler cannot stop the containing catalogue from scrolling.
+    node?.addEventListener("wheel", wheel, { passive: false });
+    return () => node?.removeEventListener("wheel", wheel);
+  }, [preview]);
   useEffect(() => { onViewChange?.({ zoom, pan }); }, [zoom, pan, onViewChange]);
   const previousFocus = useRef(focus);
   useEffect(() => {
@@ -204,7 +215,6 @@ export function Map({
             setPan([d.pan[0] + dx, d.pan[1] + dy]);
           }
         }}
-        onWheel={e => { if (!preview) setZoom(z => Math.max(1, Math.min(8, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)))); }}
         onPointerUp={(e) => {
           touches.current.delete(e.pointerId);
           pinchDistance.current = null;
