@@ -136,6 +136,23 @@ export function Map({
       select(id);
     }
   };
+  const selectNearestSummit = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (preview || section !== "mountains" || drag.current?.moved) return;
+    const inverse = event.currentTarget.getScreenCTM()?.inverse();
+    if (!inverse) return;
+    const click = new DOMPoint(event.clientX, event.clientY).matrixTransform(inverse);
+    let nearest: Entry | undefined;
+    let distance = 22;
+    for (const entry of catalogs.mountains) {
+      const point = mountainProjection(entry.coordinates as [number, number]);
+      if (!point) continue;
+      const x = (point[0] - width / 2) * zoom + width / 2 + pan[0];
+      const y = (point[1] - height / 2) * zoom + height / 2 + pan[1];
+      const pixels = Math.hypot(x - click.x, y - click.y) / markerScale;
+      if (pixels < distance) { nearest = entry; distance = pixels; }
+    }
+    if (nearest) select(nearest.id);
+  };
   const path = (feature: (typeof worldFeatures)[number]) =>
     (isWorld ? worldPath : japanPath)(feature) || "";
   return (
@@ -177,6 +194,7 @@ export function Map({
               : "47都道府県の地図"
         }
         style={{ touchAction: preview ? "auto" : "none" }}
+        onClick={selectNearestSummit}
         onPointerDown={(e) => {
           if (preview) return;
           touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -296,7 +314,6 @@ export function Map({
                   role={preview ? undefined : "button"}
                   tabIndex={preview ? undefined : 0}
                   aria-label={`${m.name} ${done ? "登頂済み" : "未登頂"}`}
-                  onClick={() => select(m.id)}
                   onKeyDown={(e) => key(e, m.id)}
                   onMouseEnter={() => setTip(m.name)}
                   onMouseLeave={() => setTip("")}
@@ -304,7 +321,9 @@ export function Map({
                   <title>
                     {m.name} / {m.elevation}m
                   </title>
-                  <circle r="22" fill="transparent" stroke="none" />
+                  {/* A shared nearest-point picker supplies the 44px target without
+                      overlapping invisible circles intercepting neighboring summits. */}
+                  <circle r="22" fill="transparent" stroke="none" pointerEvents="none" />
                   <path d="M0 -5 L4.8 3.5 H-4.8 Z" />
                   {visibleLabels.has(m.id) && <text y="-9" textAnchor="middle" className="mountain-label">{m.name}</text>}
                   {done && <circle r="1.3" cy="1" fill="#0b1118" />}
