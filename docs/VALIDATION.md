@@ -477,3 +477,7 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 - `npm run test:subpath` 成功（本番ビルド＋1件）。`/website/` 配下の3モード入口、文書を維持する起動、モードURLの再読み込み、写真、旧 `#/world` の着色、公開TXTの非変更を確認。
 
 公開の成否は、最新のコードコミットに対するGitHub Actionsの `full` とPagesのdeployジョブを確認する。ローカルの上記結果を公開成功の代わりには扱わない。
+
+### GitHub Pages公開結果
+
+修正版コード `a28f2bb` の [Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40169509703) は、単体26ファイル390件・E2E64件・サブパス1件・本番ビルド・deployがすべて成功。2026-10-25 07:09 UTCに公開先が `https://nagaihimitsu.github.io/website/` であることをdeployログで確認した。以後の検証記録のみのコミットは公開コードを変更しない。
