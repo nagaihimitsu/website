@@ -62,6 +62,7 @@ export default function App() {
   const [archive, setArchive] = useState<Archive>();
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Entry>();
+  const [roomMode, setRoomMode] = useState<Section>();
   useEffect(() => {
     loadArchive()
       .then(setArchive)
@@ -162,12 +163,34 @@ export default function App() {
           <Suspense
             fallback={<div className="loading">部屋を準備しています…</div>}
           >
-            <RoomHome archive={archive} />
+            <RoomHome archive={archive} onOpenMode={setRoomMode} modeActive={Boolean(roomMode)} />
           </Suspense>
         ) : (
           <Home archive={archive} />
         )}
       </main>
+      {room && archive && roomMode && (
+        <section className="room-collection-overlay" aria-label={`${english[roomMode]} モード`}>
+          <div className="room-mode-bar">
+            <button className="room-mode-back" onClick={() => { setRoomMode(undefined); setSelected(undefined); }}>← 3Dホーム</button>
+            <nav aria-label="コレクションモード">
+              {([['world', 'WORLD'], ['japan', 'JAPAN'], ['pokemon', 'POKÉDEX']] as const).map(([mode, label]) => (
+                <button key={mode} aria-pressed={roomMode === mode || (mode === 'japan' && roomMode === 'mountains')} onClick={() => { setRoomMode(mode); setSelected(undefined); }}>{label}</button>
+              ))}
+              {roomMode === 'japan' || roomMode === 'mountains' ? (
+                <span className="room-mode-subnav">
+                  <button aria-pressed={roomMode === 'mountains'} onClick={() => setRoomMode('mountains')}>百名山</button>
+                  <button aria-pressed={roomMode === 'japan'} onClick={() => setRoomMode('japan')}>都道府県</button>
+                </span>
+              ) : null}
+            </nav>
+          </div>
+          <div className="room-mode-content">
+            <Collection key={roomMode} section={roomMode} archive={archive} onSelect={setSelected} />
+          </div>
+          {selected && <DetailPanel key={`${roomMode}-${selected.id}`} section={roomMode} entry={selected} archive={archive} onClose={() => setSelected(undefined)} />}
+        </section>
+      )}
       {!room && (
         <footer className="site-footer">
           <a className="footer-brand" href="#/">
@@ -362,7 +385,7 @@ function Collection({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [mode, setMode] = useState<"2d" | "3d">("2d");
+  const [mode, setMode] = useState<"2d" | "3d">(section === "world" ? "3d" : "2d");
   const [notice, setNotice] = useState("");
   const [generation, setGeneration] = useState("all");
   const achieved = archive.achieved[section];

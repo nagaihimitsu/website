@@ -1937,3 +1937,60 @@ main:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* Collection modes stay above the live room so leaving a mode restores its camera. */
+.room-collection-overlay {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  color: #26372f;
+  background: #f2efe5;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.room-mode-bar {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 58px;
+  padding: max(8px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 8px max(18px, env(safe-area-inset-left));
+  background: rgb(242 239 229 / 96%);
+  border-bottom: 1px solid #d8d9ce;
+  backdrop-filter: blur(12px);
+}
+.room-mode-bar button { color: #31463a; border-radius: 999px; padding: 10px 14px; }
+.room-mode-bar button[aria-pressed="true"] { color: #f5f2e9; background: #355b48; }
+.room-mode-bar nav { display: flex; gap: 4px; align-items: center; }
+.room-mode-back { font-weight: 600; }
+.room-mode-subnav { display: flex; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid #ccd0c3; }
+.room-mode-content { width: min(1200px, 100%); margin: 0 auto; padding: 0 24px 40px; }
+.room-mode-content .page-intro { padding-top: 18px; }
+.room-mode-content .page-intro .back-link { display: none; }
+.room-mode-content .page-title-row { padding-top: 8px; }
+.room-mode-content .collection-title { font-size: clamp(42px, 7vw, 76px); }
+.room-mode-content .map-panel { margin-top: 12px; }
+.room-mode-content .map-panel-top { color: #526258; }
+.room-mode-content .map-panel { background: #e7e8df; border-color: #d1d5c9; }
+.room-mode-content .map-caption, .room-mode-content .eyebrow { color: #56675b; }
+.room-mode-content .catalog-section { padding-top: 32px; }
+.room-mode-content .entry-list { border-color: #d6d9d0; }
+.room-mode-content .entry { color: #293b31; border-color: #d6d9d0; }
+.room-mode-content .entry:hover, .room-mode-content .entry.collected { background: #e4e9df; }
+.room-mode-content .pokemon-card { color: #293b31; background: #e7e8df; border-color: #d1d5c9; }
+.room-mode-content .dex-stats { color: #526258; }
+@media (max-width: 640px) {
+  .room-mode-bar { align-items: flex-start; flex-direction: column; gap: 4px; padding-bottom: 6px; }
+  .room-mode-bar nav { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .room-mode-bar nav > button { flex: 1; padding: 9px 5px; font-size: 12px; }
+  .room-mode-subnav { margin-left: 0; padding-left: 4px; }
+  .room-mode-content { padding: 0 16px 28px; }
+  .room-mode-content .page-intro { padding-top: 8px; }
+  .room-mode-content .collection-title { font-size: 42px; }
+  .room-mode-content .page-count strong { font-size: 36px; }
+}

@@ -129,7 +129,7 @@ function BassOverlay({ store, engine, paused, audioStatus, onPause }: {
     onPutDown={() => engine.current?.putDownBass()} />;
 }
 
-export default function RoomHome({ archive }: { archive: Archive }) {
+export default function RoomHome({ archive, onOpenMode, modeActive = false }: { archive: Archive; onOpenMode?: (section: Section) => void; modeActive?: boolean }) {
   const room = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const targetInteraction = useRef({ hovered: false, focused: false });
@@ -155,6 +155,10 @@ export default function RoomHome({ archive }: { archive: Archive }) {
   const [held, setHeld] = useState<Set<Direction>>(new Set());
 
   useEffect(() => {
+    engine.current?.setPaused(modeActive);
+  }, [modeActive]);
+
+  useEffect(() => {
     if (!host.current || !room.current) return;
     let disposed = false;
     const reportSnapshot = createRoomSnapshotReporter(room.current, setPunching);
@@ -177,7 +181,10 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           if (!disposed) setOpening(section);
         },
         onOpen: (section) => {
-          if (!disposed) window.location.hash = `/${section}`;
+          if (!disposed) {
+            if (onOpenMode) onOpenMode(section);
+            else window.location.hash = `/${section}`;
+          }
         },
         onHover: (section) => {
           if (!disposed) setHover(section);
@@ -216,6 +223,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           if (!disposed) reportSnapshot(value);
         },
       });
+      engine.current.setPaused(modeActive);
     } catch {
       failed();
     }
