@@ -505,3 +505,7 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 先行CI `24b5b00` は単体393件とブラウザ68件に成功したが、図鑑モード直URLの1件で部屋初期化前の5秒待ちが時間切れとなり、公開は実行されなかった。直URLではホームの描画が停止されるためready待ちは使えないことをローカルで確認。図鑑UIの表示待ち上限を、他の直URL試験と同じ30秒に揃える。一覧表示と戻るURLの期待は維持し、WORLD以外の実装は変更しない。
 
 直URLの待機条件調整後は、独立したブラウザ起動を3回繰り返してすべて成功（12.0秒・13.4秒・12.6秒）。この修正を含む最新コミットで公開用のfull検証を再実行する。
+
+### WORLD改修の公開結果
+
+ソースコミット `47c4b8e` の [Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40178095117) は、WebKitの2Dレイアウト1件、単体27ファイル393件、Chromiumの全69件、`/website/` 配下の本番配信1件、本番ビルド、Pages deployがすべて成功。Chromium全件は23.4分で完了した。2026-10-25 09:15 UTCにdeploy成功と公開先 `https://nagaihimitsu.github.io/website/` をログで確認した。WORLDの直URLは `https://nagaihimitsu.github.io/website/#/room/world`。WebKitはGPU非対応を模擬した2Dレイアウトの確認であり、iPhone実機の3D操作検証は未実施。この追記だけのコミットは公開コードを変更しない。
