@@ -15,6 +15,6 @@ TXT9ファイルとマスターは変更しない。`loadArchive` が1回読み�
 
 ## 更新時の注意
 
-展示のIDは `destinations.ts` の既存IDを維持。JAPANは `japan` の展示から `mountains` モードへ入る。従来の `mountains` ID定義は互換のため残すが、入口・メニューは3つとする。Instagramなど外部入口は既存処理を使う。
+展示のIDは `destinations.ts` の既存IDを維持。JAPANは `japan` の展示から `mountains` モードへ入る。従来の `mountains` ID定義は互換のため残すが、入口・メニューは3つとする。地球儀は背面中央より左へ寄せ、初期位置からの歩行経路と机・ベッドの配置を確保する。Instagramなど外部入口は既存処理を使う。
 
 スマートフォンのJAPAN一覧は最小・中間・最大ボタンとハンドルのスワイプで切り替える。地図・ハンドル・一覧のスクロール領域を分ける。造形・入力変更時は `collection-modes.spec.ts` と従来の部屋テストを両方確認する。

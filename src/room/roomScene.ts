@@ -536,15 +536,15 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   );
 
   // 展示物は3つ。壁の大判世界地図を、木製台座の地球儀に置き換える。
-  const globeStand = group(0, 0, -3.05);
+  const globeStand = group(-0.8, 0, -3.05);
   cylinder(.74, .85, .15, woodDark, globeStand, 0, .1, 0, 48);
   cylinder(.13, .22, 1.35, wood, globeStand, 0, .83, 0, 24);
   const globeTexture = scope.own(createGlobeTexture(archive.achieved.world));
   const globeMaterial = scope.own(new THREE.MeshStandardMaterial({ map: globeTexture, roughness: .8 }));
   const globeModel = sphere(.82, globeMaterial, globeStand, 0, 2.12, 0);
   globeModel.rotation.y = -Math.PI * .65;
-  portal("world", globeStand, new THREE.Vector3(0, 3.1, -3.05), new THREE.Vector3(0, 2.12, -3.05));
-  obstacles.push({ id: "globe-stand", x: 0, z: -3.05, width: 1.6, depth: 1.6, base: 0, top: 2.95 });
+  portal("world", globeStand, new THREE.Vector3(-0.8, 3.1, -3.05), new THREE.Vector3(-0.8, 2.12, -3.05));
+  obstacles.push({ id: "globe-stand", x: -0.8, z: -3.05, width: 1.6, depth: 1.6, base: 0, top: 2.95 });
 
   // Slim work desk and a clearly legible, original phone screen.
   const deskLayout = furnitureLayout.desk;
