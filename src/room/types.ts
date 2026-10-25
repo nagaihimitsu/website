@@ -133,6 +133,7 @@ export interface RoomEngine {
   resetObjects: () => void;
   open: (section: RoomDestination) => void;
   setTargetHovered: (value: boolean) => void;
+  closeCollection: () => void;
   setPaused: (value: boolean) => void;
   setReducedMotion: (value: boolean) => void;
   dispose: () => void;

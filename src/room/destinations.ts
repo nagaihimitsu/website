@@ -26,14 +26,14 @@ export const roomDestinations = {
     kind: "collection",
     section: "world",
     title: "World",
-    label: "世界地図を開く",
+    label: "地球儀を開く",
   },
   japan: {
     kind: "collection",
-    section: "japan",
+    section: "mountains",
     title: "Japan",
-    label: "日本地図を開く",
-    total: 47,
+    label: "日本地図・百名山を開く",
+    total: 100,
   },
   mountains: {
     kind: "collection",
@@ -46,7 +46,7 @@ export const roomDestinations = {
     kind: "collection",
     section: "pokemon",
     title: "Pokédex",
-    label: "スマートフォンでポケモン図鑑を開く",
+    label: "図鑑端末を開く",
     total: 1025,
   },
   instagram: {

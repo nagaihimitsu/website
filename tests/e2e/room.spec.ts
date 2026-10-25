@@ -24,10 +24,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 const destinations = {
-  world: "世界地図を開く",
-  japan: "日本地図を開く",
-  mountains: "百名山を開く",
-  pokemon: "スマートフォンでポケモン図鑑を開く",
+  world: "地球儀を開く",
+  japan: "日本地図・百名山を開く",
+  pokemon: "図鑑端末を開く",
 };
 
 function angleDifference(a: number, b: number) {
@@ -94,11 +93,15 @@ async function openCollection(page: Page, section: keyof typeof destinations) {
     .locator(".room-menu")
     .getByRole("link", { name: destinations[section], exact: true })
     .click();
-  await expect(page).toHaveURL(new RegExp(`#/${section}$`));
-  await expect(page.locator(".page-count strong")).toHaveText("0");
+  const fallback = (await page.locator(".room-home").getAttribute("data-room-status")) === "fallback";
+  const mode = section === "japan" ? "mountains" : section;
+  await expect(page).toHaveURL(new RegExp(fallback ? `#/${mode}$` : `#/room/${mode}$`));
+  await expect(page.locator(".page-count strong:visible")).toHaveText("0");
 }
 async function returnToRoom(page: Page) {
-  await page.locator('nav a[href="#/"]').first().click();
+  const modeBack = page.locator('.mode-toolbar button');
+  if (await modeBack.isVisible()) await modeBack.click();
+  else await page.locator('nav a[href="#/"]').first().click();
   await expect(page.locator(".room-home")).toHaveAttribute(
     "data-room-status",
     "ready",
@@ -451,7 +454,7 @@ test("壊した小物の場所に立ったまま復元しても閉じ込めら�
   await walk(page);
 });
 
-test("スマートフォン本体をクリックすると図鑑を開く", { tag: "@links" }, async ({ page }) => {
+test("図鑑端末本体をクリックすると図鑑を開く", { tag: "@links" }, async ({ page }) => {
   // Project the actual glass center into the follow camera's visible image.
   // This clicks the Three.js phone mesh, not a replacement HTML link.
   await savedPosition(page, {
@@ -465,11 +468,11 @@ test("スマートフォン本体をクリックすると図鑑を開く", { tag
   expect(Math.abs(glass.normalized.x)).toBeLessThan(1);
   expect(Math.abs(glass.normalized.y)).toBeLessThan(1);
   await page.mouse.click(glass.x, glass.y);
-  await expect(page).toHaveURL(/#\/pokemon$/);
-  await expect(page.locator(".page-count strong")).toHaveText("0");
+  await expect(page).toHaveURL(/#\/room\/pokemon$/);
+  await expect(page.locator(".page-count strong:visible")).toHaveText("0");
 });
 
-test("隠したメニューから4コレクションへ進み、戻ると位置と視線を保つ", { tag: "@links" }, async ({
+test("隠したメニューから3モードへ進み、戻ると位置と視線を保つ", { tag: "@links" }, async ({
   page,
 }) => {
   // Five software-rendered room mounts share this test; each mount still has
@@ -840,7 +843,7 @@ test.describe("タッチ操作", () => {
       .locator(".room-menu")
       .getByRole("link", { name: destinations.pokemon, exact: true })
       .tap();
-    await expect(page).toHaveURL(/#\/pokemon$/);
-    await expect(page.locator(".page-count strong")).toHaveText("0");
+    await expect(page).toHaveURL(/#\/room\/pokemon$/);
+    await expect(page.locator(".page-count strong:visible")).toHaveText("0");
   });
 });

@@ -1,0 +1,57 @@
+.collection-modes { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; background: #f6f3ed; --mode-ink: #30483c; }
+.collection-modes[hidden], .mode-scroll[hidden] { display: none; }
+.mode-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: max(12px, env(safe-area-inset-top)) 24px 12px; border-bottom: 1px solid #d8d7cc; color: #30483c; font-size: 12px; letter-spacing: .08em; }
+.mode-toolbar button { min-height: 44px; padding: 8px 18px; border: 1px solid #a9b6a7; border-radius: 30px; color: #30483c; background: transparent; cursor: pointer; }
+.mode-scroll { overflow: auto; flex: 1; overscroll-behavior: contain; padding: 0 30px max(20px, env(safe-area-inset-bottom)); }
+.embedded-collection .page-intro { padding: 24px 0 18px; }
+.embedded-collection .page-title-row { align-items: center; }
+.embedded-collection .collection-title { font-size: clamp(36px, 5vw, 72px); line-height: 1; }
+.embedded-collection .page-count strong { font-size: 64px; }
+.embedded-collection .page-intro .eyebrow { margin: 0 0 8px; }
+.embedded-collection .collection-japanese { margin: 8px 0 0; }
+.embedded-collection .catalog-section { padding-top: 20px; }
+.embedded-collection .map-panel { margin-top: 0; }
+.embedded-collection .dex-stats { margin-top: 0; }
+.dex-placeholder { display: block; font-size: 32px; color: #587563; padding: 8px 0; }
+.pokemon-card:not(.collected) .dex-placeholder { color: #59615c; }
+.entry[aria-pressed="true"] { outline: 2px solid #4f715d; outline-offset: -2px; background: #e3eade; }
+.japan-layers { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 16px; font-size: 13px; }
+.japan-layers label { display: flex; align-items: center; min-height: 32px; gap: 8px; }
+.prefecture-layer.visited { fill: #cad7c5 !important; }
+.mountain-label { font-size: 9px; fill: #233e30; stroke: #faf8ef; stroke-width: 2px; paint-order: stroke; pointer-events: none; }
+.selected-marker > path { stroke: #ae502d !important; stroke-width: 3px; }
+.sheet-grip { display: none; }
+@media(min-width: 900px) {
+  .embedded-collection:not(:has(.pokemon-grid)):not(:has(.dex-stats)) { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(330px, 1fr); gap: 0 24px; height: 100%; }
+  .embedded-collection .page-intro { grid-column: 1 / -1; }
+  .embedded-collection:not(:has(.dex-stats)) .catalog-section { overflow: auto; padding-top: 0; }
+  .embedded-collection .map-panel { align-self: start; }
+  .embedded-collection .map-surface svg { max-height: 64dvh; }
+}
+@media(max-width: 650px) {
+  .mode-toolbar { padding-left: 12px; padding-right: 12px; gap: 8px; }
+  .mode-toolbar > span { font-size: 9px; }
+  .mode-hint { display: none; }
+  .mode-scroll { padding: 0 12px env(safe-area-inset-bottom); }
+  .embedded-collection .page-intro { padding: 12px 0; }
+  .embedded-collection .collection-title { font-size: 36px; }
+  .embedded-collection .page-count strong { font-size: 42px; }
+  .embedded-collection .page-title-row { gap: 10px; }
+  .embedded-collection .collection-japanese { font-size: 11px; }
+  .integrated-japan { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+  .mode-scroll:has(.integrated-japan) { overflow: hidden; }
+  .integrated-japan .map-panel { flex: 1; min-height: 120px; overflow: hidden; margin-bottom: 0; }
+  .integrated-japan .map-panel-top { display: none; }
+  .integrated-japan .map-surface { height: calc(100% - 52px); }
+  .integrated-japan .map-surface svg { height: 100%; width: 100%; }
+  .integrated-japan .map-coordinates { display: none; }
+  .integrated-japan .catalog-section { flex: 0 0 42%; overflow: auto; padding-top: 0; transition: flex-basis .18s; border-top: 1px solid #c2cabb; }
+  .integrated-japan[data-sheet="min"] .catalog-section { flex-basis: 72px; }
+  .integrated-japan[data-sheet="max"] .catalog-section { flex-basis: 74%; }
+  .sheet-grip { display: flex; position: sticky; top: 0; z-index: 2; gap: 10px; align-items: center; justify-content: center; background: #f6f3ed; padding: 8px; touch-action: none; }
+  .sheet-grip button { min-height: 36px; background: transparent; color: #30483c; border: 1px solid #a9b6a7; border-radius: 16px; padding: 4px 12px; }
+  .sheet-grip button[aria-pressed="true"] { background: #dce6d7; }
+  .embedded-collection .catalog-controls { gap: 8px; }
+  .embedded-collection .dex-stats { padding: 12px; }
+}
+@media(prefers-reduced-motion: reduce) { .integrated-japan .catalog-section { transition: none; } }

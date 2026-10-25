@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   geoPath,
   geoNaturalEarth1,
@@ -32,11 +32,15 @@ export function Map({
   achieved,
   onSelect,
   preview = false,
+  prefectures,
+  focus,
 }: {
   section: Section;
   achieved: Set<string>;
   onSelect?: (e: Entry) => void;
   preview?: boolean;
+  prefectures?: Set<string>;
+  focus?: Entry;
 }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState([0, 0]);
@@ -46,6 +50,8 @@ export function Map({
     pan: number[];
     moved: boolean;
   } | null>(null);
+  const touches = useRef(new MapConstructor<number, {x: number; y: number}>());
+  const pinchDistance = useRef<number | null>(null);
   const [tip, setTip] = useState("");
   const isWorld = section === "world";
   const width = isWorld ? 900 : 850,
@@ -54,6 +60,16 @@ export function Map({
     () => new MapConstructor(catalogs[section].map((e) => [e.id, e])),
     [section],
   );
+  useEffect(() => {
+    if (!focus || preview) return;
+    const point = section === "mountains" && focus.coordinates ? mountainProjection(focus.coordinates as [number, number]) :
+      null;
+    if (section === "mountains" && point) {
+      const nextZoom = 4;
+      setZoom(nextZoom);
+      setPan([(width / 2 - point[0]) * nextZoom, (height / 2 - point[1]) * nextZoom]);
+    }
+  }, [focus, section, preview, width, height, isWorld]);
   const select = (id: string) => {
     if (drag.current?.moved) return;
     const e = entries.get(id);
@@ -107,6 +123,13 @@ export function Map({
         style={{ touchAction: preview ? "auto" : "none" }}
         onPointerDown={(e) => {
           if (preview) return;
+          touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (touches.current.size === 2) {
+            const [a, b] = [...touches.current.values()];
+            pinchDistance.current = Math.hypot(a.x - b.x, a.y - b.y);
+            if (drag.current) drag.current.moved = true;
+            return;
+          }
           drag.current = {
             x: e.clientX,
             y: e.clientY,
@@ -115,6 +138,14 @@ export function Map({
           };
         }}
         onPointerMove={(e) => {
+          if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, {x: e.clientX, y: e.clientY});
+          if (touches.current.size === 2) {
+            const [a, b] = [...touches.current.values()];
+            const distance = Math.hypot(a.x - b.x, a.y - b.y);
+            if (pinchDistance.current) setZoom(z => Math.max(1, Math.min(8, z * distance / pinchDistance.current!)));
+            pinchDistance.current = distance;
+            return;
+          }
           const d = drag.current;
           if (!d) return;
           const rect = e.currentTarget.getBoundingClientRect();
@@ -126,12 +157,17 @@ export function Map({
             setPan([d.pan[0] + dx, d.pan[1] + dy]);
           }
         }}
-        onPointerUp={() => {
+        onWheel={e => { if (!preview) setZoom(z => Math.max(1, Math.min(8, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12)))); }}
+        onPointerUp={(e) => {
+          touches.current.delete(e.pointerId);
+          pinchDistance.current = null;
           setTimeout(() => {
             drag.current = null;
           }, 0);
         }}
         onPointerCancel={() => {
+          touches.current.clear();
+          pinchDistance.current = null;
           drag.current = null;
         }}
       >
@@ -164,12 +200,12 @@ export function Map({
           {(isWorld ? worldFeatures : japan.features).map((f, i) => {
             const id = String(f.id);
             const e = entries.get(id);
-            const active = achieved.has(id);
+            const active = section === "mountains" ? Boolean(prefectures?.has(id)) : achieved.has(id);
             return (
               <path
                 key={`${id}-${i}`}
                 d={path(f)}
-                className={`land ${active && section !== "mountains" ? "visited" : ""}`}
+                className={`land ${active ? "visited" : ""} ${section === "mountains" ? "prefecture-layer" : ""}`}
                 data-id={id}
                 data-achieved={active}
                 tabIndex={!preview && onSelect && e ? 0 : undefined}
@@ -197,7 +233,7 @@ export function Map({
                 <g
                   key={m.id}
                   transform={`translate(${point[0]} ${point[1]}) scale(${1 / zoom})`}
-                  className={`mountain-marker ${done ? "visited" : ""}`}
+                  className={`mountain-marker ${done ? "visited" : ""} ${focus?.id === m.id ? "selected-marker" : ""}`}
                   data-id={m.id}
                   data-achieved={done}
                   role={preview ? undefined : "button"}
@@ -213,6 +249,7 @@ export function Map({
                   </title>
                   <circle r="10" fill="transparent" stroke="none" />
                   <path d="M0 -5 L4.8 3.5 H-4.8 Z" />
+                  {zoom >= 3 && <text y="-9" textAnchor="middle" className="mountain-label">{m.name}</text>}
                   {done && <circle r="1.3" cy="1" fill="#0b1118" />}
                 </g>
               );

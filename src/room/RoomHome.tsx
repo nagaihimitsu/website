@@ -20,6 +20,7 @@ import { BassGameHUD } from "./BassGameHUD";
 import type { BassAudioStatus } from "./bassAudio";
 import type { Direction, RoomDestination, RoomEngine } from "./types";
 import "./room.css";
+import { CollectionModes, collectionMode, type CollectionMode } from "./CollectionModes";
 
 const arrows: { direction: Direction; label: string; rotation: number }[] = [
   { direction: "up", label: "前へ", rotation: 0 },
@@ -130,6 +131,8 @@ function BassOverlay({ store, engine, paused, audioStatus, onPause }: {
 }
 
 export default function RoomHome({ archive }: { archive: Archive }) {
+  const [mode, setMode] = useState<CollectionMode | null>(null);
+  const modeHistory = useRef(false);
   const room = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const targetInteraction = useRef({ hovered: false, focused: false });
@@ -177,7 +180,12 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           if (!disposed) setOpening(section);
         },
         onOpen: (section) => {
-          if (!disposed) window.location.hash = `/${section}`;
+          if (!disposed) {
+            const next = collectionMode(section);
+            history.pushState({ atlasMode: next }, "", `#/room/${next}`);
+            modeHistory.current = true;
+            setMode(next);
+          }
         },
         onHover: (section) => {
           if (!disposed) setHover(section);
@@ -226,14 +234,39 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     };
   }, [archive]);
 
+  const closeMode = () => {
+    if (modeHistory.current) { history.back(); return; }
+    engine.current?.closeCollection();
+    setMode(null);
+    setOpening(null);
+    host.current?.querySelector("canvas")?.focus({ preventScroll: true });
+  };
+  useEffect(() => {
+    const back = () => {
+      const match = location.hash.match(/^#\/room\/(world|mountains|pokemon)$/);
+      if (match) {
+        setMode(match[1] as CollectionMode);
+        engine.current?.setPaused(true);
+      } else {
+        modeHistory.current = false;
+        engine.current?.closeCollection();
+        setMode(null);
+        setOpening(null);
+        host.current?.querySelector("canvas")?.focus({ preventScroll: true });
+      }
+    };
+    back();
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   useEffect(() => {
     engine.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
   useEffect(() => {
-    engine.current?.setPaused(menuOpen);
+    engine.current?.setPaused(menuOpen || Boolean(mode));
     setHeld(new Set());
     releaseStick();
-  }, [menuOpen, status]);
+  }, [menuOpen, status, mode]);
   useEffect(() => {
     if (menuOpen && !menu.current?.open) {
       menu.current?.showModal();
@@ -301,7 +334,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     setStick(next);
     engine.current?.move(next.x, next.z);
   }
-  const unavailable = status !== "ready" || Boolean(opening) || menuOpen;
+  const unavailable = status !== "ready" || Boolean(opening) || menuOpen || Boolean(mode);
   const target = hover ? roomDestinations[hover] : null;
   const targetVisible =
     status === "ready" && target !== null && !opening && !menuOpen && !bassHeld;
@@ -328,7 +361,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
 
   const links = (className: string) => (
     <nav className={className} aria-label="コレクションの記録">
-      {roomDestinationIds.map((id, index) => {
+      {roomDestinationIds.filter(id => id !== "mountains").map((id, index) => {
         const destination: RoomDestinationDefinition = roomDestinations[id];
         const external = destination.kind === "external";
         return (
@@ -337,6 +370,12 @@ export default function RoomHome({ archive }: { archive: Archive }) {
             href={external ? destination.href : `#/${destination.section}`}
             target={external ? destination.target : undefined}
             rel={external ? destination.rel : undefined}
+            onClick={external || status !== "ready" ? undefined : event => {
+              event.preventDefault();
+              setMenuOpen(false);
+              engine.current?.setPaused(false);
+              engine.current?.open(id);
+            }}
             aria-label={destination.label}
           >
             <span className="room-link-number">
@@ -373,6 +412,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
         className="room-canvas"
         aria-label="キャラクターを操作し、360度見回せる3Dの部屋"
       />
+      <div className="room-interface" inert={Boolean(mode)} style={mode ? { visibility: "hidden" } : undefined}>
       <header className="room-hud-header">
         <span className="room-wordmark" aria-label="Personal Atlas">
           <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -684,6 +724,8 @@ export default function RoomHome({ archive }: { archive: Archive }) {
           </a>
         </div>
       </dialog>
+      </div>
+      <CollectionModes archive={archive} mode={mode} onClose={closeMode} />
     </section>
   );
 }

@@ -209,6 +209,26 @@ describe("room engine construction and cleanup", () => {
     expectAcquiredResourcesReleased(harness);
   });
 
+  it("reopens collections after returning without replacing the scene or multiplying loops", () => {
+    const harness = createHarness();
+    harness.options.reducedMotion = true;
+    harness.room.portals.push({ destination: "world", object: new THREE.Group(), anchor: new THREE.Vector3(), lookAt: new THREE.Vector3() });
+    const engine = createRoomEngine(harness.options);
+    for (let i = 0; i < 4; i++) {
+      engine.open("world");
+      engine.open("world");
+      expect(harness.options.onOpen).toHaveBeenCalledTimes(i + 1);
+      engine.setPaused(true);
+      expect(harness.scheduled.size).toBe(0);
+      engine.closeCollection();
+      engine.setPaused(false);
+      expect(harness.scheduled.size).toBe(1);
+      expect(harness.host.children).toEqual([harness.canvas]);
+    }
+    engine.dispose();
+    expectAcquiredResourcesReleased(harness);
+  });
+
   it("immediately releases the failed runtime before fallback, with later disposal remaining a no-op", () => {
     const harness = createHarness();
     harness.options.reducedMotion = false;

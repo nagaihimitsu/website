@@ -265,6 +265,7 @@ function initializeRoomEngine(
     fov: number;
   } | null = null;
   let opened = false;
+  let homeCamera: { position: THREE.Vector3; rotation: THREE.Quaternion; fov: number } | null = null;
 
   try {
     const serialized = sessionStorage.getItem(STORAGE_KEY);
@@ -665,6 +666,7 @@ function initializeRoomEngine(
       );
       return;
     }
+    homeCamera = { position: camera.position.clone(), rotation: camera.quaternion.clone(), fov: camera.fov };
     options.onOpening(destinationDefinition.section);
     clearInputs();
     savePosition();
@@ -674,11 +676,10 @@ function initializeRoomEngine(
       options.onOpen(destinationDefinition.section);
       return;
     }
-    const direction = portal.lookAt.clone().sub(camera.position);
-    const distance = direction.length();
-    const destination = camera.position
-      .clone()
-      .addScaledVector(direction.normalize(), Math.min(distance * 0.12, 0.55));
+    // Approach from the visible face, avoiding a flight through room furniture.
+    const destination = portal.lookAt.clone().add(
+      section === "japan" ? new THREE.Vector3(-.15, 1.8, .15) :
+      section === "pokemon" ? new THREE.Vector3(0, 0.35, 1.5) : new THREE.Vector3(0, 0.45, 2.2));
     const rotation = new THREE.Quaternion().setFromRotationMatrix(
       new THREE.Matrix4().lookAt(destination, portal.lookAt, camera.up),
     );
@@ -1463,6 +1464,21 @@ function initializeRoomEngine(
           fail();
         }
       }
+    },
+    closeCollection() {
+      if (disposed || failed) return;
+      opening = null;
+      opened = false;
+      clearInputs();
+      if (homeCamera) {
+        camera.position.copy(homeCamera.position);
+        camera.quaternion.copy(homeCamera.rotation);
+        camera.fov = baseFov();
+        camera.updateProjectionMatrix();
+        homeCamera = null;
+      }
+      setHovered(null);
+      snapshot();
     },
     setPaused(value) {
       if (paused === value || disposed) return;

@@ -1,5 +1,5 @@
 import { CanvasTexture, SRGBColorSpace } from "three";
-import { geoGraticule10, geoIdentity, geoNaturalEarth1, geoPath } from "d3-geo";
+import { geoEquirectangular, geoGraticule10, geoIdentity, geoNaturalEarth1, geoPath } from "d3-geo";
 import type { FeatureCollection } from "geojson";
 import worldJson from "../../catalogs/world.json";
 import japanJson from "../../catalogs/japan.json";
@@ -274,5 +274,20 @@ export function createPhoneTexture(
   context.lineTo(417, 892);
   context.stroke();
   roundedRect(context, 177, 985, 158, 5, 3, "#68736a");
+  return texture(canvas);
+}
+
+/** 同じローカル国境を球面用の正距円筒図法で描く。 */
+export function createGlobeTexture(achieved: Set<string>): CanvasTexture {
+  const { canvas, context } = surface(1024, 512);
+  context.fillStyle = "#b3c6c2";
+  context.fillRect(0, 0, 1024, 512);
+  const projection = geoEquirectangular().fitExtent([[0, 0], [1024, 512]], { type: "Sphere" });
+  const path = geoPath(projection, context);
+  for (const feature of (worldJson as FeatureCollection).features) {
+    context.beginPath(); path(feature);
+    context.fillStyle = achieved.has(String(feature.id)) ? "#466c54" : "#e2dfc9";
+    context.fill(); context.strokeStyle = "#899d8c"; context.lineWidth = .55; context.stroke();
+  }
   return texture(canvas);
 }

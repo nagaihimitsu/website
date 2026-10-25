@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from "react";
+import { geoCentroid } from "d3-geo";
 import { MeshPhongMaterial } from "three";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { worldFeatures } from "./Map";
@@ -8,8 +9,10 @@ export default function WorldGlobe({
   achieved,
   onSelect,
   onFail,
+  focus,
 }: {
   achieved: Set<string>;
+  focus?: Entry;
   onSelect: (entry: Entry) => void;
   onFail: () => void;
 }) {
@@ -25,7 +28,16 @@ export default function WorldGlobe({
       setWidth(Math.min(850, entry.contentRect.width)),
     );
     if (parent.current) observer.observe(parent.current);
-    return () => observer.disconnect();
+    useEffect(() => {
+    if (!focus) return;
+    const feature = worldFeatures.find(f => String(f.id) === focus.id);
+    if (feature) {
+      const [lng, lat] = geoCentroid(feature);
+      globe.current?.pointOfView({ lat, lng, altitude: 1.7 }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500);
+    }
+  }, [focus]);
+  useEffect(() => () => { material.dispose(); }, [material]);
+  return () => observer.disconnect();
   }, []);
   useEffect(() => {
     const node = parent.current;

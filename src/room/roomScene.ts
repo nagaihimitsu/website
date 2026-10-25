@@ -38,7 +38,7 @@ import {
 import deskPhotoUrl from "../assets/room/rome-travel.jpg";
 import polaroidPhotoUrl from "../assets/room/polaroid-travels.jpg";
 import {
-  createWorldMapTexture,
+  createGlobeTexture,
   createJapanMapTexture,
   createPhoneTexture,
 } from "./art/textures";
@@ -535,50 +535,16 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     furnitureObstacle("bed-headboard", bed, bedLayout.headboard),
   );
 
-  // The rear wall belongs to the world atlas; Japan has its own print above
-  // the desk on the right wall. Keep geometry, texture and portal transforms
-  // together so neither geography nor the opening target is stretched/misplaced.
-  const print = (
-    section: "world" | "japan",
-    position: readonly [number, number, number],
-    w: number,
-    h: number,
-    rotationY = 0,
-  ) => {
-    const g = group(...position);
-    g.name = `${section}-atlas-print`;
-    g.rotation.y = rotationY;
-    rounded(w + 0.15, h + 0.15, 0.09, woodDark, 0.025, g);
-    box(w + 0.04, h + 0.04, 0.045, white, g, 0, 0, 0.06);
-    const texture =
-      section === "world"
-        ? createWorldMapTexture(archive.achieved.world, w / h)
-        : createJapanMapTexture(archive.achieved.japan);
-    scope.own(texture);
-    const paper = new THREE.MeshStandardMaterial({
-      map: texture,
-      roughness: 0.96,
-    });
-    scope.own(paper);
-    const mesh = new THREE.Mesh(
-      scope.own(new THREE.PlaneGeometry(w, h)),
-      paper,
-    );
-    mesh.position.z = 0.087;
-    g.add(mesh);
-    portal(
-      section,
-      g,
-      furniturePoint(g, [
-        0,
-        section === "world" ? h / 2 - 0.2 : -h / 2 - 0.2,
-        0.21,
-      ]),
-      furniturePoint(g, [0, 0, 0.16]),
-    );
-  };
-  print("world", [0, 2.4, -3.86], 9.0, 4.0);
-  print("japan", [4.86, 3.05, -2.4], 1.26, 1.8, -Math.PI / 2);
+  // 展示物は3つ。壁の大判世界地図を、木製台座の地球儀に置き換える。
+  const globeStand = group(0, 0, -3.05);
+  cylinder(.74, .85, .15, woodDark, globeStand, 0, .1, 0, 48);
+  cylinder(.13, .22, 1.35, wood, globeStand, 0, .83, 0, 24);
+  const globeTexture = scope.own(createGlobeTexture(archive.achieved.world));
+  const globeMaterial = scope.own(new THREE.MeshStandardMaterial({ map: globeTexture, roughness: .8 }));
+  const globeModel = sphere(.82, globeMaterial, globeStand, 0, 2.12, 0);
+  globeModel.rotation.y = -Math.PI * .65;
+  portal("world", globeStand, new THREE.Vector3(0, 3.1, -3.05), new THREE.Vector3(0, 2.12, -3.05));
+  obstacles.push({ id: "globe-stand", x: 0, z: -3.05, width: 1.6, depth: 1.6, base: 0, top: 2.95 });
 
   // Slim work desk and a clearly legible, original phone screen.
   const deskLayout = furnitureLayout.desk;
@@ -615,8 +581,13 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const phone = group(-0.45, deskSurface + 0.59, 0.2, desk);
   phone.rotation.x = -0.2;
   phone.rotation.y = -0.18;
-  const titanium = mat("#9a9b91", 0.31, 0.8);
-  rounded(0.74, 1.38, 0.085, titanium, 0.075, phone);
+  const titanium = mat("#a95142", 0.65, 0.1);
+  rounded(0.88, 1.52, 0.17, titanium, 0.075, phone);
+  const lid = group(-.5, 0, -.02, phone);
+  lid.rotation.y = -.7;
+  rounded(.21, 1.5, .1, titanium, .04, lid);
+  sphere(.065, blueLight, phone, -.28, .68, .11);
+  for (const x of [-.12, 0, .12]) sphere(.023, white, phone, x, .68, .11);
   rounded(0.706, 1.34, 0.018, charcoal, 0.065, phone, 0, 0, 0.049);
   const phoneTexture = createPhoneTexture(
     archive.normal.size,
@@ -640,8 +611,8 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     0.061,
   );
   screen.castShadow = false;
-  rounded(0.22, 0.057, 0.013, charcoal, 0.028, phone, 0, 0.553, 0.07);
-  rounded(0.24, 0.012, 0.008, charcoal, 0.006, phone, 0, -0.586, 0.07);
+
+  rounded(.24, .05, .03, dark, .01, phone, 0, -.7, .11);
   rounded(0.014, 0.14, 0.027, titanium, 0.006, phone, -0.38, 0.18, 0);
   rounded(0.014, 0.2, 0.027, titanium, 0.006, phone, 0.38, 0.12, 0);
   rounded(
@@ -801,33 +772,21 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
     0,
     console,
   );
-  cylinder(0.53, 0.53, 0.055, woodDark, mountain, 0, 0, 0, 48);
-  const mountainMat = mat("#8e9d8a");
-  for (const [x, z, r, h] of [
-    [-0.18, 0.08, 0.36, 0.56],
-    [0.15, -0.12, 0.32, 0.84],
-    [0.27, 0.2, 0.24, 0.43],
-  ]) {
-    const peak = new THREE.Mesh(
-      scope.own(new THREE.ConeGeometry(r, h, 5)),
-      mountainMat,
-    );
-    peak.position.set(x, h / 2 + 0.025, z);
-    peak.castShadow = true;
-    mountain.add(peak);
-    const snow = new THREE.Mesh(
-      scope.own(new THREE.ConeGeometry(r * 0.28, h * 0.28, 5)),
-      white,
-    );
-    snow.position.set(x, h * 0.86 + 0.025, z);
-    mountain.add(snow);
+  rounded(1.05, .1, 1.12, woodDark, .04, mountain);
+  const japanTexture = scope.own(createJapanMapTexture(archive.achieved.japan));
+  const japanMaterial = scope.own(new THREE.MeshStandardMaterial({ map: japanTexture, roughness: .94 }));
+  const japanModel = new THREE.Mesh(scope.own(new THREE.PlaneGeometry(.97, 1.04)), japanMaterial);
+  japanModel.rotation.x = -Math.PI / 2;
+  japanModel.position.y = .058;
+  mountain.add(japanModel);
+  // 小さな山を地図の周りに置き、百名山の展示としても読めるようにする。
+  for (const x of [-.34, 0, .34]) {
+    const peak = new THREE.Mesh(scope.own(new THREE.ConeGeometry(.09, .17, 5)), green);
+    peak.position.set(x, .14, .48); mountain.add(peak);
   }
-  portal(
-    "mountains",
-    console,
+  portal("japan", mountain,
     furniturePoint(console, [0, mountain.position.y + 1.07, 0]),
-    furniturePoint(console, [0, mountain.position.y + 0.2, 0]),
-  );
+    furniturePoint(console, [0, mountain.position.y + .05, 0]));
   obstacles.push(
     furnitureObstacle(
       "mountain-console",

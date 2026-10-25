@@ -73,8 +73,8 @@ test("写真本体・外部リンク表示・EキーでInstagramを別タブに�
   // Adding an external destination must preserve the existing internal links.
   await page.locator(".room-menu-toggle").click();
   await page.locator(".room-menu")
-    .getByRole("link", { name: "世界地図を開く", exact: true }).click();
-  await expect(page).toHaveURL(/#\/world$/);
+    .getByRole("link", { name: "地球儀を開く", exact: true }).click();
+  await expect(page).toHaveURL(/#\/room\/world$/);
 });
 
 test.describe("タッチ操作", () => {
