@@ -5,14 +5,19 @@ import Globe, { type GlobeMethods } from "react-globe.gl";
 import { worldFeatures } from "./Map";
 import { catalogs } from "../data/catalogs";
 import type { Entry } from "../data/model";
+export interface GlobeView { lat: number; lng: number; altitude?: number; }
 export default function WorldGlobe({
   achieved,
   onSelect,
   onFail,
   focus,
+  initialView,
+  onViewChange,
 }: {
   achieved: Set<string>;
   focus?: Entry;
+  initialView?: GlobeView;
+  onViewChange?: (view: GlobeView) => void;
   onSelect: (entry: Entry) => void;
   onFail: () => void;
 }) {
@@ -28,16 +33,7 @@ export default function WorldGlobe({
       setWidth(Math.min(850, entry.contentRect.width)),
     );
     if (parent.current) observer.observe(parent.current);
-    useEffect(() => {
-    if (!focus) return;
-    const feature = worldFeatures.find(f => String(f.id) === focus.id);
-    if (feature) {
-      const [lng, lat] = geoCentroid(feature);
-      globe.current?.pointOfView({ lat, lng, altitude: 1.7 }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500);
-    }
-  }, [focus]);
-  useEffect(() => () => { material.dispose(); }, [material]);
-  return () => observer.disconnect();
+    return () => observer.disconnect();
   }, []);
   useEffect(() => {
     const node = parent.current;
@@ -48,6 +44,19 @@ export default function WorldGlobe({
     node?.addEventListener("webglcontextlost", lost, true);
     return () => node?.removeEventListener("webglcontextlost", lost, true);
   }, [onFail]);
+  const previousFocus = useRef(focus);
+  useEffect(() => {
+    if (previousFocus.current === focus) return;
+    previousFocus.current = focus;
+    if (!focus) return;
+    const feature = worldFeatures.find(f => String(f.id) === focus.id);
+    if (feature) {
+      const [lng, lat] = geoCentroid(feature);
+      globe.current?.pointOfView({ lat, lng, altitude: 1.7 }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500);
+    }
+  }, [focus]);
+  useEffect(() => () => { material.dispose(); }, [material]);
+
   return (
     <div className="globe" ref={parent} data-testid="globe">
       <Globe
@@ -75,9 +84,10 @@ export default function WorldGlobe({
           );
           if (entry) onSelect(entry);
         }}
+        onZoom={onViewChange}
         onGlobeReady={() => {
           globe.current?.renderer().setPixelRatio(1);
-          globe.current?.pointOfView({ lat: 25, lng: 135, altitude: 2.1 });
+          globe.current?.pointOfView(initialView ?? { lat: 25, lng: 135, altitude: 2.1 });
           const controls = globe.current?.controls();
           if (controls) {
             controls.autoRotate = false;

@@ -236,6 +236,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
 
   const closeMode = () => {
     if (modeHistory.current) { history.back(); return; }
+    history.replaceState(null, "", "#/");
     engine.current?.closeCollection();
     setMode(null);
     setOpening(null);
@@ -245,6 +246,7 @@ export default function RoomHome({ archive }: { archive: Archive }) {
     const back = () => {
       const match = location.hash.match(/^#\/room\/(world|mountains|pokemon)$/);
       if (match) {
+        modeHistory.current = history.state?.atlasMode === match[1];
         setMode(match[1] as CollectionMode);
         engine.current?.setPaused(true);
       } else {

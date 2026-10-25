@@ -1,8 +1,9 @@
-import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
+import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { catalogs, sections, labels, english } from "../data/catalogs";
 import { pokemonCounts } from "../data/parser";
 import type { Archive, Entry, Section } from "../data/model";
-import { Map } from "../maps/Map";
+import type { GlobeView } from "../maps/Globe";
+import { Map, type MapView } from "../maps/Map";
 const Globe = lazy(() => import("../maps/Globe"));
 class GlobeBoundary extends Component<
   { children: ReactNode; onFail: () => void },
@@ -43,8 +44,13 @@ export function Collection({
   embedded?: boolean;
   active?: boolean;
 }) {
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
+  // View snapshots survive GPU/map unmounts without moving frame updates into React.
+  const mapView = useRef<MapView | undefined>(undefined);
+  const globeView = useRef<GlobeView | undefined>(undefined);
+  const [primaryQuery, setPrimaryQuery] = useState("");
+  const [prefectureQuery, setPrefectureQuery] = useState("");
+  const [primaryFilter, setPrimaryFilter] = useState("all");
+  const [prefectureFilter, setPrefectureFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [mode, setMode] = useState<"2d" | "3d">(embedded && section === "world" && canWebGL() ? "3d" : "2d");
   const [notice, setNotice] = useState("");
@@ -62,10 +68,16 @@ export function Collection({
     onSelect(entry);
   };
   const integrated = embedded && section === "mountains";
+  const listingSection = integrated && prefectureOnly ? "japan" : section;
+  const query = listingSection === "japan" && integrated ? prefectureQuery : primaryQuery;
+  const setQuery = listingSection === "japan" && integrated ? setPrefectureQuery : setPrimaryQuery;
+  const filter = listingSection === "japan" && integrated ? prefectureFilter : primaryFilter;
+  const setFilter = listingSection === "japan" && integrated ? setPrefectureFilter : setPrimaryFilter;
+  const listAchieved = archive.achieved[listingSection];
   const achieved = archive.achieved[section];
   const pokemon = section === "pokemon";
   const counts = pokemonCounts(archive);
-  const all = catalogs[section];
+  const all = catalogs[listingSection];
   const filtered = all.filter((e) => {
     const q = query.trim().toLowerCase();
     const match =
@@ -78,8 +90,8 @@ export function Collection({
         : e.id.toLowerCase() === q);
     const state =
       filter === "all" ||
-      (filter === "done" && achieved.has(e.id)) ||
-      (filter === "todo" && !achieved.has(e.id)) ||
+      (filter === "done" && listAchieved.has(e.id)) ||
+      (filter === "todo" && !listAchieved.has(e.id)) ||
       (filter === "normal" && archive.normal.has(e.id)) ||
       (filter === "shiny" && archive.shiny.has(e.id)) ||
       (filter === "both" && archive.normal.has(e.id) && archive.shiny.has(e.id));
@@ -131,7 +143,7 @@ export function Collection({
             <span>
               {section === "world"
                 ? "か国 訪問"
-                : `/ ${all.length} ${pokemon ? "種" : section === "mountains" ? "座" : "都道府県"}`}
+                : `/ ${catalogs[section].length} ${pokemon ? "種" : section === "mountains" ? "座" : "都道府県"}`}
             </span>
           </div>
         </div>
@@ -198,18 +210,20 @@ export function Collection({
                 <Globe
                   achieved={achieved}
                   onSelect={choose}
+                  initialView={globeView.current}
+                  onViewChange={value => { globeView.current = value; }}
                   focus={selected}
                   onFail={fallback}
                 />
               </Suspense>
             </GlobeBoundary>
           ) : (
-            <Map section={integrated && prefectureOnly ? "japan" : section} achieved={integrated && prefectureOnly ? archive.achieved.japan : achieved} prefectures={integrated && prefectures ? archive.achieved.japan : undefined} focus={selected} onSelect={choose} />
+            <Map showVisits={!integrated || prefectures} initialView={mapView.current} onViewChange={value => { mapView.current = value; }} section={integrated && prefectureOnly ? "japan" : section} achieved={integrated && prefectureOnly ? archive.achieved.japan : achieved} prefectures={integrated && prefectures ? archive.achieved.japan : undefined} focus={selected} onSelect={choose} />
           )}
         </div>
       ) : null}
       <section className="catalog-section">
-        {integrated && <div className="sheet-grip" onPointerDown={e => { setSheetStart(e.clientY); e.currentTarget.setPointerCapture(e.pointerId); }} onPointerUp={e => {
+        {integrated && <div className="sheet-grip" onPointerDown={e => { if ((e.target as Element).closest("button")) return; setSheetStart(e.clientY); e.currentTarget.setPointerCapture(e.pointerId); }} onPointerUp={e => {
           if (sheetStart === undefined) return;
           const levels = ["min", "middle", "max"];
           const delta = e.clientY - sheetStart;
@@ -220,9 +234,9 @@ export function Collection({
           <h2>
             {pokemon
               ? "全国図鑑"
-              : section === "mountains"
+              : listingSection === "mountains"
                 ? "百名山一覧"
-                : section === "japan"
+                : listingSection === "japan"
                   ? "都道府県一覧"
                   : "国・地域一覧"}
           </h2>
@@ -230,7 +244,7 @@ export function Collection({
             {filtered.length}{" "}
             {pokemon
               ? "SPECIES"
-              : section === "mountains"
+              : listingSection === "mountains"
                 ? "SUMMITS"
                 : "PLACES"}
           </span>
@@ -253,7 +267,7 @@ export function Collection({
                 "done",
                 pokemon
                   ? "捕獲済み"
-                  : section === "mountains"
+                  : listingSection === "mountains"
                     ? "登頂済み"
                     : "訪問済み",
               ],
@@ -261,7 +275,7 @@ export function Collection({
                 "todo",
                 pokemon
                   ? "未捕獲"
-                  : section === "mountains"
+                  : listingSection === "mountains"
                     ? "未登頂"
                     : "未訪問",
               ],
@@ -303,7 +317,7 @@ export function Collection({
             {visible.map((e) =>
               pokemon ? (
                 <button
-                  className={`pokemon-card ${achieved.has(e.id) ? "collected" : ""}`}
+                  className={`pokemon-card ${listAchieved.has(e.id) ? "collected" : ""}`}
                   key={e.id}
                   onClick={() => choose(e)}
                   aria-label={`${e.name} 通常色${archive.normal.has(e.id) ? "捕獲済み" : "未捕獲"} 色違い${archive.shiny.has(e.id) ? "捕獲済み" : "未捕獲"}`}
@@ -311,7 +325,7 @@ export function Collection({
                   <span className="dex-number">
                     NO. {e.id.padStart(4, "0")}
                   </span>
-                  <span className="dex-placeholder" aria-hidden="true">{achieved.has(e.id) ? "◉" : "◇"}</span>
+                  <span className="dex-placeholder" aria-hidden="true">{listAchieved.has(e.id) ? "◉" : "◇"}</span>
                   <span className="dex-name">{e.name}</span>
                   <span className="dex-english">{e.english}</span>
                   <div className="dex-flags">
@@ -332,11 +346,11 @@ export function Collection({
                   key={e.id}
                   aria-pressed={selected?.id === e.id}
                   data-entry-id={e.id}
-                  className={`entry ${achieved.has(e.id) ? "collected" : ""}`}
+                  className={`entry ${listAchieved.has(e.id) ? "collected" : ""}`}
                   onClick={() => choose(e)}
                 >
                   <span className="entry-id">
-                    {section === "mountains" ? e.id.slice(1) : e.id}
+                    {listingSection === "mountains" ? e.id.slice(1) : e.id}
                   </span>
                   <span className="entry-name">
                     {e.name}
@@ -345,9 +359,9 @@ export function Collection({
                     )}
                   </span>
                   <span className="entry-status">
-                    {achieved.has(e.id) ? "●" : "○"}
+                    {listAchieved.has(e.id) ? "●" : "○"}
                     <span className="sr-only">
-                      {achieved.has(e.id) ? "達成済み" : "未達成"}
+                      {listAchieved.has(e.id) ? "達成済み" : "未達成"}
                     </span>
                   </span>
                   <span className="entry-arrow">↗</span>
@@ -375,9 +389,9 @@ export function Collection({
         <p className="catalog-footnote">
           {pokemon
             ? "全国図鑑の基本種を収録。フォーム違いは別カウントしません。"
-            : section === "mountains"
+            : listingSection === "mountains"
               ? "深田久弥「日本百名山」の100座。山塊は代表峰の位置に表示しています。"
-              : section === "world"
+              : listingSection === "world"
                 ? "ISO 3166-1 の国・地域を収録。小さな島や地図に形状のない地域も、一覧から閲覧できます。"
                 : "都道府県ごとの訪問記録。山の登頂記録とは独立して集計しています。"}
         </p>

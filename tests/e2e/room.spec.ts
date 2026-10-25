@@ -89,11 +89,11 @@ async function closeMenu(page: Page) {
 }
 async function openCollection(page: Page, section: keyof typeof destinations) {
   await openMenu(page);
+  const fallback = (await page.locator(".room-home").getAttribute("data-room-status")) === "fallback";
   await page
     .locator(".room-menu")
     .getByRole("link", { name: destinations[section], exact: true })
     .click();
-  const fallback = (await page.locator(".room-home").getAttribute("data-room-status")) === "fallback";
   const mode = section === "japan" ? "mountains" : section;
   await expect(page).toHaveURL(new RegExp(fallback ? `#/${mode}$` : `#/room/${mode}$`));
   await expect(page.locator(".page-count strong:visible")).toHaveText("0");
@@ -128,10 +128,10 @@ test("小さな旅人を追う3Dの部屋を描画し、大きな見出しで覆
     "aria-expanded",
     "false",
   );
-  // The wall-sized atlas now reaches the starting sightline. Its small
-  // contextual target should appear; the permanent menu/headings stay hidden.
-  await expect(page.getByRole("button", { name: destinations.world, exact: true })).toBeVisible();
-  await expect(page.locator(".room-crosshair")).toHaveCSS("opacity", "1");
+  // The compact globe replaces the full-width wall map; the initial sightline
+  // crosses the clear wall. Actual globe selection is covered in collection-modes.
+  await expect(page.locator(".room-target")).toBeHidden();
+  await expect(page.locator(".room-crosshair")).toHaveCSS("opacity", "0");
   const canvas = page.locator(".room-canvas canvas");
   const box = await canvas.boundingBox();
   expect(box!.width).toBeGreaterThanOrEqual(page.viewportSize()!.width * 0.95);

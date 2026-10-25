@@ -27,6 +27,7 @@ const mountainProjection = geoAzimuthalEqualArea()
   .rotate([-138.5, -36 + 18 / 60])
   .scale(1700)
   .translate([2500, -1930]);
+export interface MapView { zoom: number; pan: number[]; }
 export function Map({
   section,
   achieved,
@@ -34,6 +35,9 @@ export function Map({
   preview = false,
   prefectures,
   focus,
+  initialView,
+  onViewChange,
+  showVisits = true,
 }: {
   section: Section;
   achieved: Set<string>;
@@ -41,9 +45,14 @@ export function Map({
   preview?: boolean;
   prefectures?: Set<string>;
   focus?: Entry;
+  initialView?: MapView;
+  onViewChange?: (view: MapView) => void;
+  showVisits?: boolean;
 }) {
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState([0, 0]);
+  const svg = useRef<SVGSVGElement>(null);
+  const [markerScale, setMarkerScale] = useState(1);
+  const [zoom, setZoom] = useState(initialView?.zoom ?? 1);
+  const [pan, setPan] = useState(initialView?.pan ?? [0, 0]);
   const drag = useRef<{
     x: number;
     y: number;
@@ -60,7 +69,42 @@ export function Map({
     () => new MapConstructor(catalogs[section].map((e) => [e.id, e])),
     [section],
   );
+  const visibleLabels = useMemo(() => {
+    const result = new Set<string>();
+    if (section !== "mountains" || preview || zoom < 3) return result;
+    const boxes: { x: number; y: number; w: number }[] = [];
+    const priority = (entry: Entry) => entry.id === focus?.id ? 2 : achieved.has(entry.id) ? 1 : 0;
+    const candidates = [...catalogs.mountains].sort((a, b) => priority(b) - priority(a));
+    for (const entry of candidates) {
+      const point = mountainProjection(entry.coordinates as [number, number]);
+      if (!point) continue;
+      const x = (point[0] - width / 2) * zoom + width / 2 + pan[0];
+      const y = (point[1] - height / 2) * zoom + height / 2 + pan[1];
+      if (x < 0 || x > width || y < 0 || y > height) continue;
+      const box = { x: x / markerScale, y: y / markerScale - 9, w: entry.name.length * 12 + 12 };
+      // Favor the selected summit, then completed summits, and avoid overlapping labels.
+      if (boxes.some(other => Math.abs(other.y - box.y) < 20 && Math.abs(other.x - box.x) < (other.w + box.w) / 2)) continue;
+      boxes.push(box);
+      result.add(entry.id);
+    }
+    return result;
+  }, [section, preview, zoom, pan, width, height, markerScale, focus, achieved]);
   useEffect(() => {
+    if (preview || section !== "mountains" || !svg.current) return;
+    // Marker symbols and touch targets keep their CSS-pixel size, including
+    // letterboxed maps in the mobile sheet's three heights.
+    const observer = new ResizeObserver(([entry]) => {
+      const scale = Math.min(entry.contentRect.width / width, entry.contentRect.height / height);
+      if (scale > 0) setMarkerScale(1 / scale);
+    });
+    observer.observe(svg.current);
+    return () => observer.disconnect();
+  }, [preview, section, width, height]);
+  useEffect(() => { onViewChange?.({ zoom, pan }); }, [zoom, pan, onViewChange]);
+  const previousFocus = useRef(focus);
+  useEffect(() => {
+    if (previousFocus.current === focus) return;
+    previousFocus.current = focus;
     if (!focus || preview) return;
     const point = section === "mountains" && focus.coordinates ? mountainProjection(focus.coordinates as [number, number]) :
       null;
@@ -111,6 +155,7 @@ export function Map({
         </div>
       )}
       <svg
+        ref={svg}
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={
@@ -148,9 +193,11 @@ export function Map({
           }
           const d = drag.current;
           if (!d) return;
-          const rect = e.currentTarget.getBoundingClientRect();
-          const dx = ((e.clientX - d.x) * width) / rect.width,
-            dy = ((e.clientY - d.y) * height) / rect.height;
+          const inverse = e.currentTarget.getScreenCTM()?.inverse();
+          if (!inverse) return;
+          const from = new DOMPoint(d.x, d.y).matrixTransform(inverse);
+          const to = new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse);
+          const dx = to.x - from.x, dy = to.y - from.y;
           if (Math.abs(dx) + Math.abs(dy) > 5) {
             d.moved = true;
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -205,7 +252,7 @@ export function Map({
               <path
                 key={`${id}-${i}`}
                 d={path(f)}
-                className={`land ${active ? "visited" : ""} ${section === "mountains" ? "prefecture-layer" : ""}`}
+                className={`land ${active && showVisits ? "visited" : ""} ${section === "mountains" ? "prefecture-layer" : ""}`}
                 data-id={id}
                 data-achieved={active}
                 tabIndex={!preview && onSelect && e ? 0 : undefined}
@@ -232,7 +279,7 @@ export function Map({
               return (
                 <g
                   key={m.id}
-                  transform={`translate(${point[0]} ${point[1]}) scale(${1 / zoom})`}
+                  transform={`translate(${point[0]} ${point[1]}) scale(${markerScale / zoom})`}
                   className={`mountain-marker ${done ? "visited" : ""} ${focus?.id === m.id ? "selected-marker" : ""}`}
                   data-id={m.id}
                   data-achieved={done}
@@ -247,9 +294,9 @@ export function Map({
                   <title>
                     {m.name} / {m.elevation}m
                   </title>
-                  <circle r="10" fill="transparent" stroke="none" />
+                  <circle r="22" fill="transparent" stroke="none" />
                   <path d="M0 -5 L4.8 3.5 H-4.8 Z" />
-                  {zoom >= 3 && <text y="-9" textAnchor="middle" className="mountain-label">{m.name}</text>}
+                  {visibleLabels.has(m.id) && <text y="-9" textAnchor="middle" className="mountain-label">{m.name}</text>}
                   {done && <circle r="1.3" cy="1" fill="#0b1118" />}
                 </g>
               );

@@ -775,7 +775,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   rounded(1.05, .1, 1.12, woodDark, .04, mountain);
   const japanTexture = scope.own(createJapanMapTexture(archive.achieved.japan));
   const japanMaterial = scope.own(new THREE.MeshStandardMaterial({ map: japanTexture, roughness: .94 }));
-  const japanModel = new THREE.Mesh(scope.own(new THREE.PlaneGeometry(.97, 1.04)), japanMaterial);
+  const japanModel = new THREE.Mesh(scope.own(new THREE.PlaneGeometry(.728, 1.04)), japanMaterial);
   japanModel.rotation.x = -Math.PI / 2;
   japanModel.position.y = .058;
   mountain.add(japanModel);

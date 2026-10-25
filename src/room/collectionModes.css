@@ -18,7 +18,7 @@
 .japan-layers { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 16px; font-size: 13px; }
 .japan-layers label { display: flex; align-items: center; min-height: 32px; gap: 8px; }
 .prefecture-layer.visited { fill: #cad7c5 !important; }
-.mountain-label { font-size: 9px; fill: #233e30; stroke: #faf8ef; stroke-width: 2px; paint-order: stroke; pointer-events: none; }
+.mountain-label { font-size: 12px; fill: #233e30; stroke: #faf8ef; stroke-width: 2px; paint-order: stroke; pointer-events: none; }
 .selected-marker > path { stroke: #ae502d !important; stroke-width: 3px; }
 .sheet-grip { display: none; }
 @media(min-width: 900px) {
@@ -55,3 +55,24 @@
   .embedded-collection .dex-stats { padding: 12px; }
 }
 @media(prefers-reduced-motion: reduce) { .integrated-japan .catalog-section { transition: none; } }
+/* The shared full-page catalogue uses four columns; a map sidebar needs rows. */
+.embedded-collection .entry-list { grid-template-columns: 1fr; }
+.embedded-collection .catalog-controls { flex-wrap: wrap; }
+.embedded-collection .entry-name { min-width: 0; font-size: 14px; }
+.embedded-collection .entry-name small { font-size: 11px; }
+.collection-modes { min-height: 0; }
+@media(min-width: 900px) {
+  .embedded-collection:not(:has(.dex-stats)) .search { flex-basis: 100%; }
+  .embedded-collection .page-title-row { padding-top: 0; }
+}
+.embedded-collection .page-title-row { margin-top: 0; }
+.embedded-collection .collection-title { margin-bottom: 0; }
+@media(min-width: 900px) {
+  .embedded-collection:not(:has(.dex-stats)) { grid-template-rows: auto minmax(0, 1fr); }
+}
+.collection-modes .segmented button { min-height: 44px; font-size: 12px; }
+.collection-modes .sheet-grip button { min-height: 44px; }
+@media(max-width: 650px) {
+  .collection-modes .search input, .collection-modes select { font-size: 16px; }
+  .integrated-japan .catalog-section { padding-bottom: env(safe-area-inset-bottom); }
+}
