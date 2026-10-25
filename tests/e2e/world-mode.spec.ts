@@ -71,6 +71,13 @@ test('2D逆連動は一覧だけを展開・スクロールし、3Dへ選択を�
     const row=node.getBoundingClientRect(), list=node.closest('.world-country-list')!.getBoundingClientRect();return row.top>=list.top && row.bottom<=list.bottom;
   })).toBe(true);
   expect((await page.locator('.world-viewport').boundingBox())?.y).toBeCloseTo(before!.y,1);
+  // 逆選択後の自動スクロールは一度だけ。手動の探索・地域開閉を奪わない。
+  await page.locator('.world-country-list').evaluate(node=>{node.scrollTop=0;});
+  const asia=page.getByRole('button',{name:/アジア.*件/});
+  await asia.click();
+  await expect(asia).toHaveAttribute('aria-expanded','false');
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  expect(await page.locator('.world-country-list').evaluate(node=>node.scrollTop)).toBe(0);
   await page.getByRole('button',{name:'3D 地球儀',exact:true}).click();
   await centered(page,'CAN');
 });

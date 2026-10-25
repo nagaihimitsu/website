@@ -18,6 +18,7 @@ export function WorldMode({ archive, active }: { archive: Archive; active: boole
   const [resetToken, setResetToken] = useState(0);
   const [notice, setNotice] = useState("");
   const list = useRef<HTMLDivElement>(null);
+  const scrolledSelection = useRef<typeof selection>(undefined);
   const savedScroll = useRef(0);
   const mapView = useRef<MapView | undefined>(undefined);
   const globeView = useRef<GlobeView | undefined>(undefined);
@@ -58,15 +59,16 @@ export function WorldMode({ archive, active }: { archive: Archive; active: boole
     if (active && list.current) list.current.scrollTop = savedScroll.current;
   }, [active]);
   useEffect(() => {
-    if (!active || selection?.origin !== "map" || !list.current) return;
+    if (!active || selection?.origin !== "map" || scrolledSelection.current === selection || !list.current) return;
     const container = list.current;
     const row = container.querySelector<HTMLElement>(`[data-country-id="${selection.entry.id}"]`);
     if (!row) return;
+    scrolledSelection.current = selection;
     // 上位要素を動かすscrollIntoViewは使わず、一覧自身のスクロール量だけを変える。
     const delta = row.getBoundingClientRect().top - container.getBoundingClientRect().top;
     container.scrollTo({ top: container.scrollTop + delta - container.clientHeight * .35,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-  }, [selection, groups, closed, active]);
+  }, [selection, active]);
   const fallback = useCallback(() => { setDisplay("2d"); setNotice("3Dを表示できないため、2D地図を表示しています。"); }, []);
   const reset = () => {
     setSelection(undefined);

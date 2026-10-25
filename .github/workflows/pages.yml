@@ -14,11 +14,11 @@ permissions:
   contents: read
   pages: write
   id-token: write
-concurrency:
-  group: pages
-  cancel-in-progress: false
 jobs:
   world-webkit:
+    concurrency:
+      group: world-webkit-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,6 +33,10 @@ jobs:
       - name: Validate WORLD layout in WebKit
         run: npx playwright test --config playwright.world-webkit.config.ts
   build:
+    # 検証は最新コミットを優先し、公開ジョブの完了を妨げない。
+    concurrency:
+      group: atlas-build-${{ github.ref }}
+      cancel-in-progress: true
     needs: world-webkit
     runs-on: ubuntu-latest
     steps:
@@ -54,6 +58,9 @@ jobs:
         with:
           path: dist
   deploy:
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     needs: build
     runs-on: ubuntu-latest
     environment:
