@@ -543,3 +543,9 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 選択ラベルの重なり調整後、PC／タッチ2件と本番ビルドは成功。所属県補完の前の結果であり、最終結果とは区別する。
 
 所属県補完を含む最終確認：単体5件とJAPANに限定したブラウザ4件が成功。本番ビルド成功（既存のデータ・譜面検証、ライセンス生成、型検査、Vite）。南アルプスで北岳と間ノ岳を最大倍率で個別にクリックでき、未登頂ラベルとフィルターが正しいことを追加し、該当PC／タッチ2件を再実行して成功。追加後のTypeScript検査も成功。公開データ・既存の山／県マスター・WORLD本体・RoomEngineへの差分がないことを確認した。検証画像は/tmpに保存し、従来の追跡画像は変更しない。WebKitと公開の結果は最新のCIで確認する。
+
+### JAPAN改修の公開結果
+
+ソース `f3c65c9` の [公開Actions](https://github.com/nagaihimitsu/website/actions/runs/40184860695) は本番ビルドとdeployが成功し、2026-10-25 10:28 UTCに `https://nagaihimitsu.github.io/website/` への公開をログで確認。通常公開側のChromium・WORLD WebKit・選択範囲テストはskippedで、楽器などの全体テストを起動していない。
+
+同コミットの [JAPAN専用WebKit](https://github.com/nagaihimitsu/website/actions/runs/40184860679) はPC／モバイルの2Dレイアウト2件が成功（20.0秒）。この変更に関係するファイルにだけ反応するジョブであり、WORLDや楽器の試験を含まない。ローカルの単体5件・JAPANブラウザ4件（密集地域の追加後は該当2件も再実行）と合わせて今回の結果とする。iPhone実機の操作は未確認。直URLは `https://nagaihimitsu.github.io/website/#/room/mountains`。この追記のみのコミットは公開コードを変更しない。
