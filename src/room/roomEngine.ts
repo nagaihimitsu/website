@@ -85,7 +85,10 @@ function initializeRoomEngine(
   // Register before each subsequent initialization step can fail.
   scope.defer(() => renderer.forceContextLoss());
   scope.own(renderer);
-  const room = scope.own(createRoomScene(options.archive));
+  const room = scope.own(createRoomScene(options.archive, () => {
+    // 非同期GLBへの切替後、静止中でも旧モデルの影を描き直す。
+    renderer.shadowMap.needsUpdate = true;
+  }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;

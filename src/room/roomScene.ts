@@ -10,7 +10,7 @@ import type {
 import { createBreakables } from "./art/breakables";
 import { createCharacter } from "./art/character";
 import { createBird } from "./art/bird";
-import { createVisitor } from "./art/visitor";
+import { createVisitorModel } from "./art/visitorModel";
 import { createPhotoFrame } from "./art/photoFrame";
 import { createTableCamera } from "./art/tableCamera";
 import { createTablePolaroids } from "./art/tablePolaroids";
@@ -44,12 +44,12 @@ import {
   createPhoneTexture,
 } from "./art/textures";
 
-/** All furniture and decorative objects are original geometry. Maps use the local atlas. */
-export function createRoomScene(archive: Archive): RoomScene {
-  return withDisposalScope((scope) => buildRoomScene(archive, scope));
+/** 家具・主人公は自作形状、女の子NPCは提供GLB。地図はローカルのデータを使う。 */
+export function createRoomScene(archive: Archive, onVisualChange?: () => void): RoomScene {
+  return withDisposalScope((scope) => buildRoomScene(archive, scope, onVisualChange));
 }
 
-function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
+function buildRoomScene(archive: Archive, scope: DisposalScope, onVisualChange?: () => void): RoomScene {
   const scene = new THREE.Scene();
   // The open terrace sees a pale daytime sky; the room keeps its own lighting.
   scene.background = new THREE.Color("#dceaf0");
@@ -1013,9 +1013,9 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   const bird = scope.own(createBird());
   scene.add(bird.group);
 
-  // 参考画像の女の子も、主人公・小鳥と同じ実体のある立体キャラクター。
+  // 提供GLBの女の子も、主人公・小鳥と同じ実体のある立体キャラクター。
   // 保存位置の検証・小鳥の生成より前に登録し、両者が自然に避けるようにする。
-  const visitor = scope.own(createVisitor());
+  const visitor = scope.own(createVisitorModel(onVisualChange));
   visitor.group.name = "room-visitor";
   visitor.group.scale.setScalar(4 / 3);
   // 拡大した裾と机の間にも、歩いて回り込める間隔を残す。
@@ -1024,7 +1024,8 @@ function buildRoomScene(archive: Archive, scope: DisposalScope): RoomScene {
   scene.add(visitor.group);
   visitor.group.updateWorldMatrix(true, true);
   // 髪・裾・バッグまで含め、待機中のわずかな揺れにも余裕を持たせる。
-  const visitorBounds = new THREE.Box3().setFromObject(visitor.group)
+  // GLB待機中と読込後で衝突体が変わらないよう、両方を含む境界を使う。
+  const visitorBounds = visitor.bounds.clone().applyMatrix4(visitor.group.matrixWorld)
     .expandByScalar(0.018 * visitor.group.scale.x);
   const visitorCentre = visitorBounds.getCenter(new THREE.Vector3());
   const visitorSize = visitorBounds.getSize(new THREE.Vector3());

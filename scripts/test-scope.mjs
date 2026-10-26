@@ -30,7 +30,7 @@ const scopes = {
     browser: [roomSpecs[0], "tests/e2e/pinch.spec.ts", "--grep", "@movement|@pinch|@visual"],
   },
   npc: {
-    units: ["tests/room-bird.test.ts", "tests/room-visitor.test.ts", "tests/room-movement.test.ts"],
+    units: ["tests/room-bird.test.ts", "tests/room-visitor.test.ts", "tests/room-visitor-model.test.ts", "tests/room-movement.test.ts"],
     browser: [roomSpecs[0], roomSpecs[2], "tests/e2e/visitor.spec.ts", "--grep", "@npc|@visual"],
   },
   records: {

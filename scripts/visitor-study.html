@@ -47,12 +47,12 @@
       const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.ShadowMaterial({opacity:0.13}));
       floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
       const visitor = createVisitor(); scene.add(visitor.group); visitor.animate(0,true);
-      const views={front:0,quarter:35,side:90,"left-side":-90,back:180,"rear-quarter":145};
+      const views={front:0,quarter:35,"reference-side":70,side:90,"left-side":-90,back:180,"rear-quarter":145};
       const angle=(views[params.get("view")||"quarter"]??35)*Math.PI/180;
-      const face=params.get("focus")==="face";
-      const height=face?0.56:1.5,width=height*innerWidth/innerHeight;
+      const face=params.get("focus")==="face", head=params.get("focus")==="head";
+      const height=head?0.46:face?0.56:1.5,width=height*innerWidth/innerHeight;
       const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,0.01,20);
-      const target=face?1.065:0.645;
+      const target=head?1.096:face?1.065:0.645;
       camera.position.set(Math.sin(angle)*3,target+0.10,Math.cos(angle)*3);
       camera.lookAt(0,target,0);
       renderer.render(scene,camera);
