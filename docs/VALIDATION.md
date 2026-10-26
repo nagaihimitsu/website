@@ -659,3 +659,5 @@ EASY 49音（スラップ34、69.39%）、NORMAL 76音（56、73.68%）、HARD 1
 変更前の基準確認として実行した旧造形の `tests/room-visitor.test.ts` は3件成功・1件失敗。失敗は頭頂の三角形の向きに関する既存の期待（68行目、normal.dot(radial)が負）で、GLB組み込み前から存在した。旧モデルの形状・その期待は今回変更していない。今回のGLB用テスト成功と混同しない。
 
 GitHubへのpush・公開は行っていない。既存の未コミットの造形変更・画像・記録は保持した。
+
+公開結果：ユーザーの公開指示を受け、ソース `8c1184f36b3f8760aa7a8ab99d7e73c943b6307d` を `main` へ反映。[Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40313329628) は本番ビルドとdeployが成功し、2026-10-26 11:13:18 UTCにdeployログの `Reported success!`、対象SHA、公開先 `https://nagaihimitsu.github.io/website/` を確認した。通常pushの既定どおりCIでは本番ビルドを行い、選択範囲・Chromium・WebKitのテストはskipped。上記のローカル検証結果と区別する。確認環境の通信許可先にGitHub Pagesのホストが含まれないため、公開サイトそのものの画面の再確認は未実施。公開完了はGitHub Pagesのdeploy結果で確認した。この追記だけのコミットは `[skip ci]` とし、公開コードを変更しない。
