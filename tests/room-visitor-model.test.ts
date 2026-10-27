@@ -207,14 +207,16 @@ describe("provided visitor GLB", () => {
     const left = yaw();
     expect(left).toBeLessThan(-0.1);
 
+    // 真横は視界の外。頭が滑らかに正面へ戻り、胴体は回らない。
     target.set(100, 1, 0.1);
     advance(3);
-    const extreme = yaw();
-    expect(extreme).toBeGreaterThan(0.1);
-    // 胴体が回る場合も、首自体は大きくねじれない。
-    expect(head.quaternion.angleTo(tilt)).toBeLessThan(Math.PI / 3);
+    expect(Math.abs(yaw())).toBeLessThan(0.02);
+    expect(visitor.group.getObjectByName("visitor-model-body")!.rotation.y).toBeCloseTo(0, 8);
+    expect(head.quaternion.angleTo(tilt)).toBeLessThan(0.3);
     advance(0.8);
     expect(asset.front.position.y).toBeCloseTo(0, 5); // 追従中も手振りは再生しない。
+    target.set(3, 1, 3);
+    advance(2);
     expect(yaw()).toBeGreaterThan(0.1);
     visitor.animate(time + 0.1, true, target);
     expect(Math.abs(yaw())).toBeLessThan(0.001);
@@ -223,7 +225,7 @@ describe("provided visitor GLB", () => {
     expect(Math.abs(yaw())).toBeLessThan(0.001);
   });
 
-  it("turns toward a player behind a rotated NPC and returns to the front when no target is supplied", async () => {
+  it("keeps the body still and returns the head to front when the player is behind a rotated NPC", async () => {
     const asset = model();
     const head = new THREE.Bone(); head.name = "head"; head.position.y = 0.8; asset.scene.add(head);
     parse.mockResolvedValue({ ...asset, animations: [] });
@@ -231,21 +233,71 @@ describe("provided visitor GLB", () => {
     visitor.group.position.set(2, 0, -1);
     visitor.group.rotation.y = Math.PI / 2;
     visitor.group.updateMatrixWorld(true);
-    const target = visitor.group.localToWorld(new THREE.Vector3(0.01, 1, -3));
+    const body = visitor.group.getObjectByName("visitor-model-body")!;
+    const target = visitor.group.localToWorld(new THREE.Vector3(2, 1.045, 3));
     const yawRelativeToGroup = () => {
       visitor.group.updateMatrixWorld(true);
       const forward = new THREE.Vector3(1, 0, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion()));
-      return Math.atan2(forward.x, forward.z) - visitor.group.rotation.y;
+      return Math.atan2(Math.sin(Math.atan2(forward.x, forward.z) - visitor.group.rotation.y),
+        Math.cos(Math.atan2(forward.x, forward.z) - visitor.group.rotation.y));
     };
     let time = 0;
     visitor.animate(time, false, target);
-    for (let i = 0; i < 8 * 60; i++) visitor.animate(time += 1 / 60, false, target);
-    expect(Math.cos(yawRelativeToGroup())).toBeLessThan(-0.95);
-    expect(head.quaternion.angleTo(new THREE.Quaternion())).toBeLessThan(Math.PI / 7 + 0.01);
+    for (let i = 0; i < 3 * 60; i++) {
+      visitor.animate(time += 1 / 60, false, target);
+      expect(body.rotation.y).toBeCloseTo(0, 8);
+    }
+    expect(yawRelativeToGroup()).toBeGreaterThan(0.1);
+    expect(yawRelativeToGroup()).toBeLessThan(0.3);
 
-    for (let i = 0; i < 8 * 60; i++) visitor.animate(time += 1 / 60, false);
-    expect(Math.cos(yawRelativeToGroup())).toBeGreaterThan(0.99);
+    target.copy(visitor.group.localToWorld(new THREE.Vector3(0.01, 1.045, -3)));
+    const previous = yawRelativeToGroup();
+    visitor.animate(time += 1 / 60, false, target);
+    expect(yawRelativeToGroup()).toBeGreaterThan(0); // 飛び戻らず徐々に戻る。
+    expect(yawRelativeToGroup()).toBeLessThan(previous);
+    for (let i = 0; i < 5 * 60; i++) {
+      visitor.animate(time += 1 / 60, false, target);
+      expect(body.rotation.y).toBeCloseTo(0, 8);
+    }
+    expect(Math.abs(yawRelativeToGroup())).toBeLessThan(0.02);
     expect(head.quaternion.angleTo(new THREE.Quaternion())).toBeLessThan(0.03);
+    target.copy(visitor.group.localToWorld(new THREE.Vector3(-2, 1.045, 3)));
+    for (let i = 0; i < 3 * 60; i++) visitor.animate(time += 1 / 60, false, target);
+    expect(yawRelativeToGroup()).toBeLessThan(-0.1);
+    for (let i = 0; i < 5 * 60; i++) visitor.animate(time += 1 / 60, false);
+    expect(Math.abs(yawRelativeToGroup())).toBeLessThan(0.02);
+    expect(body.rotation.y).toBeCloseTo(0, 8);
+  });
+
+  it("smoothly fades attention at the edge of the field of view and bounds the neck rotation", async () => {
+    const asset = model();
+    const head = new THREE.Bone(); head.name = "head"; head.position.y = 0.8; asset.scene.add(head);
+    parse.mockResolvedValue({ ...asset, animations: [] });
+    const visitor = create(); await visitor.ready;
+    const body = visitor.group.getObjectByName("visitor-model-body")!;
+    const target = new THREE.Vector3();
+    let time = 0;
+    const settleAt = (degrees: number) => {
+      const angle = THREE.MathUtils.degToRad(degrees);
+      target.set(Math.sin(angle) * 3, 1.045, Math.cos(angle) * 3);
+      for (let i = 0; i < 5 * 60; i++) {
+        visitor.animate(time += 1 / 60, false, target);
+        expect(body.rotation.y).toBeCloseTo(0, 8);
+      }
+      visitor.group.updateMatrixWorld(true);
+      const forward = new THREE.Vector3(1, 0, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion()));
+      return Math.atan2(forward.x, forward.z);
+    };
+    const inside = settleAt(35);
+    const edge = settleAt(55);
+    const outside = settleAt(75);
+    const behind = settleAt(180);
+    expect(inside).toBeGreaterThan(0.1);
+    expect(inside).toBeLessThan(0.3);
+    expect(edge).toBeGreaterThan(0.02);
+    expect(edge).toBeLessThan(inside);
+    expect(Math.abs(outside)).toBeLessThan(0.02);
+    expect(Math.abs(behind)).toBeLessThan(0.02);
   });
 
   it("looks up and down toward the player's eye height within the neck limit and returns to rest for reduced motion", async () => {
@@ -268,11 +320,11 @@ describe("provided visitor GLB", () => {
     target.y = 20;
     advance(2);
     expect(forwardY()).toBeGreaterThan(0.09);
-    expect(forwardY()).toBeLessThan(Math.sin(8 * Math.PI / 180) + 0.01);
+    expect(forwardY()).toBeLessThan(Math.sin(6 * Math.PI / 180) + 0.01);
     target.y = -20;
     advance(2);
     expect(forwardY()).toBeLessThan(-0.09);
-    expect(forwardY()).toBeGreaterThan(-Math.sin(8 * Math.PI / 180) - 0.01);
+    expect(forwardY()).toBeGreaterThan(-Math.sin(6 * Math.PI / 180) - 0.01);
     visitor.animate(time + 0.1, true, target);
     expect(Math.abs(forwardY())).toBeLessThan(0.001);
     expect(head.quaternion.angleTo(new THREE.Quaternion())).toBeLessThan(0.001);

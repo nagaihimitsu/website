@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
-test("実モデルが主人公の全方向を向き、手を振らず衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
+test("実モデルは体を回さず正面の主人公へ控えめに顔を向ける", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
   const result = await page.evaluate(async () => {
@@ -20,14 +20,19 @@ test("実モデルが主人公の全方向を向き、手を振らず衝突範�
     const handRest = hand.quaternion.clone();
     const angles: number[] = [];
     const outside: number[] = [];
+    const body = visitor.group.getObjectByName("visitor-model-body")!;
+    let greatestBodyYaw = 0;
     let time = 0;
     for (let direction = 0; direction < 8; direction++) {
       const angle = direction * Math.PI / 4;
       target.set(Math.sin(angle) * 3, 1, Math.cos(angle) * 3);
-      for (let step = 0; step < 360; step++) visitor.animate(time += 1 / 60, false, target);
+      for (let step = 0; step < 360; step++) {
+        visitor.animate(time += 1 / 60, false, target);
+        greatestBodyYaw = Math.max(greatestBodyYaw, Math.abs(body.rotation.y));
+      }
       visitor.group.updateMatrixWorld(true);
       const front = new THREE.Vector3(1, 0, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion())).setY(0).normalize();
-      angles.push(front.angleTo(target.clone().setY(0).normalize()));
+      angles.push(Math.atan2(front.x, front.z));
       if (!allowed.containsBox(new THREE.Box3().setFromObject(visitor.group, true))) outside.push(direction);
     }
     let armAngle = 0;
@@ -40,9 +45,15 @@ test("実モデルが主人公の全方向を向き、手を振らず衝突範�
       visitor.group.updateMatrixWorld(true);
       if (!allowed.containsBox(new THREE.Box3().setFromObject(visitor.group, true))) outside.push(8 + step);
     }
-    return { angles, outside, armAngle, handAngle };
+    return { angles, outside, armAngle, handAngle, greatestBodyYaw };
   });
-  expect(Math.max(...result.angles)).toBeLessThan(0.03);
+  expect(Math.abs(result.angles[0])).toBeLessThan(0.03);
+  expect(result.angles[1]).toBeGreaterThan(0.1);
+  expect(result.angles[1]).toBeLessThan(0.27);
+  for (const angle of result.angles.slice(2, 7)) expect(Math.abs(angle)).toBeLessThan(0.03);
+  expect(result.angles[7]).toBeLessThan(-0.1);
+  expect(result.angles[7]).toBeGreaterThan(-0.27);
+  expect(result.greatestBodyYaw).toBeLessThan(0.00001);
   expect(result.armAngle).toBeLessThan(0.001);
   expect(result.handAngle).toBeLessThan(0.001);
   expect(result.outside).toEqual([]);
@@ -63,17 +74,21 @@ test("実モデルが主人公の全方向を向き、手を振らず衝突範�
       if (npc.userData.modelStatus !== "ready") throw new Error("NPC GLBの読み込みに失敗しました");
       const head = npc.getObjectByName("head");
       if (!head) throw new Error("GLBに頭のボーンがありません");
-      room.avatar.position.set(npc.position.x - 2, 0, npc.position.z);
+      npc.updateWorldMatrix(true, false);
+      const target = npc.localToWorld(new THREE.Vector3(1.5, 0, 3));
+      room.avatar.position.set(target.x, 0, target.z);
       for (let step = 0; step <= 360; step++) room.animate(step / 60, false, false);
       room.scene.updateMatrixWorld(true);
       const front = new THREE.Vector3(1, 0, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion()));
       const vertical = front.y;
-      return { angle: front.setY(0).normalize().angleTo(new THREE.Vector3(-1, 0, 0)), vertical };
+      const yaw = Math.atan2(front.x, front.z) - npc.rotation.y;
+      return { angle: Math.atan2(Math.sin(yaw), Math.cos(yaw)), vertical };
     } finally {
       room.dispose();
     }
   });
-  expect(roomDirection.angle).toBeLessThan(0.03);
+  expect(roomDirection.angle).toBeGreaterThan(0.1);
+  expect(roomDirection.angle).toBeLessThan(0.27);
   expect(roomDirection.vertical).toBeLessThan(-0.03);
   expect(roomDirection.vertical).toBeGreaterThan(-0.2);
 });

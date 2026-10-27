@@ -7,14 +7,14 @@ import modelUrl from "../../assets/room/visitor.glb?url";
 
 const MODEL_HEIGHT = 1.2765;
 const FOOT_Y = 0.0015;
-// 融合した首元が伸びすぎない範囲で、主人公の方向にゆっくり顔を向ける。
-const HEAD_TURN_LIMIT = Math.PI / 7;
-const HEAD_PITCH_LIMIT = THREE.MathUtils.degToRad(8);
+// 正面寄りの主人公を、首元を無理に伸ばさない範囲で控えめに見る。
+const HEAD_TURN_LIMIT = THREE.MathUtils.degToRad(14);
+const HEAD_PITCH_LIMIT = THREE.MathUtils.degToRad(6);
+const VIEW_FULL_ANGLE = THREE.MathUtils.degToRad(45);
+const VIEW_OUTER_ANGLE = THREE.MathUtils.degToRad(75);
 // 正規化後の目のおおよその高さ。視線対象はワールド座標で受け取る。
 const HEAD_EYE_Y = 1.045;
-const HEAD_TURN_SPEED = 4;
-const BODY_TURN_SPEED = 1.4;
-const HEAD_FREE_ANGLE = 0.2;
+const HEAD_TURN_SPEED = 2.8;
 // +Z正面・既存の身長へ正規化し、量子化分の余裕を含む境界。
 const MODEL_BOUNDS = new THREE.Box3(
   new THREE.Vector3(-0.291, 0, -0.209),
@@ -86,7 +86,6 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let head: THREE.Bone | undefined;
   let headYaw = 0;
   let headPitch = 0;
-  let bodyYaw = 0;
   const localTarget = new THREE.Vector3();
   const headTurn = new THREE.Quaternion();
   const previousHeadTurn = new THREE.Quaternion();
@@ -194,22 +193,19 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           group.worldToLocal(localTarget);
           const distance = Math.hypot(localTarget.x, localTarget.z);
           if (distance > 0.01) {
-            targetYaw = Math.atan2(localTarget.x, localTarget.z);
-            targetPitch = THREE.MathUtils.clamp(
-              Math.atan2(localTarget.y - HEAD_EYE_Y, distance), -HEAD_PITCH_LIMIT, HEAD_PITCH_LIMIT,
+            const direction = Math.atan2(localTarget.x, localTarget.z);
+            // 視界の縁では少しずつ追従を弱め、背後では正面に戻る。
+            const visibility = 1 - THREE.MathUtils.smoothstep(
+              Math.abs(direction), VIEW_FULL_ANGLE, VIEW_OUTER_ANGLE,
             );
+            targetYaw = THREE.MathUtils.clamp(direction * 0.55, -HEAD_TURN_LIMIT, HEAD_TURN_LIMIT) * visibility;
+            targetPitch = THREE.MathUtils.clamp(
+              Math.atan2(localTarget.y - HEAD_EYE_Y, distance) * 0.6, -HEAD_PITCH_LIMIT, HEAD_PITCH_LIMIT,
+            ) * visibility;
           }
         }
-        // 首だけでは届かない方向は、体を足元中心に回して追いかける。
-        // 角度差を -π〜π に正規化し、背後で角度が切り替わっても遠回りしない。
-        const wantedBodyYaw = targetYaw - THREE.MathUtils.clamp(targetYaw, -HEAD_FREE_ANGLE, HEAD_FREE_ANGLE);
-        const bodyDifference = Math.atan2(Math.sin(wantedBodyYaw - bodyYaw), Math.cos(wantedBodyYaw - bodyYaw));
-        bodyYaw = reducedMotion ? 0 : bodyYaw + bodyDifference * (1 - Math.exp(-BODY_TURN_SPEED * Math.min(delta, 0.1)));
-        body.rotation.y = bodyYaw;
-        const difference = Math.atan2(Math.sin(targetYaw - bodyYaw), Math.cos(targetYaw - bodyYaw));
-        const wantedHeadYaw = THREE.MathUtils.clamp(difference, -HEAD_TURN_LIMIT, HEAD_TURN_LIMIT);
         headYaw = reducedMotion ? 0 : THREE.MathUtils.lerp(
-          headYaw, wantedHeadYaw, 1 - Math.exp(-HEAD_TURN_SPEED * Math.min(delta, 0.1)),
+          headYaw, targetYaw, 1 - Math.exp(-HEAD_TURN_SPEED * Math.min(delta, 0.1)),
         );
         headPitch = reducedMotion ? 0 : THREE.MathUtils.lerp(
           headPitch, targetPitch, 1 - Math.exp(-HEAD_TURN_SPEED * Math.min(delta, 0.1)),
