@@ -742,3 +742,5 @@ Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が
 修正前の関連単体テスト18件、修正後の同じ18件と `tests/e2e/visitor.spec.ts` の6件が成功。新しい口・顎の回帰検査では実モデルの504頂点について頭との相対位置を調べ、旧GLBの最大ずれ約0.016565に対して修正後は約4.52e-16だった。頭の回転量の検査を追加後、新規テストを再実行して成功。左右14度・上下6度の姿勢で修正前後の顔、首・襟を目視し、口の形が保たれ、首元に目立つ裂けや突出がないことを確認。修正済みリグの再生成SHA-256は `4c1827e087214f5bc36999bf17647ef8b82187dbb5dd0c31ad76524875e8f503` で一致。`npm run build` 成功。GitHubへのpush・公開は行っていない。
 
 [修正前後の比較](screenshots/visitor-mouth-fix-comparison.png)。
+
+公開結果：ユーザーの指示により、NPCの口と顎の追従修正を含むソース `851b32ca6d3f26f272ad3e9168471a233deede16` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40442140907) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、CIでの自動テストは実行していない。ローカル検証結果は上記に記載。
