@@ -6,17 +6,17 @@
 
 | 項目 | 原本 | 部屋用 |
 |---|---:|---:|
-| ファイル容量 | 50,760,220 bytes | 9,129,992 bytes |
+| ファイル容量 | 50,760,220 bytes | 10,034,344 bytes |
 | 三角形数 | 1,413,320 | 218,170 |
-| 色テクスチャ | 4096×4096 JPEG | 同じJPEGを維持し、修復箇所に別テクスチャを追加 |
+| 色テクスチャ | 4096×4096 JPEG | 整理したUVへ元色を転写した4096×4096可逆WebP |
 | 表面の凹凸 | 4096×4096 PNG | 2048×2048、可逆WebP |
 | 質感マップ | 4096×4096 JPEG | 1024×1024 JPEG |
 
 配信用ファイルは `src/assets/room/visitor.glb`。`?url` importでViteのハッシュ付きアセットとなり、GitHub Pagesの `/website/` 配下でも同じサイトから取得する。Meshopt圧縮のデコーダーは既存のThree.jsに同梱されたものを使い、新たな実行時依存は追加しない。
 
-原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `4c6d45fd34fdbece88df193da5047e8f6ba09a90cac2589da282fe46e7345fa2`。
+原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `b888d4891b7193ea4b9974413dfc09d93ffcff1a5842d2671f6e1c5eab9f15e7`。
 
-以下はリポジトリのルートで、原本を別の作業ディレクトリに保存して実行する再生成手順。glTF Transform CLIを4.5.1へ固定し、途中ファイルはリポジトリに入れない。通常のサイトビルドでは再生成しない。
+以下はリポジトリのルートで、原本を別の作業ディレクトリに保存して実行する、UV整理前のリグ付きモデルまでの生成手順。glTF Transform CLIを4.5.1へ固定し、途中ファイルはリポジトリに入れない。通常のサイトビルドでは再生成しない。
 
 ```sh
 npx --yes @gltf-transform/cli@4.5.1 weld /path/to/_3D.glb /tmp/visitor-welded.glb
@@ -26,10 +26,28 @@ npx --yes @gltf-transform/cli@4.5.1 resize /tmp/visitor-normal.glb /tmp/visitor-
 python scripts/assets/apply-visitor-bag-repair.py /tmp/visitor-orm.glb /tmp/visitor-repaired.glb
 blender -b -t 2 --python scripts/assets/visitor-rig.py -- /tmp/visitor-repaired.glb /tmp/visitor-rig.glb --blend /tmp/visitor-rig.blend
 npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-rig.glb /tmp/visitor-textures.glb --slots normalTexture --lossless true
-npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets/room/visitor.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
+npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb /tmp/visitor-pre-uv.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
 ```
 
 鞄の修復差分は `scripts/assets/visitor-bag-repair.zip` に保存している。適用スクリプトはPython 3とNumPyを使い、軽量化・画像縮小後の入力GLBのSHA-256を照合する。元の頂点の局所修正、不要な面の除去、服・袖・肩ひもの端の補修面と素材を適用する。通常のサイトビルドでは実行しない。差分を適用した未圧縮GLBはリグ生成の入力に使う。`visitor-rig.py` は Blender 4.3.2 と付属NumPy、隣接する `visitor-rig-mask.npz` を使用し、入力SHA-256を照合する。同じ環境で再生成したリグ付きGLBのSHA-256一致を確認済み。Blenderの入出力で三角形が19面減る。頭のスキンウェイトは口と顎を頭に追従させ、首元で胴体へ滑らかにつないでいる。隣接する `visitor-face-morphs.py`・`visitor-breath-morph.py`・`visitor-blink-morph.py`・`visitor-skirt-morph.py` が、口・胸・目元・スカートの形状キーを追加する。
+
+### UV整理版の配信用データ
+
+顔を首から分けて大きく正立させ、髪・ワンピース・カーディガン・鞄や靴の島をまとめた `UV_Editable` に、元の7素材の色を4096×4096へ転写した。旧UV `UVMap` は維持し、色は新UV、元のノーマル・質感マップは旧UVを参照する。補修部の頂点色も色画像に焼き付け済みのため、GLBには頂点色を出力しない。読み込み後の位置・ボーン・ウェイト・形状キー・アニメーションは従来の配信用データと一致する。
+
+4K転写画像のUV島外は縮小表示で黒い継ぎ目が出ないよう近傍色を拡張している。島内の画素は維持し、通常のミップマップは使い続ける。顔の口内・側面は補助島に分かれ、部位の混在や局所的な歪み、少量のUV重なりは残る。編集用Blendと元データのコピーは作業環境の `/workspace/npc-animation/uv-study/` に保存され、サイトにはBlendそのものを含めない。元BlendのSHA-256は `aea54883c219ead48fc45d1e632944f2ccc8857a371844c694f508021690a9bc`。
+
+再生成には上記の検証済み元Blend、Blender 4.3.2、Python 3とNumPy 2.3.5・Pillow 12.3.0・SciPy 1.17.0、glTF Transform CLI 4.5.1を使う。元Blendはリポジトリには含まれないため、保存した元データを使う。各スクリプトは入力のSHA-256と出力先を確認する。
+
+```sh
+blender -b -t 4 --python-exit-code 1 --python scripts/assets/visitor-uv-export.py -- /path/to/visitor-original.blend /tmp/visitor-uv.glb --texture /tmp/visitor-basecolor-4k.png --blend /tmp/visitor-uv.blend
+python3 scripts/assets/visitor-uv-pad-texture.py /tmp/visitor-basecolor-4k.png /tmp/visitor-basecolor-padded.png
+python3 scripts/assets/visitor-uv-replace-texture.py /tmp/visitor-uv.glb /tmp/visitor-basecolor-padded.png /tmp/visitor-uv-padded.glb
+npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-uv-padded.glb /tmp/visitor-uv-webp.glb --formats png --lossless true
+npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-uv-webp.glb src/assets/room/visitor.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
+```
+
+[UV配置](screenshots/visitor-uv-layout.png) ／ [部屋用モデルの前後・表情比較](screenshots/visitor-uv-web-comparison.png) ／ [継ぎ目の補正比較](screenshots/visitor-uv-seams-comparison.png) ／ [部屋に近い縮尺](screenshots/visitor-uv-room-scale.png)。
 
 閉眼の参照画像は、所有者提供の閉眼画像（SHA-256 `4004da2a1d7a2555358fceb1e182ad4f672cc7de1e3cc76f732d7c2a193b94de`）から作成する。Python 3 と Pillow を使い、原本を上書きせずに再生成する。
 

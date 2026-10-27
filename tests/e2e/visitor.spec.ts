@@ -1,6 +1,58 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
+test("UV整理モデルは色と凹凸にそれぞれ対応するUVを使う", { tag: "@npc" }, async ({ page }) => {
+  const errors = collectPageErrors(page);
+  await page.goto("/scripts/visitor-model-study.html?view=front");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    const meshes: {
+      uv: boolean; uv1: boolean; color: boolean; vertexColors: boolean;
+      map: number | null; size: number[] | null; normal: number | null;
+      roughness: number | null; metalness: number | null; morphs: string[];
+    }[] = [];
+    visitor.group.traverse((object) => {
+      if (!(object instanceof THREE.SkinnedMesh) || Array.isArray(object.material)
+        || !(object.material instanceof THREE.MeshStandardMaterial)) return;
+      const mat = object.material;
+      const image = mat.map?.image as { width?: number; height?: number } | undefined;
+      meshes.push({
+        uv: !!object.geometry.getAttribute("uv"), uv1: !!object.geometry.getAttribute("uv1"),
+        color: !!object.geometry.getAttribute("color"), vertexColors: mat.vertexColors,
+        map: mat.map?.channel ?? null, size: image ? [image.width ?? 0, image.height ?? 0] : null,
+        normal: mat.normalMap?.channel ?? null, roughness: mat.roughnessMap?.channel ?? null,
+        metalness: mat.metalnessMap?.channel ?? null,
+        morphs: Object.keys(object.morphTargetDictionary ?? {}).map((name) => name.toLowerCase()),
+      });
+    });
+    return {
+      status: visitor.group.userData.modelStatus,
+      head: visitor.group.getObjectByName("head") instanceof THREE.Bone,
+      root: visitor.group.getObjectByName("root") instanceof THREE.Bone,
+      meshes,
+    };
+  });
+  expect(result.status).toBe("ready");
+  expect(result.head && result.root).toBe(true);
+  expect(result.meshes).toHaveLength(7);
+  for (const mesh of result.meshes) {
+    // 色は新UVへ焼き付け済み。頂点色を再乗算せず、画像を新UVで読む。
+    expect(mesh.uv && mesh.uv1).toBe(true);
+    expect(mesh.color || mesh.vertexColors).toBe(false);
+    expect(mesh.map).toBe(1);
+    expect(mesh.size).toEqual([4096, 4096]);
+    expect(mesh.morphs).toEqual(expect.arrayContaining(["mouth", "breath", "blink", "skirt"]));
+    // 凹凸・質感は旧UVのまま保持する。
+    for (const channel of [mesh.normal, mesh.roughness, mesh.metalness])
+      if (channel !== null) expect(channel).toBe(0);
+  }
+  expect(result.meshes.some((mesh) => mesh.normal === 0 && mesh.roughness === 0 && mesh.metalness === 0)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("実モデルのまばたき・口パク・呼吸・裾が動き、動作抑制で元に戻る", { tag: "@npc" }, async ({ page }) => {
   const shaderErrors: string[] = [];
   page.on("console", (message) => {
