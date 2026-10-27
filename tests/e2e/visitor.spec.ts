@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
-test("実モデルのまばたき・口パク・呼吸が動き、動作抑制で元に戻る", { tag: "@npc" }, async ({ page }) => {
+test("実モデルのまばたき・口パク・呼吸・裾が動き、動作抑制で元に戻る", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
   const result = await page.evaluate(async () => {
@@ -12,8 +12,9 @@ test("実モデルのまばたき・口パク・呼吸が動き、動作抑制�
     visitor.group.traverse((object) => {
       if (object instanceof THREE.Mesh && object.morphTargetDictionary && object.morphTargetInfluences) meshes.push(object);
     });
-    const names = ["mouth", "breath", "blink"] as const;
+    const names = ["mouth", "breath", "blink", "skirt"] as const;
     const maxima = Object.fromEntries(names.map((name) => [name, 0]));
+    let skirtMinimum = 0;
     const maxDelta = Object.fromEntries(names.map((name) => [name, 0]));
     const bindings = names.map((name) => meshes.flatMap((mesh) => {
       const entry = Object.entries(mesh.morphTargetDictionary!).find(([key]) => key.toLowerCase() === name);
@@ -28,20 +29,26 @@ test("実モデルのまばたき・口パク・呼吸が動き、動作抑制�
     for (let step = 1; step <= 220; step++) {
       visitor.animate(step / 20, false);
       names.forEach((name, i) => {
-        for (const { mesh, index } of bindings[i]) maxima[name] = Math.max(maxima[name], mesh.morphTargetInfluences![index]);
+        for (const { mesh, index } of bindings[i]) {
+          const value = mesh.morphTargetInfluences![index];
+          maxima[name] = Math.max(maxima[name], value);
+          if (name === "skirt") skirtMinimum = Math.min(skirtMinimum, value);
+        }
       });
     }
     visitor.animate(11.05, true);
     const stopped = bindings.map((group) => group.map(({ mesh, index }) => mesh.morphTargetInfluences![index]));
     visitor.animate(12, true);
     const still = bindings.map((group) => group.map(({ mesh, index }) => mesh.morphTargetInfluences![index]));
-    return { counts: bindings.map((group) => group.length), maxima, maxDelta, stopped, still };
+    return { counts: bindings.map((group) => group.length), maxima, maxDelta, skirtMinimum, stopped, still };
   });
   expect(result.counts.every((count) => count > 0)).toBe(true);
   expect(result.maxima.mouth).toBeGreaterThan(0.5);
   expect(result.maxima.breath).toBeGreaterThan(0.9);
   expect(result.maxima.blink).toBeGreaterThan(0.8);
-  for (const name of ["mouth", "breath", "blink"] as const) expect(result.maxDelta[name]).toBeGreaterThan(0.00001);
+  expect(result.maxima.skirt).toBeGreaterThan(0.7);
+  expect(result.skirtMinimum).toBeLessThan(-0.7);
+  for (const name of ["mouth", "breath", "blink", "skirt"] as const) expect(result.maxDelta[name]).toBeGreaterThan(0.00001);
   expect(result.stopped.flat().every((value) => value === 0)).toBe(true);
   expect(result.still).toEqual(result.stopped);
 });

@@ -6,7 +6,7 @@
 
 | 項目 | 原本 | 部屋用 |
 |---|---:|---:|
-| ファイル容量 | 50,760,220 bytes | 9,083,308 bytes |
+| ファイル容量 | 50,760,220 bytes | 9,129,992 bytes |
 | 三角形数 | 1,413,320 | 218,170 |
 | 色テクスチャ | 4096×4096 JPEG | 同じJPEGを維持し、修復箇所に別テクスチャを追加 |
 | 表面の凹凸 | 4096×4096 PNG | 2048×2048、可逆WebP |
@@ -14,7 +14,7 @@
 
 配信用ファイルは `src/assets/room/visitor.glb`。`?url` importでViteのハッシュ付きアセットとなり、GitHub Pagesの `/website/` 配下でも同じサイトから取得する。Meshopt圧縮のデコーダーは既存のThree.jsに同梱されたものを使い、新たな実行時依存は追加しない。
 
-原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `d22c1581f0c6d9f38c51121728ae05d530b5fa44da9153271133561421ce9713`。
+原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `4c6d45fd34fdbece88df193da5047e8f6ba09a90cac2589da282fe46e7345fa2`。
 
 以下はリポジトリのルートで、原本を別の作業ディレクトリに保存して実行する再生成手順。glTF Transform CLIを4.5.1へ固定し、途中ファイルはリポジトリに入れない。通常のサイトビルドでは再生成しない。
 
@@ -29,7 +29,7 @@ npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-rig.glb /tmp/visitor-textu
 npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets/room/visitor.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
 ```
 
-鞄の修復差分は `scripts/assets/visitor-bag-repair.zip` に保存している。適用スクリプトはPython 3とNumPyを使い、軽量化・画像縮小後の入力GLBのSHA-256を照合する。元の頂点の局所修正、不要な面の除去、服・袖・肩ひもの端の補修面と素材を適用する。通常のサイトビルドでは実行しない。差分を適用した未圧縮GLBはリグ生成の入力に使う。`visitor-rig.py` は Blender 4.3.2 と付属NumPy、隣接する `visitor-rig-mask.npz` を使用し、入力SHA-256を照合する。同じ環境で再生成したリグ付きGLBのSHA-256一致を確認済み。Blenderの入出力で三角形が19面減る。頭のスキンウェイトは口と顎を頭に追従させ、首元で胴体へ滑らかにつないでいる。隣接する `visitor-face-morphs.py`・`visitor-breath-morph.py`・`visitor-blink-morph.py` が、口・胸・目元の形状キーを追加する。
+鞄の修復差分は `scripts/assets/visitor-bag-repair.zip` に保存している。適用スクリプトはPython 3とNumPyを使い、軽量化・画像縮小後の入力GLBのSHA-256を照合する。元の頂点の局所修正、不要な面の除去、服・袖・肩ひもの端の補修面と素材を適用する。通常のサイトビルドでは実行しない。差分を適用した未圧縮GLBはリグ生成の入力に使う。`visitor-rig.py` は Blender 4.3.2 と付属NumPy、隣接する `visitor-rig-mask.npz` を使用し、入力SHA-256を照合する。同じ環境で再生成したリグ付きGLBのSHA-256一致を確認済み。Blenderの入出力で三角形が19面減る。頭のスキンウェイトは口と顎を頭に追従させ、首元で胴体へ滑らかにつないでいる。隣接する `visitor-face-morphs.py`・`visitor-breath-morph.py`・`visitor-blink-morph.py`・`visitor-skirt-morph.py` が、口・胸・目元・スカートの形状キーを追加する。
 
 閉眼の参照画像は、所有者提供の閉眼画像（SHA-256 `4004da2a1d7a2555358fceb1e182ad4f672cc7de1e3cc76f732d7c2a193b94de`）から作成する。Python 3 と Pillow を使い、原本を上書きせずに再生成する。
 
@@ -71,9 +71,9 @@ python3 scripts/assets/visitor-blink-reference.py /path/to/closed-reference.jpg 
 
 ## 実装と更新
 
-- `src/room/art/visitorModel.ts`：GLBの非同期読み込み、待機中の旧モデル非表示と失敗時の代替表示、身長・接地・向きの補正、待機・口・呼吸・まばたきの形状キーの再生、視界内の主人公に頭を控えめに向ける追従。AnimationMixerの姿勢に頭の回転を合成し、動きを減らす設定では元の姿勢で停止する。`group`・読み込み前から使える `bounds`・`ready`・`animate()`・`dispose()` を返す。退室時にfetchを中止し、画像デコード中に退室しても遅れて完成したGPU資源とImageBitmapを解放する。
+- `src/room/art/visitorModel.ts`：GLBの非同期読み込み、待機中の旧モデル非表示と失敗時の代替表示、身長・接地・向きの補正、待機・口・呼吸・まばたき・スカートの形状キーの再生、視界内の主人公に頭を控えめに向ける追従。AnimationMixerの姿勢に頭の回転を合成し、動きを減らす設定では元の姿勢で停止する。`group`・読み込み前から使える `bounds`・`ready`・`animate()`・`dispose()` を返す。退室時にfetchを中止し、画像デコード中に退室しても遅れて完成したGPU資源とImageBitmapを解放する。
 - `src/room/art/visitorBlink.ts`：閉眼の参照画像を目元に投影し、視線に応じた法線を使用する。読み込み失敗時は開眼を維持し、破棄時にはテクスチャとマテリアルの設定を解放・復元する。
-- GLB待機中の全身の揺れは足元を中心に左右と前後へごく小さく傾け、周期の異なる動きを重ねる。上下には移動させず、既存の呼吸の形状キーと頭の待機動作を併用する。腰や脚を独立させる骨はないため、揺れは靴底のずれが小さい範囲に抑えている。「動きを減らす」では正面姿勢へ戻し、解除後は小さい動きから再開する。
+- GLB待機中の全身の揺れは足元を中心に左右と前後へごく小さく傾け、周期の異なる動きを重ねる。上下には移動させず、既存の呼吸の形状キーと頭の待機動作を併用する。腰や脚を独立させる骨はないため、揺れは靴底のずれが小さい範囲に抑えている。スカートは脚や鞄を避けて裾の形状キーを動かし、体の傾きより少し遅れてゆっくり左右に揺れる。「動きを減らす」では正面姿勢へ戻し、解除後は小さい動きから再開する。
 - `src/room/art/visitor.ts`：従来モデルの組み立てと待機アニメーション。`createVisitor()` が `group`・`animate(time, reducedMotion)`・`dispose()` を返す。GLBの準備ができた時点で解放する。モデルの正面はローカル+Z。
 - `src/room/art/visitorArt.ts`：形状・素材・コード生成テクスチャの共有生成処理と所有リソースの登録。
 - `src/room/art/visitorHead.ts`：顔の曲面、目の絵付け、笑顔、頭頂・前髪・重なるボブ。頭部だけを `visitor-head` にまとめ、横幅を元の頭部の0.875倍へ調整。目・鼻・口は共通の曲面に沿わせ、鼻先と口元の起伏、浅い口のくぼみも顔本体へ連続させる。前髪と後ろ髪は閉じた扁平断面で、根元の法線を頭頂へなじませる。後ろ髪の長さ・幅・曲がり・重なりを変え、襟足には下層の束を置く。殻の頂点色素材と、色属性のない内側の球に使う素材は分ける。

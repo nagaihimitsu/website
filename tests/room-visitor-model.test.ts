@@ -179,7 +179,7 @@ describe("provided visitor GLB", () => {
     });
     const vertexCount = asset.geometry.attributes.position.count;
     asset.geometry.morphTargetsRelative = true;
-    asset.geometry.morphAttributes.position = ["Mouth", "breath", "Blink"].map((name) => {
+    asset.geometry.morphAttributes.position = ["Mouth", "breath", "Blink", "Skirt"].map((name) => {
       const attribute = new THREE.Float32BufferAttribute(new Float32Array(vertexCount * 3), 3);
       attribute.name = name;
       return attribute;
@@ -197,7 +197,8 @@ describe("provided visitor GLB", () => {
     asset.material.onBeforeCompile(shader as unknown as Parameters<typeof asset.material.onBeforeCompile>[0], {} as THREE.WebGLRenderer);
     expect(shader.uniforms.visitorBlinkImage.value).toBe(blinkTexture);
     expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
-    const maxima = [0, 0, 0];
+    const maxima = [0, 0, 0, 0];
+    let skirtMinimum = 0;
     const blinkSamples = new Map<number, number>();
     visitor.animate(0, false);
     for (let step = 1; step <= 220; step++) {
@@ -207,31 +208,35 @@ describe("provided visitor GLB", () => {
       expect(shader.uniforms.visitorBlinkPhase.value).toBe(values[2]);
       if ([40, 52, 80, 144, 180].includes(step)) blinkSamples.set(step, values[2]);
       values.forEach((value, i) => {
-        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeGreaterThanOrEqual(i === 3 ? -1 : 0);
         expect(value).toBeLessThanOrEqual(1);
         maxima[i] = Math.max(maxima[i], value);
+        if (i === 3) skirtMinimum = Math.min(skirtMinimum, value);
       });
     }
     expect(maxima[0]).toBeGreaterThan(0.5);
     expect(maxima[1]).toBeGreaterThan(0.9);
     expect(maxima[2]).toBeGreaterThan(0.8);
+    expect(maxima[3]).toBeGreaterThan(0.7);
+    expect(skirtMinimum).toBeLessThan(-0.7);
     expect(blinkSamples.get(40)).toBe(0);
     expect(blinkSamples.get(52)).toBeGreaterThan(0.8);
     expect(blinkSamples.get(80)).toBe(0);
     expect(blinkSamples.get(144)).toBeGreaterThan(0.8);
     expect(blinkSamples.get(180)).toBe(0);
     visitor.animate(11.05, true);
-    expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0]);
-    expect(meshes[1].morphTargetInfluences).toEqual([0, 0, 0]);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0, 0]);
+    expect(meshes[1].morphTargetInfluences).toEqual([0, 0, 0, 0]);
     expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
     const notifications = onVisualChange.mock.calls.length;
     visitor.animate(11.1, true);
-    expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0]);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0, 0]);
     expect(onVisualChange).toHaveBeenCalledTimes(notifications);
     visitor.animate(11.15, false);
     expect(meshes[0].morphTargetInfluences![0]).toBe(0);
     expect(meshes[0].morphTargetInfluences![1]).toBeLessThan(0.01);
     expect(meshes[0].morphTargetInfluences![2]).toBe(0);
+    expect(Math.abs(meshes[0].morphTargetInfluences![3])).toBeLessThan(0.01);
     visitor.dispose(); visitor.dispose();
     expect(blinkDispose).toHaveBeenCalledTimes(1);
     expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);

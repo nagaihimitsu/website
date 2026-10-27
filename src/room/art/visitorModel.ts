@@ -92,7 +92,7 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let headPitch = 0;
   let expressionTime = 0;
   let swayTime = 0;
-  const expressions: { mesh: THREE.Mesh; blink?: number; mouth?: number; breath?: number }[] = [];
+  const expressions: { mesh: THREE.Mesh; blink?: number; mouth?: number; breath?: number; skirt?: number }[] = [];
   let blinkEffect: ReturnType<typeof createVisitorBlink>;
   const localTarget = new THREE.Vector3();
   const headTurn = new THREE.Quaternion();
@@ -138,9 +138,9 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           // GLBは複数のプリミティブに分かれるため、モーフは各メッシュへ適用する。
           const names = Object.entries(object.morphTargetDictionary ?? {});
           const find = (name: string) => names.find(([key]) => key.toLowerCase() === name)?.[1];
-          const blink = find("blink"), mouth = find("mouth"), breath = find("breath");
-          if (blink !== undefined || mouth !== undefined || breath !== undefined)
-            expressions.push({ mesh: object, blink, mouth, breath });
+          const blink = find("blink"), mouth = find("mouth"), breath = find("breath"), skirt = find("skirt");
+          if (blink !== undefined || mouth !== undefined || breath !== undefined || skirt !== undefined)
+            expressions.push({ mesh: object, blink, mouth, breath, skirt });
         }
       });
       // 最大のスキンメッシュが顔本体。他の補修部分は元の素材を保つ。
@@ -257,12 +257,16 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           * (1 - THREE.MathUtils.smoothstep(mouthCycle, 4.1, 4.4));
         const mouth = reducedMotion ? 0 : mouthWindow * 0.8
           * (1 - Math.cos((mouthCycle - 1.8) * Math.PI * 3.4)) * 0.5;
+        // 布は体の傾きから少し遅れて左右へ揺れ、開始時は元の形から徐々に動く。
+        const skirt = reducedMotion ? 0 : Math.sin((expressionTime - 0.7) * 0.7) * 0.8
+          * THREE.MathUtils.smoothstep(expressionTime, 0, 1.2);
         for (const expression of expressions) {
           const influences = expression.mesh.morphTargetInfluences;
           if (!influences) continue;
           if (expression.blink !== undefined) influences[expression.blink] = blinkReady ? blink : 0;
           if (expression.mouth !== undefined) influences[expression.mouth] = mouth;
           if (expression.breath !== undefined) influences[expression.breath] = breath;
+          if (expression.skirt !== undefined) influences[expression.skirt] = skirt;
         }
       }
       // 足元を軸に、異なる緩やかな周期を重ねる。上下移動は足が浮くため加えない。

@@ -55,10 +55,11 @@ for name,values in weights.items():
  for i,w in enumerate(values):
   if w>.0001:group.add([i],float(w),'REPLACE')
 mod=mesh.modifiers.new('Visitor skin','ARMATURE');mod.object=rig;mesh.parent=rig
-# 小さな口の開閉・胴体の呼吸・閉眼時の目元を形状キーとして追加する。
+# 小さな口の開閉・胴体の呼吸・閉眼時の目元・裾の揺れを形状キーとして追加する。
 runpy.run_path(str(Path(__file__).with_name('visitor-face-morphs.py')))['add_face_morphs'](mesh)
 runpy.run_path(str(Path(__file__).with_name('visitor-breath-morph.py')))['add_breath_morph'](mesh)
 runpy.run_path(str(Path(__file__).with_name('visitor-blink-morph.py')))['add_blink_morph'](mesh)
+runpy.run_path(str(Path(__file__).with_name('visitor-skirt-morph.py')))['add_skirt_morph'](mesh)
 rig.animation_data_create()
 for pb in rig.pose.bones:pb.rotation_mode='QUATERNION'
 def world_quat(name,axis,angle):
