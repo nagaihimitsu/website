@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { createDisposalScope, withDisposalScope, type DisposalScope } from "../disposal";
 import { createVisitor } from "./visitor";
+import { createVisitorBlink } from "./visitorBlink";
 import modelUrl from "../../assets/room/visitor.glb?url";
 
 const MODEL_HEIGHT = 1.2765;
@@ -15,6 +16,9 @@ const VIEW_OUTER_ANGLE = THREE.MathUtils.degToRad(75);
 // 正規化後の目のおおよその高さ。視線対象はワールド座標で受け取る。
 const HEAD_EYE_Y = 1.045;
 const HEAD_TURN_SPEED = 2.8;
+const BLINK_PERIOD = 11;
+const BREATH_PERIOD = 4.2;
+const MOUTH_PERIOD = 9.6;
 // +Z正面・既存の身長へ正規化し、量子化分の余裕を含む境界。
 const MODEL_BOUNDS = new THREE.Box3(
   new THREE.Vector3(-0.291, 0, -0.209),
@@ -86,6 +90,9 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let head: THREE.Bone | undefined;
   let headYaw = 0;
   let headPitch = 0;
+  let expressionTime = 0;
+  const expressions: { mesh: THREE.Mesh; blink?: number; mouth?: number; breath?: number }[] = [];
+  let blinkEffect: ReturnType<typeof createVisitorBlink>;
   const localTarget = new THREE.Vector3();
   const headTurn = new THREE.Quaternion();
   const previousHeadTurn = new THREE.Quaternion();
@@ -127,8 +134,22 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
         if (object instanceof THREE.Mesh) {
           object.castShadow = true;
           object.receiveShadow = true;
+          // GLBは複数のプリミティブに分かれるため、モーフは各メッシュへ適用する。
+          const names = Object.entries(object.morphTargetDictionary ?? {});
+          const find = (name: string) => names.find(([key]) => key.toLowerCase() === name)?.[1];
+          const blink = find("blink"), mouth = find("mouth"), breath = find("breath");
+          if (blink !== undefined || mouth !== undefined || breath !== undefined)
+            expressions.push({ mesh: object, blink, mouth, breath });
         }
       });
+      // 最大のスキンメッシュが顔本体。他の補修部分は元の素材を保つ。
+      const face = expressions.filter((entry) => entry.blink !== undefined)
+        .map((entry) => entry.mesh)
+        .sort((a, b) => b.geometry.attributes.position.count - a.geometry.attributes.position.count)[0];
+      if (face) {
+        blinkEffect = createVisitorBlink(face, onVisualChange);
+        if (blinkEffect) scope.own(blinkEffect);
+      }
       const headObject = gltf.scene.getObjectByName("head");
       head = headObject instanceof THREE.Bone ? headObject : undefined;
       // 待機のみ再生し、旧版GLBにも対応する。手振りクリップは再生しない。
@@ -215,12 +236,40 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
         head.quaternion.multiply(headTurn);
         previousHeadTurn.copy(headTurn);
       }
+      if (expressions.length) {
+        // タブ復帰直後の長い時間差を吸収し、抑制解除時は基本表情から再開する。
+        expressionTime = reducedMotion ? 0 : expressionTime + Math.min(delta, 0.1);
+        const breath = reducedMotion ? 0 : (1 - Math.cos(expressionTime * Math.PI * 2 / BREATH_PERIOD)) * 0.5;
+        const cycle = expressionTime % BLINK_PERIOD;
+        const blinkPulse = (start: number) => {
+          const t = cycle - start;
+          if (t < 0 || t >= 0.26) return 0;
+          return t < 0.09 ? THREE.MathUtils.smoothstep(t, 0, 0.09)
+            : 1 - THREE.MathUtils.smoothstep(t, 0.11, 0.26);
+        };
+        const blink = reducedMotion ? 0 : Math.max(blinkPulse(2.5), blinkPulse(7.1));
+        // 画像を取得できない場合、眼球を変形させず開眼を維持する。
+        const blinkReady = blinkEffect?.setPhase(blink) ?? false;
+        // 短い発話風の口パクの後に長めの間を設け、元の笑顔に戻す。
+        const mouthCycle = expressionTime % MOUTH_PERIOD;
+        const mouthWindow = THREE.MathUtils.smoothstep(mouthCycle, 1.8, 2.1)
+          * (1 - THREE.MathUtils.smoothstep(mouthCycle, 4.1, 4.4));
+        const mouth = reducedMotion ? 0 : mouthWindow * 0.8
+          * (1 - Math.cos((mouthCycle - 1.8) * Math.PI * 3.4)) * 0.5;
+        for (const expression of expressions) {
+          const influences = expression.mesh.morphTargetInfluences;
+          if (!influences) continue;
+          if (expression.blink !== undefined) influences[expression.blink] = blinkReady ? blink : 0;
+          if (expression.mouth !== undefined) influences[expression.mouth] = mouth;
+          if (expression.breath !== undefined) influences[expression.breath] = breath;
+        }
+      }
       // 旧版GLBも含め、待機中はモデル全体をわずかに揺らす。
       const still = reducedMotion ? 0 : 1;
       body.position.y = Math.sin(time * 1.65) * 0.0014 * still;
       body.rotation.z = Math.sin(time * 0.7) * 0.003 * still;
       // 動作抑制中は静止した影を繰り返し描き直さない。
-      if ((mixer || head) && (!reducedMotion || !previouslyReduced)) onVisualChange?.();
+      if ((mixer || head || expressions.length) && (!reducedMotion || !previouslyReduced)) onVisualChange?.();
       previouslyReduced = reducedMotion;
     },
     dispose: scope.dispose,

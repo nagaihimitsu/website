@@ -1,6 +1,85 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
+test("実モデルのまばたき・口パク・呼吸が動き、動作抑制で元に戻る", { tag: "@npc" }, async ({ page }) => {
+  await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    const meshes: import("three").Mesh[] = [];
+    visitor.group.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.morphTargetDictionary && object.morphTargetInfluences) meshes.push(object);
+    });
+    const names = ["mouth", "breath", "blink"] as const;
+    const maxima = Object.fromEntries(names.map((name) => [name, 0]));
+    const maxDelta = Object.fromEntries(names.map((name) => [name, 0]));
+    const bindings = names.map((name) => meshes.flatMap((mesh) => {
+      const entry = Object.entries(mesh.morphTargetDictionary!).find(([key]) => key.toLowerCase() === name);
+      if (!entry) return [];
+      const morph = mesh.geometry.morphAttributes.position?.[entry[1]];
+      if (morph) for (let i = 0; i < morph.count; i++) {
+        maxDelta[name] = Math.max(maxDelta[name], Math.hypot(morph.getX(i), morph.getY(i), morph.getZ(i)));
+      }
+      return [{ mesh, index: entry[1] }];
+    }));
+    visitor.animate(0, false);
+    for (let step = 1; step <= 220; step++) {
+      visitor.animate(step / 20, false);
+      names.forEach((name, i) => {
+        for (const { mesh, index } of bindings[i]) maxima[name] = Math.max(maxima[name], mesh.morphTargetInfluences![index]);
+      });
+    }
+    visitor.animate(11.05, true);
+    const stopped = bindings.map((group) => group.map(({ mesh, index }) => mesh.morphTargetInfluences![index]));
+    visitor.animate(12, true);
+    const still = bindings.map((group) => group.map(({ mesh, index }) => mesh.morphTargetInfluences![index]));
+    return { counts: bindings.map((group) => group.length), maxima, maxDelta, stopped, still };
+  });
+  expect(result.counts.every((count) => count > 0)).toBe(true);
+  expect(result.maxima.mouth).toBeGreaterThan(0.5);
+  expect(result.maxima.breath).toBeGreaterThan(0.9);
+  expect(result.maxima.blink).toBeGreaterThan(0.8);
+  for (const name of ["mouth", "breath", "blink"] as const) expect(result.maxDelta[name]).toBeGreaterThan(0.00001);
+  expect(result.stopped.flat().every((value) => value === 0)).toBe(true);
+  expect(result.still).toEqual(result.stopped);
+});
+
+test("まばたき画像の取得に失敗してもモデルを表示し、目を開いたままにする", { tag: "@npc" }, async ({ page }) => {
+  let markAborted!: () => void;
+  const aborted = new Promise<void>((resolve) => { markAborted = resolve; });
+  // Viteの?importモジュールは通し、画像としての取得のみを失敗させる。
+  await page.route("**/visitor-blink-reference.png**", (route) => {
+    if (route.request().resourceType() !== "image") return route.continue();
+    markAborted();
+    return route.abort();
+  });
+  const errors = collectPageErrors(page);
+  await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  await aborted;
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    let maximum = 0;
+    visitor.animate(0, false);
+    for (let i = 1; i <= 400; i++) {
+      visitor.animate(i / 100, false);
+      visitor.group.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const index = Object.entries(object.morphTargetDictionary ?? {}).find(([name]) => name.toLowerCase() === "blink")?.[1];
+        if (index !== undefined && object.morphTargetInfluences) maximum = Math.max(maximum, object.morphTargetInfluences[index]);
+      });
+    }
+    return { status: visitor.group.userData.modelStatus, maximum };
+  });
+  expect(result.status).toBe("ready");
+  expect(result.maximum).toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test("視線追従中も口と顎の頂点が頭と一緒に動く", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
@@ -26,13 +105,26 @@ test("視線追従中も口と顎の頂点が頭と一緒に動く", { tag: "@np
     if (indices.length < 100) throw new Error("口・顎の頂点範囲を検出できません");
     const vertex = new THREE.Vector3();
     const headInverse = new THREE.Matrix4();
-    const relativeVertices = () => {
+    const relativeVertices = (blink = 0) => {
+      // 口パクなどの表情を両時点で同じにし、頭の回転だけによる追従を比較する。
+      visitor.group.traverse((object) => {
+        if (object instanceof THREE.Mesh && object.morphTargetInfluences) {
+          object.morphTargetInfluences.fill(0);
+          const blinkIndex = Object.entries(object.morphTargetDictionary ?? {})
+            .find(([key]) => key.toLowerCase() === "blink")?.[1];
+          if (blinkIndex !== undefined) object.morphTargetInfluences[blinkIndex] = blink;
+        }
+      });
       visitor.group.updateMatrixWorld(true);
       headInverse.copy(head.matrixWorld).invert();
       return indices.map((index) => face.getVertexPosition(index, vertex).applyMatrix4(face.matrixWorld).applyMatrix4(headInverse).clone());
     };
     visitor.animate(0, true);
     const rest = relativeVertices();
+    // 目を閉じても、前回修正した口・顎の形と位置を変えない。
+    const closedMouth = relativeVertices(1);
+    let blinkMouthDrift = 0;
+    for (let i = 0; i < rest.length; i++) blinkMouthDrift = Math.max(blinkMouthDrift, rest[i].distanceTo(closedMouth[i]));
     const headRest = head.quaternion.clone();
     let time = 0;
     let greatestDrift = 0;
@@ -44,11 +136,14 @@ test("視線追従中も口と顎の頂点が頭と一緒に動く", { tag: "@np
       const posed = relativeVertices();
       for (let i = 0; i < rest.length; i++) greatestDrift = Math.max(greatestDrift, rest[i].distanceTo(posed[i]));
     }
-    return { count: indices.length, greatestDrift, greatestTurn };
+    return { count: indices.length, greatestDrift, greatestTurn, blinkMouthDrift };
   });
   expect(result.count).toBeGreaterThan(100);
   expect(result.greatestTurn).toBeGreaterThan(0.1);
   expect(result.greatestDrift).toBeLessThan(0.00001);
+  // 保守的に選んだ口周辺504頂点のうち、実際の口の横外側の1点のみが
+  // 量子化したInt16の2刻み分動く（頭座標で約0.0000305）。
+  expect(result.blinkMouthDrift).toBeLessThan(0.00004);
 });
 
 test("実モデルは体を回さず正面の主人公へ控えめに顔を向ける", { tag: "@npc" }, async ({ page }) => {

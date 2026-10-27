@@ -163,6 +163,109 @@ describe("provided visitor GLB", () => {
     expect(uncache).toHaveBeenCalledWith(asset.scene);
   });
 
+  it("animates expression morphs across meshes and resets them for reduced motion", async () => {
+    const asset = model();
+    const blinkTexture = new THREE.Texture<HTMLImageElement>();
+    const blinkDispose = vi.spyOn(blinkTexture, "dispose");
+    vi.spyOn(THREE.TextureLoader.prototype, "load").mockImplementation((_url, onLoad) => {
+      queueMicrotask(() => onLoad?.(blinkTexture));
+      return blinkTexture;
+    });
+    const vertexCount = asset.geometry.attributes.position.count;
+    asset.geometry.morphTargetsRelative = true;
+    asset.geometry.morphAttributes.position = ["Mouth", "breath", "Blink"].map((name) => {
+      const attribute = new THREE.Float32BufferAttribute(new Float32Array(vertexCount * 3), 3);
+      attribute.name = name;
+      return attribute;
+    });
+    const meshes = asset.scene.children.filter((object): object is THREE.Mesh => object instanceof THREE.Mesh);
+    meshes.forEach((mesh) => mesh.updateMorphTargets());
+    parse.mockResolvedValue({ ...asset, animations: [] });
+    const onVisualChange = vi.fn();
+    const visitor = create(onVisualChange); await visitor.ready;
+    const shader = {
+      uniforms: {} as Record<string, { value: unknown }>,
+      vertexShader: "#include <begin_vertex>\n#include <skinnormal_vertex>",
+      fragmentShader: "#include <map_fragment>\n#include <normal_fragment_maps>\n#include <roughnessmap_fragment>",
+    };
+    asset.material.onBeforeCompile(shader as unknown as Parameters<typeof asset.material.onBeforeCompile>[0], {} as THREE.WebGLRenderer);
+    expect(shader.uniforms.visitorBlinkImage.value).toBe(blinkTexture);
+    expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
+    const maxima = [0, 0, 0];
+    const blinkSamples = new Map<number, number>();
+    visitor.animate(0, false);
+    for (let step = 1; step <= 220; step++) {
+      visitor.animate(step / 20, false);
+      const values = meshes[0].morphTargetInfluences!;
+      expect(meshes[1].morphTargetInfluences).toEqual(values);
+      expect(shader.uniforms.visitorBlinkPhase.value).toBe(values[2]);
+      if ([40, 52, 80, 144, 180].includes(step)) blinkSamples.set(step, values[2]);
+      values.forEach((value, i) => {
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThanOrEqual(1);
+        maxima[i] = Math.max(maxima[i], value);
+      });
+    }
+    expect(maxima[0]).toBeGreaterThan(0.5);
+    expect(maxima[1]).toBeGreaterThan(0.9);
+    expect(maxima[2]).toBeGreaterThan(0.8);
+    expect(blinkSamples.get(40)).toBe(0);
+    expect(blinkSamples.get(52)).toBeGreaterThan(0.8);
+    expect(blinkSamples.get(80)).toBe(0);
+    expect(blinkSamples.get(144)).toBeGreaterThan(0.8);
+    expect(blinkSamples.get(180)).toBe(0);
+    visitor.animate(11.05, true);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0]);
+    expect(meshes[1].morphTargetInfluences).toEqual([0, 0, 0]);
+    expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
+    const notifications = onVisualChange.mock.calls.length;
+    visitor.animate(11.1, true);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0]);
+    expect(onVisualChange).toHaveBeenCalledTimes(notifications);
+    visitor.animate(11.15, false);
+    expect(meshes[0].morphTargetInfluences![0]).toBe(0);
+    expect(meshes[0].morphTargetInfluences![1]).toBeLessThan(0.01);
+    expect(meshes[0].morphTargetInfluences![2]).toBe(0);
+    visitor.dispose(); visitor.dispose();
+    expect(blinkDispose).toHaveBeenCalledTimes(1);
+    expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
+  });
+
+  it("keeps the eyes open while the blink image is pending and ignores a late image after disposal", async () => {
+    const asset = model();
+    const count = asset.geometry.attributes.position.count;
+    asset.geometry.morphTargetsRelative = true;
+    const blink = new THREE.Float32BufferAttribute(new Float32Array(count * 3), 3); blink.name = "blink";
+    asset.geometry.morphAttributes.position = [blink];
+    const meshes = asset.scene.children.filter((object): object is THREE.Mesh => object instanceof THREE.Mesh);
+    meshes.forEach((mesh) => mesh.updateMorphTargets());
+    const image = new THREE.Texture<HTMLImageElement>();
+    const imageDispose = vi.spyOn(image, "dispose");
+    let finish: ((texture: THREE.Texture<HTMLImageElement>) => void) | undefined;
+    let fail: ((event: unknown) => void) | undefined;
+    vi.spyOn(THREE.TextureLoader.prototype, "load").mockImplementation((_url, onLoad, _progress, onError) => {
+      finish = onLoad;
+      fail = onError;
+      return image;
+    });
+    parse.mockResolvedValue({ ...asset, animations: [] });
+    const visualChange = vi.fn();
+    const visitor = create(visualChange); await visitor.ready;
+    for (let i = 0; i <= 60; i++) visitor.animate(i / 20, false);
+    expect(meshes[0].morphTargetInfluences![0]).toBe(0);
+    expect(meshes[1].morphTargetInfluences![0]).toBe(0);
+    fail?.(new Error("image unavailable"));
+    expect(visitor.group.userData.modelStatus).toBe("ready");
+    for (let i = 61; i <= 145; i++) visitor.animate(i / 20, false);
+    expect(meshes[0].morphTargetInfluences![0]).toBe(0);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("blink image"));
+    visitor.dispose();
+    const countBeforeLateLoad = visualChange.mock.calls.length;
+    finish?.(image);
+    expect(imageDispose).toHaveBeenCalledTimes(1);
+    expect(visualChange).toHaveBeenCalledTimes(countBeforeLateLoad);
+  });
+
   it("smoothly looks toward the player within a limited angle while preserving idle and reduced-motion poses", async () => {
     const asset = model();
     const head = new THREE.Bone(); head.name = "head"; head.position.y = 0.8; asset.scene.add(head);
