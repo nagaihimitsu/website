@@ -848,3 +848,5 @@ Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が
 最初の候補は縮小時に髪・服に黒い継ぎ目が出た。UV島外の黒色がミップマップへ混ざるため、4096pxの三角形近似マスクで島内7,054,563画素を維持し、外側を近傍色で拡張した。パディング後、800px背面髪領域の旧モデルとの平均絶対RGB差は0.472→0.142/255となった（この視点・範囲に限る）。正面・斜め・背面の全身と顔の開閉・まばたきの13姿勢を実Three.jsで比較し、暗い継ぎ目が大きく軽減し表情も概ね維持された。衣服に微細な点は残る。HTTPエラーとページ例外はなかった。[実表示の前後](screenshots/visitor-uv-web-comparison.png) ／ [継ぎ目](screenshots/visitor-uv-seams-comparison.png) ／ [部屋に近い縮尺](screenshots/visitor-uv-room-scale.png)。
 
 元BlendとUV配置のSHAを照合して4K PNGと未圧縮GLBを再生成し、島外の色拡張・画像交換・可逆WebP・Meshoptを独立実行して、配信用GLBのSHA-256 `b888d4891b7193ea4b9974413dfc09d93ffcff1a5842d2671f6e1c5eab9f15e7` と一致した。各スクリプトは入力と同じ出力先を拒否する。UV編集用Blendの旧UV・形状・骨格・ウェイト・形状キー・アニメーションは変更前と一致。UVの範囲外と退化面は0だが、1024px近似では202/436,487画素の重なりがあり、顔前面の一部には局所的な伸縮が残る。編集元Blendはリポジトリに含めず、作業環境に別保存している。現時点ではGitHubへのpush・公開は行っていない。
+
+公開結果：ユーザーの指示により、UV整理版NPCを含むソース `dd9f46e60b65f71c1d22483651b05e1f8bb71dad` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40596763855) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定によりCIで自動テストは実行していない。作業環境から公開URLへ直接接続できず、公開サイトの外部表示は確認できていない。
