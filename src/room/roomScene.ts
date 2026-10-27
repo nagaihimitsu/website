@@ -1016,6 +1016,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope, onVisualChange?:
   // 提供GLBの女の子も、主人公・小鳥と同じ実体のある立体キャラクター。
   // 保存位置の検証・小鳥の生成より前に登録し、両者が自然に避けるようにする。
   const visitor = scope.own(createVisitorModel(onVisualChange));
+  const visitorTarget = new THREE.Vector3();
   visitor.group.name = "room-visitor";
   visitor.group.scale.setScalar(4 / 3);
   // 拡大した裾と机の間にも、歩いて回り込める間隔を残す。
@@ -1025,8 +1026,12 @@ function buildRoomScene(archive: Archive, scope: DisposalScope, onVisualChange?:
   visitor.group.updateWorldMatrix(true, true);
   // 髪・裾・バッグまで含め、待機中のわずかな揺れにも余裕を持たせる。
   // GLB待機中と読込後で衝突体が変わらないよう、両方を含む境界を使う。
-  const visitorBounds = visitor.bounds.clone().applyMatrix4(visitor.group.matrixWorld)
-    .expandByScalar(0.018 * visitor.group.scale.x);
+  // 回転時も同じ衝突体を使う。平面の半径はグループの向きによらない。
+  const visitorRadius = visitor.bounds.max.x * visitor.group.scale.x;
+  const visitorBounds = new THREE.Box3(
+    new THREE.Vector3(visitor.group.position.x - visitorRadius, visitor.group.position.y + visitor.bounds.min.y * visitor.group.scale.y, visitor.group.position.z - visitorRadius),
+    new THREE.Vector3(visitor.group.position.x + visitorRadius, visitor.group.position.y + visitor.bounds.max.y * visitor.group.scale.y, visitor.group.position.z + visitorRadius),
+  ).expandByScalar(0.018 * visitor.group.scale.x);
   const visitorCentre = visitorBounds.getCenter(new THREE.Vector3());
   const visitorSize = visitorBounds.getSize(new THREE.Vector3());
   obstruction("room-visitor", visitorCentre.x, visitorCentre.z,
@@ -1084,7 +1089,9 @@ function buildRoomScene(archive: Archive, scope: DisposalScope, onVisualChange?:
       lastAnimationTime = time;
       doorMotion.animate(delta, reducedMotion);
       fractureSystem.animate(delta, reducedMotion);
-      visitor.animate(time, reducedMotion);
+      // 主人公の足元ではなく目のおおよその高さへ視線を向ける。
+      visitorTarget.copy(avatar.position).y += (0.914 + 0.012) * 0.98;
+      visitor.animate(time, reducedMotion, visitorTarget);
       for (const entry of portals) {
         const target = entry.object.userData.active ? 1.025 : 1;
         const scale = reducedMotion

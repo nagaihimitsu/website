@@ -706,3 +706,11 @@ Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が
 [動作プレビュー](screenshots/visitor-wave.gif) ／ [動作の一場面](screenshots/visitor-wave-frame.png) ／ [部屋での表示](screenshots/visitor-wave-room.png)。
 
 公開結果：ユーザーの指示により、NPCの待機と手振りを含むソース `86b245654fc9cc34a546d41396ddc0ec0f13c749` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40437955027) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、CIでの自動テストは実行していない。ローカル検証結果は上記に記載。
+
+### 2026-10-27 — NPCが主人公を見つめる動き
+
+部屋の主人公の目の高さを目標に、NPCの頭と体が滑らかに向きを変えるようにした。首の融合部分の変形を抑えるため、首の左右回転は約26度、上下は8度以内に制限し、横や後ろは体を足元中心に回す。待機・手振りと合成し、「動きを減らす」では正面の元姿勢に戻す。読み込み失敗時の従来モデルは従来のまま。全方向の姿勢を含む固定衝突範囲に広げ、机・椅子と重ならず、机との通路を確保している。
+
+変更前の関連単体テストは14件成功。変更後の `tests/room-visitor-model.test.ts`・`tests/room-engine-lifecycle.test.ts` は17件成功。`tests/e2e/visitor.spec.ts` は5件成功し、実GLBの8方向の追従、手振り中の変形後境界、読み込みと衝突・保存位置を確認した。部屋経由の目の高さに関する検査を追加した後、該当ブラウザテスト1件も再実行して成功。正面・左右・背面の実モデルと首元を目視し、独立確認で回転後の家具との距離を調べた。`npm run build` 成功。GitHubへのpush・公開は行っていない。
+
+[四方向の確認画像](screenshots/visitor-look-directions.png)。

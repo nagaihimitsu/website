@@ -1,6 +1,77 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
+test("実モデルが主人公の全方向を向き、手振り中も衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
+  await page.goto("/scripts/visitor-model-study.html?view=front");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    const head = visitor.group.getObjectByName("head");
+    if (!head) throw new Error("GLBに頭のボーンがありません");
+    const target = new THREE.Vector3();
+    const allowed = visitor.bounds.clone().expandByScalar(0.018);
+    const arm = visitor.group.getObjectByName("forearm");
+    if (!arm) throw new Error("GLBに前腕のボーンがありません");
+    const armRest = arm.quaternion.clone();
+    const angles: number[] = [];
+    const outside: number[] = [];
+    let time = 0;
+    for (let direction = 0; direction < 8; direction++) {
+      const angle = direction * Math.PI / 4;
+      target.set(Math.sin(angle) * 3, 1, Math.cos(angle) * 3);
+      for (let step = 0; step < 360; step++) visitor.animate(time += 1 / 60, false, target);
+      visitor.group.updateMatrixWorld(true);
+      const front = new THREE.Vector3(1, 0, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion())).setY(0).normalize();
+      angles.push(front.angleTo(target.clone().setY(0).normalize()));
+      if (!allowed.containsBox(new THREE.Box3().setFromObject(visitor.group, true))) outside.push(direction);
+    }
+    let waveAngle = 0;
+    for (let step = 1; step <= 140; step++) {
+      visitor.animate(time += 0.1, false, target);
+      waveAngle = Math.max(waveAngle, armRest.angleTo(arm.quaternion));
+      if (step % 10 !== 0) continue;
+      visitor.group.updateMatrixWorld(true);
+      if (!allowed.containsBox(new THREE.Box3().setFromObject(visitor.group, true))) outside.push(8 + step);
+    }
+    return { angles, outside, waveAngle };
+  });
+  expect(Math.max(...result.angles)).toBeLessThan(0.03);
+  expect(result.waveAngle).toBeGreaterThan(0.05);
+  expect(result.outside).toEqual([]);
+
+  // 部屋の更新経路からも、実際の主人公の位置がNPCに渡されることを確認する。
+  const roomDirection = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const scenePath = "/src/room/roomScene.ts";
+    const parserPath = "/src/data/parser.ts";
+    const THREE = await import(threePath) as typeof import("three");
+    const { createRoomScene } = await import(scenePath) as typeof import("../../src/room/roomScene");
+    const { loadArchive } = await import(parserPath) as typeof import("../../src/data/parser");
+    const room = createRoomScene(await loadArchive());
+    try {
+      const npc = room.scene.getObjectByName("room-visitor")!;
+      for (let retry = 0; npc.userData.modelStatus === "loading" && retry < 600; retry++)
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      if (npc.userData.modelStatus !== "ready") throw new Error("NPC GLBの読み込みに失敗しました");
+      const head = npc.getObjectByName("head");
+      if (!head) throw new Error("GLBに頭のボーンがありません");
+      room.avatar.position.set(npc.position.x - 2, 0, npc.position.z);
+      for (let step = 0; step <= 360; step++) room.animate(step / 60, false, false);
+      room.scene.updateMatrixWorld(true);
+      const front = new THREE.Vector3(1, 0, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion()));
+      const vertical = front.y;
+      return { angle: front.setY(0).normalize().angleTo(new THREE.Vector3(-1, 0, 0)), vertical };
+    } finally {
+      room.dispose();
+    }
+  });
+  expect(roomDirection.angle).toBeLessThan(0.03);
+  expect(roomDirection.vertical).toBeLessThan(-0.03);
+  expect(roomDirection.vertical).toBeGreaterThan(-0.2);
+});
+
 test("実モデルが手を振り、動作抑制で元の姿勢へ戻り、衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front");
   await page.waitForFunction(() => document.body.dataset.ready === "true");

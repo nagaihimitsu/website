@@ -9,6 +9,14 @@ const MODEL_HEIGHT = 1.2765;
 const FOOT_Y = 0.0015;
 const WAVE_INTERVAL = 8;
 const CROSSFADE_SECONDS = 0.25;
+// 融合した首元が伸びすぎない範囲で、主人公の方向にゆっくり顔を向ける。
+const HEAD_TURN_LIMIT = Math.PI / 7;
+const HEAD_PITCH_LIMIT = THREE.MathUtils.degToRad(8);
+// 正規化後の目のおおよその高さ。視線対象はワールド座標で受け取る。
+const HEAD_EYE_Y = 1.045;
+const HEAD_TURN_SPEED = 4;
+const BODY_TURN_SPEED = 1.4;
+const HEAD_FREE_ANGLE = 0.2;
 // +Z正面・既存の身長へ正規化し、手振り時と量子化分の余裕を含む境界。
 const MODEL_BOUNDS = new THREE.Box3(
   new THREE.Vector3(-0.291, 0, -0.209),
@@ -62,6 +70,13 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   body.add(fallback.group);
   // 非同期読込の前から、保存位置の検証と小鳥の回避に同じ境界を渡す。
   const bounds = new THREE.Box3().setFromObject(fallback.group).union(MODEL_BOUNDS);
+  // 向きを変えても不変の衝突範囲。首の回転と揺れにも余裕を設ける。
+  const radius = Math.hypot(
+    Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)),
+    Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)),
+  ) + 0.04;
+  bounds.min.x = bounds.min.z = -radius;
+  bounds.max.x = bounds.max.z = radius;
   const request = new AbortController();
   let disposed = false;
   let loaded = false;
@@ -75,6 +90,18 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let waving = false;
   let motionStopped = false;
   let previouslyReduced = false;
+  let head: THREE.Bone | undefined;
+  let headYaw = 0;
+  let headPitch = 0;
+  let bodyYaw = 0;
+  const localTarget = new THREE.Vector3();
+  const headTurn = new THREE.Quaternion();
+  const previousHeadTurn = new THREE.Quaternion();
+  const inverseHeadTurn = new THREE.Quaternion();
+  const turnAxis = new THREE.Vector3(0, 1, 0);
+  // 提供GLBは +X 正面なので、頭のローカルZ軸が俯仰の軸になる。
+  const pitchAxis = new THREE.Vector3(0, 0, 1);
+  const pitchTurn = new THREE.Quaternion();
   scope.defer(() => { group.removeFromParent(); group.clear(); });
   scope.defer(() => { disposed = true; request.abort(); });
 
@@ -110,6 +137,8 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           object.receiveShadow = true;
         }
       });
+      const headObject = gltf.scene.getObjectByName("head");
+      head = headObject instanceof THREE.Bone ? headObject : undefined;
       // 同じGLBに待機・手振りがある場合だけ再生し、旧版GLBにも対応する。
       const clips = gltf.animations ?? [];
       const idleClip = clips.find((clip) => clip.name.toLowerCase() === "idle");
@@ -140,11 +169,15 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
 
   return {
     group, bounds, ready,
-    animate(time: number, reducedMotion: boolean) {
+    animate(time: number, reducedMotion: boolean, target?: THREE.Vector3) {
       if (disposed) return;
       if (!loaded) { fallback.animate(time, reducedMotion); return; }
       const delta = previousTime === undefined ? 0 : Math.max(0, time - previousTime);
       previousTime = time;
+      // 先ほど加えた追従回転を取り除いてから、クリップの姿勢を評価する。
+      // これにより停止・再開時やクリップのないモデルでも回転が累積しない。
+      if (head) head.quaternion.multiply(inverseHeadTurn.copy(previousHeadTurn).invert());
+      previousHeadTurn.identity();
       if (mixer) {
         if (reducedMotion) {
           if (!motionStopped) {
@@ -177,12 +210,47 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           }
         }
       }
+      if (head) {
+        let targetYaw = 0;
+        let targetPitch = 0;
+        if (!reducedMotion && target) {
+          // グループの正面は +Z。主人公をNPCのローカル座標に変換する。
+          group.updateWorldMatrix(true, false);
+          localTarget.copy(target);
+          group.worldToLocal(localTarget);
+          const distance = Math.hypot(localTarget.x, localTarget.z);
+          if (distance > 0.01) {
+            targetYaw = Math.atan2(localTarget.x, localTarget.z);
+            targetPitch = THREE.MathUtils.clamp(
+              Math.atan2(localTarget.y - HEAD_EYE_Y, distance), -HEAD_PITCH_LIMIT, HEAD_PITCH_LIMIT,
+            );
+          }
+        }
+        // 首だけでは届かない方向は、体を足元中心に回して追いかける。
+        // 角度差を -π〜π に正規化し、背後で角度が切り替わっても遠回りしない。
+        const wantedBodyYaw = targetYaw - THREE.MathUtils.clamp(targetYaw, -HEAD_FREE_ANGLE, HEAD_FREE_ANGLE);
+        const bodyDifference = Math.atan2(Math.sin(wantedBodyYaw - bodyYaw), Math.cos(wantedBodyYaw - bodyYaw));
+        bodyYaw = reducedMotion ? 0 : bodyYaw + bodyDifference * (1 - Math.exp(-BODY_TURN_SPEED * Math.min(delta, 0.1)));
+        body.rotation.y = bodyYaw;
+        const difference = Math.atan2(Math.sin(targetYaw - bodyYaw), Math.cos(targetYaw - bodyYaw));
+        const wantedHeadYaw = THREE.MathUtils.clamp(difference, -HEAD_TURN_LIMIT, HEAD_TURN_LIMIT);
+        headYaw = reducedMotion ? 0 : THREE.MathUtils.lerp(
+          headYaw, wantedHeadYaw, 1 - Math.exp(-HEAD_TURN_SPEED * Math.min(delta, 0.1)),
+        );
+        headPitch = reducedMotion ? 0 : THREE.MathUtils.lerp(
+          headPitch, targetPitch, 1 - Math.exp(-HEAD_TURN_SPEED * Math.min(delta, 0.1)),
+        );
+        headTurn.setFromAxisAngle(turnAxis, headYaw)
+          .multiply(pitchTurn.setFromAxisAngle(pitchAxis, headPitch));
+        head.quaternion.multiply(headTurn);
+        previousHeadTurn.copy(headTurn);
+      }
       // 旧版GLBも含め、待機中はモデル全体をわずかに揺らす。
       const still = reducedMotion ? 0 : 1;
       body.position.y = Math.sin(time * 1.65) * 0.0014 * still;
       body.rotation.z = Math.sin(time * 0.7) * 0.003 * still;
       // 動作抑制中は静止した影を繰り返し描き直さない。
-      if (mixer && (!reducedMotion || !previouslyReduced)) onVisualChange?.();
+      if ((mixer || head) && (!reducedMotion || !previouslyReduced)) onVisualChange?.();
       previouslyReduced = reducedMotion;
     },
     dispose: scope.dispose,
