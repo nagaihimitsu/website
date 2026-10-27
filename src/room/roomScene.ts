@@ -1018,7 +1018,7 @@ function buildRoomScene(archive: Archive, scope: DisposalScope, onVisualChange?:
   const visitor = scope.own(createVisitorModel(onVisualChange));
   const visitorTarget = new THREE.Vector3();
   visitor.group.name = "room-visitor";
-  visitor.group.scale.setScalar(4 / 3);
+  visitor.group.scale.setScalar(1.4);
   // 拡大した裾と机の間にも、歩いて回り込める間隔を残す。
   visitor.group.position.set(1.85, 0.012, -0.70);
   visitor.group.rotation.y = -0.20;

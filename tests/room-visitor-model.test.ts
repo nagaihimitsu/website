@@ -119,10 +119,16 @@ describe("provided visitor GLB", () => {
     visitor.group.position.set(1.85, 0.012, -0.7); visitor.group.rotation.y = -0.2;
     const position = visitor.group.position.clone(); const rotation = visitor.group.quaternion.clone();
     const body = visitor.group.getObjectByName("visitor-model-body")!;
-    visitor.animate(1, false); expect(body.position.y).not.toBe(0);
+    visitor.animate(1, false); visitor.animate(1.1, false);
+    expect(body.position.y).toBe(0);
+    expect(body.rotation.z).not.toBe(0);
+    expect(body.rotation.x).not.toBe(0);
     expect(visitor.group.position.equals(position)).toBe(true);
     expect(visitor.group.quaternion.equals(rotation)).toBe(true);
-    visitor.animate(7, true); expect(body.position.y).toBeCloseTo(0, 8); expect(body.rotation.z).toBeCloseTo(0, 8);
+    visitor.animate(7, true); expect(body.position.y).toBeCloseTo(0, 8); expect(body.rotation.z).toBeCloseTo(0, 8); expect(body.rotation.x).toBeCloseTo(0, 8);
+    visitor.animate(30, false);
+    expect(Math.abs(body.rotation.z)).toBeLessThan(0.001);
+    expect(Math.abs(body.rotation.x)).toBeLessThan(0.001);
     visitor.dispose(); visitor.dispose(); visitor.animate(10, false);
     expect(body.position.y).toBeCloseTo(0, 8);
     releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));

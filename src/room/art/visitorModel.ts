@@ -91,6 +91,7 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let headYaw = 0;
   let headPitch = 0;
   let expressionTime = 0;
+  let swayTime = 0;
   const expressions: { mesh: THREE.Mesh; blink?: number; mouth?: number; breath?: number }[] = [];
   let blinkEffect: ReturnType<typeof createVisitorBlink>;
   const localTarget = new THREE.Vector3();
@@ -264,12 +265,14 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           if (expression.breath !== undefined) influences[expression.breath] = breath;
         }
       }
-      // 旧版GLBも含め、待機中はモデル全体をわずかに揺らす。
-      const still = reducedMotion ? 0 : 1;
-      body.position.y = Math.sin(time * 1.65) * 0.0014 * still;
-      body.rotation.z = Math.sin(time * 0.7) * 0.003 * still;
+      // 足元を軸に、異なる緩やかな周期を重ねる。上下移動は足が浮くため加えない。
+      // 長時間の停止後や動作抑制の解除時も、急に別の姿勢へ飛ばない。
+      swayTime = reducedMotion ? 0 : swayTime + Math.min(delta, 0.1);
+      body.position.y = 0;
+      body.rotation.z = Math.sin(swayTime * 0.7) * 0.0025 + Math.sin(swayTime * 0.31) * 0.001;
+      body.rotation.x = Math.sin(swayTime * 0.47) * 0.0012;
       // 動作抑制中は静止した影を繰り返し描き直さない。
-      if ((mixer || head || expressions.length) && (!reducedMotion || !previouslyReduced)) onVisualChange?.();
+      if (!reducedMotion || !previouslyReduced) onVisualChange?.();
       previouslyReduced = reducedMotion;
     },
     dispose: scope.dispose,
