@@ -684,3 +684,5 @@ GitHubへのpush・公開は行っていない。既存の未コミットの造�
 鞄後面の人工的な格子を、元の鞄前面から採った編み地へ変更。正面・背面・左右・斜めで質感の連続を確認した。横幅を縮める候補も比較したが、袖や肩ひもの接続に穴や尖りが生じたため採用せず、横幅は前回のまま。GLB再生成用の修復差分にも同じテクスチャを反映した。自動テスト・型検査・本番ビルド・公開は行っていない。
 
 [追加調整の比較](screenshots/visitor-bag-weave-comparison.png) ／ [四方向](screenshots/visitor-bag-four-views.png)。
+
+公開結果：ユーザーの指示により、鞄の修復と編み地の追加調整を含むソース `d4ac6996ffeda3696e4ae25c4ae5728ba48046eb` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40425461453) は本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、自動テストは実行していない。公開サイトそのものの直接表示はこの環境では確認していない。
