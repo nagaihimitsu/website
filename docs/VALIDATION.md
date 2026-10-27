@@ -714,3 +714,5 @@ Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が
 変更前の関連単体テストは14件成功。変更後の `tests/room-visitor-model.test.ts`・`tests/room-engine-lifecycle.test.ts` は17件成功。`tests/e2e/visitor.spec.ts` は5件成功し、実GLBの8方向の追従、手振り中の変形後境界、読み込みと衝突・保存位置を確認した。部屋経由の目の高さに関する検査を追加した後、該当ブラウザテスト1件も再実行して成功。正面・左右・背面の実モデルと首元を目視し、独立確認で回転後の家具との距離を調べた。`npm run build` 成功。GitHubへのpush・公開は行っていない。
 
 [四方向の確認画像](screenshots/visitor-look-directions.png)。
+
+公開結果：ユーザーの指示により、NPCが主人公を見つめる動きを含むソース `af45af44b5aa4017b8bf001ead0d7400552ce773` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40439570876) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、CIでの自動テストは実行していない。ローカル検証結果は上記に記載。
