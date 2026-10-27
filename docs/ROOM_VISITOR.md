@@ -6,7 +6,7 @@
 
 | 項目 | 原本 | 部屋用 |
 |---|---:|---:|
-| ファイル容量 | 50,760,220 bytes | 8,945,536 bytes |
+| ファイル容量 | 50,760,220 bytes | 8,920,848 bytes |
 | 三角形数 | 1,413,320 | 218,170 |
 | 色テクスチャ | 4096×4096 JPEG | 同じJPEGを維持し、修復箇所に別テクスチャを追加 |
 | 表面の凹凸 | 4096×4096 PNG | 2048×2048、可逆WebP |
@@ -14,7 +14,7 @@
 
 配信用ファイルは `src/assets/room/visitor.glb`。`?url` importでViteのハッシュ付きアセットとなり、GitHub Pagesの `/website/` 配下でも同じサイトから取得する。Meshopt圧縮のデコーダーは既存のThree.jsに同梱されたものを使い、新たな実行時依存は追加しない。
 
-原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `a039f92e54b264a1ed3a69e6a8ca047a5870cf296a018316d9c99b44fab8c02e`。
+原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `18c58cdb67df32374babdda830cced634b7bd79cc300ec4d35c3d7d00563e7d7`。
 
 以下はリポジトリのルートで、原本を別の作業ディレクトリに保存して実行する再生成手順。glTF Transform CLIを4.5.1へ固定し、途中ファイルはリポジトリに入れない。通常のサイトビルドでは再生成しない。
 
@@ -29,7 +29,7 @@ npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-rig.glb /tmp/visitor-textu
 npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets/room/visitor.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
 ```
 
-鞄の修復差分は `scripts/assets/visitor-bag-repair.zip` に保存している。適用スクリプトはPython 3とNumPyを使い、軽量化・画像縮小後の入力GLBのSHA-256を照合する。元の頂点の局所修正、不要な面の除去、服・袖・肩ひもの端の補修面と素材を適用する。通常のサイトビルドでは実行しない。差分を適用した未圧縮GLBはリグ生成の入力に使う。`visitor-rig.py` は Blender 4.3.2 と付属NumPy、隣接する `visitor-rig-mask.npz` を使用し、入力SHA-256を照合する。同じ環境で再生成したリグ付きGLBのSHA-256一致を確認済み。Blenderの入出力で三角形が19面減る。
+鞄の修復差分は `scripts/assets/visitor-bag-repair.zip` に保存している。適用スクリプトはPython 3とNumPyを使い、軽量化・画像縮小後の入力GLBのSHA-256を照合する。元の頂点の局所修正、不要な面の除去、服・袖・肩ひもの端の補修面と素材を適用する。通常のサイトビルドでは実行しない。差分を適用した未圧縮GLBはリグ生成の入力に使う。`visitor-rig.py` は Blender 4.3.2 と付属NumPy、隣接する `visitor-rig-mask.npz` を使用し、入力SHA-256を照合する。同じ環境で再生成したリグ付きGLBのSHA-256一致を確認済み。Blenderの入出力で三角形が19面減る。頭のスキンウェイトは口と顎を頭に追従させ、首元で胴体へ滑らかにつないでいる。
 
 ## 鞄の修復
 
@@ -59,7 +59,7 @@ npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets
 
 上の造形説明・旧スクリーンショットは、読み込み失敗時に使う自作モデルの記録。現在のGLBには頭・片腕・手の骨格と `idle`（約4.83秒）・`wave`（約4.17秒）がある。主人公が正面側の視界に入ると、目の高さを目標に頭だけをゆっくり向ける。首の回転は左右14度、上下6度までとし、正面から45〜75度の範囲では視線追従を滑らかに弱め、視界の外では正面へ戻す。近距離の高さの差には完全には追従しない。読み込み失敗時の従来モデルには追従を適用しない。待機中は頭をわずかに傾ける。GLB内の `wave` クリップは残しているが、手首の動きが不自然なため部屋では再生しない。表情モーフと歩行は含まれず、GLBのまばたきや歩行は実装していない。従来モデルのまばたきは読み込み失敗時にのみ表示される。メニュー中・タブ非表示中は部屋とともに停止し、「動きを減らす」では追従と装飾的な動きを止めて正面の姿勢に戻る。
 
-頭だけを動かした確認画像：[主人公の位置に応じた視線](screenshots/visitor-subtle-gaze.png)。過去の体全体を回した動作の記録：[四方向](screenshots/visitor-look-directions.png)。過去に削除した手振りの記録：[プレビュー](screenshots/visitor-wave.gif) ／ [一場面](screenshots/visitor-wave-frame.png) ／ [部屋での表示](screenshots/visitor-wave-room.png)。
+頭の追従時に口の形を保つ修正：[修正前後の比較](screenshots/visitor-mouth-fix-comparison.png)。頭だけを動かした確認画像：[主人公の位置に応じた視線](screenshots/visitor-subtle-gaze.png)。過去の体全体を回した動作の記録：[四方向](screenshots/visitor-look-directions.png)。過去に削除した手振りの記録：[プレビュー](screenshots/visitor-wave.gif) ／ [一場面](screenshots/visitor-wave-frame.png) ／ [部屋での表示](screenshots/visitor-wave-room.png)。
 
 ## 実装と更新
 

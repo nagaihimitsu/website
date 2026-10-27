@@ -34,7 +34,8 @@ arm=arm[wid]
 arm*=1-smooth((h-.182)/.050)
 # 肘と手首で重みを滑らかに切り替え、前腕と手を動かす。
 hand=arm*(1-smooth((h+.050)/.040)); upper=arm*smooth((h-.075)/.035);fore=arm-upper-hand;fore=np.maximum(fore,0)
-head=smooth((h-.235)/.065)*(1-arm);root=np.maximum(0,1-arm-head)
+# 顎と口を含む顔全体を頭の骨へ固定し、首の下部で胴体へ滑らかにつなぐ。
+head=smooth((h-.205)/.025)*(1-arm);root=np.maximum(0,1-arm-head)
 # 肩の境目を含めて頂点ごとの重みの合計を1にする。
 tot=root+upper+fore+hand+head;tot=np.maximum(tot,1e-9)
 weights={'root':root/tot,'upper_arm':upper/tot,'forearm':fore/tot,'hand':hand/tot,'head':head/tot}

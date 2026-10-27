@@ -1,6 +1,56 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
+test("視線追従中も口と顎の頂点が頭と一緒に動く", { tag: "@npc" }, async ({ page }) => {
+  await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    const head = visitor.group.getObjectByName("head");
+    if (!head) throw new Error("GLBに頭のボーンがありません");
+    let mesh: import("three").SkinnedMesh | undefined;
+    visitor.group.traverse((object) => {
+      if (object instanceof THREE.SkinnedMesh && (!mesh || object.geometry.attributes.position.count > mesh.geometry.attributes.position.count)) mesh = object;
+    });
+    if (!mesh) throw new Error("GLBに顔を含むスキンメッシュがありません");
+    const face = mesh as import("three").SkinnedMesh;
+    const positions = face.geometry.attributes.position;
+    const indices: number[] = [];
+    // このGLBのデコード後座標。顔前面中央の口・顎を含み、首と髪を避ける。
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
+      if (x > 0.14 && x < 0.20 && y > 0.51 && y < 0.57 && Math.abs(z) < 0.07) indices.push(i);
+    }
+    if (indices.length < 100) throw new Error("口・顎の頂点範囲を検出できません");
+    const vertex = new THREE.Vector3();
+    const headInverse = new THREE.Matrix4();
+    const relativeVertices = () => {
+      visitor.group.updateMatrixWorld(true);
+      headInverse.copy(head.matrixWorld).invert();
+      return indices.map((index) => face.getVertexPosition(index, vertex).applyMatrix4(face.matrixWorld).applyMatrix4(headInverse).clone());
+    };
+    visitor.animate(0, true);
+    const rest = relativeVertices();
+    const headRest = head.quaternion.clone();
+    let time = 0;
+    let greatestDrift = 0;
+    let greatestTurn = 0;
+    for (const x of [-2, 2]) {
+      const target = new THREE.Vector3(x, 0.4, 3);
+      for (let step = 0; step < 360; step++) visitor.animate(time += 1 / 60, false, target);
+      greatestTurn = Math.max(greatestTurn, headRest.angleTo(head.quaternion));
+      const posed = relativeVertices();
+      for (let i = 0; i < rest.length; i++) greatestDrift = Math.max(greatestDrift, rest[i].distanceTo(posed[i]));
+    }
+    return { count: indices.length, greatestDrift, greatestTurn };
+  });
+  expect(result.count).toBeGreaterThan(100);
+  expect(result.greatestTurn).toBeGreaterThan(0.1);
+  expect(result.greatestDrift).toBeLessThan(0.00001);
+});
+
 test("実モデルは体を回さず正面の主人公へ控えめに顔を向ける", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
