@@ -4,6 +4,7 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { createDisposalScope, withDisposalScope, type DisposalScope } from "../disposal";
 import { createVisitor } from "./visitor";
 import { createVisitorBlink } from "./visitorBlink";
+import { createVisitorMouth } from "./visitorMouth";
 import modelUrl from "../../assets/room/visitor.glb?url";
 
 const MODEL_HEIGHT = 1.2765;
@@ -94,6 +95,7 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let swayTime = 0;
   const expressions: { mesh: THREE.Mesh; blink?: number; mouth?: number; breath?: number; skirt?: number }[] = [];
   let blinkEffect: ReturnType<typeof createVisitorBlink>;
+  let mouthEffect: ReturnType<typeof createVisitorMouth>;
   const localTarget = new THREE.Vector3();
   const headTurn = new THREE.Quaternion();
   const previousHeadTurn = new THREE.Quaternion();
@@ -149,7 +151,11 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
         .sort((a, b) => b.geometry.attributes.position.count - a.geometry.attributes.position.count)[0];
       if (face) {
         blinkEffect = createVisitorBlink(face, onVisualChange);
-        if (blinkEffect) scope.own(blinkEffect);
+        if (blinkEffect) {
+          scope.own(blinkEffect);
+          mouthEffect = createVisitorMouth(face, expressions.map((entry) => entry.mesh));
+          if (mouthEffect) scope.own(mouthEffect);
+        }
       }
       const headObject = gltf.scene.getObjectByName("head");
       head = headObject instanceof THREE.Bone ? headObject : undefined;
@@ -251,12 +257,12 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
         const blink = reducedMotion ? 0 : Math.max(blinkPulse(2.5), blinkPulse(7.1));
         // 画像を取得できない場合、眼球を変形させず開眼を維持する。
         const blinkReady = blinkEffect?.setPhase(blink) ?? false;
-        // 短い発話風の口パクの後に長めの間を設け、元の笑顔に戻す。
+        // 開いた笑顔からゆっくり閉じ、少し保ってから開く。
         const mouthCycle = expressionTime % MOUTH_PERIOD;
-        const mouthWindow = THREE.MathUtils.smoothstep(mouthCycle, 1.8, 2.1)
-          * (1 - THREE.MathUtils.smoothstep(mouthCycle, 4.1, 4.4));
-        const mouth = reducedMotion ? 0 : mouthWindow * 0.8
-          * (1 - Math.cos((mouthCycle - 1.8) * Math.PI * 3.4)) * 0.5;
+        const mouth = reducedMotion ? 0 : THREE.MathUtils.smoothstep(mouthCycle, 1.8, 2.35)
+          * (1 - THREE.MathUtils.smoothstep(mouthCycle, 2.7, 3.25));
+        const mouthShape = THREE.MathUtils.smoothstep(mouth, 0.4, 1);
+        const mouthReady = mouthEffect?.setPhase(mouthShape, blinkReady) ?? false;
         // 布は体の傾きから少し遅れて左右へ揺れ、開始時は元の形から徐々に動く。
         const skirt = reducedMotion ? 0 : Math.sin((expressionTime - 0.7) * 0.7) * 0.8
           * THREE.MathUtils.smoothstep(expressionTime, 0, 1.2);
@@ -264,7 +270,7 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           const influences = expression.mesh.morphTargetInfluences;
           if (!influences) continue;
           if (expression.blink !== undefined) influences[expression.blink] = blinkReady ? blink : 0;
-          if (expression.mouth !== undefined) influences[expression.mouth] = mouth;
+          if (expression.mouth !== undefined) influences[expression.mouth] = mouthReady ? mouthShape : 0;
           if (expression.breath !== undefined) influences[expression.breath] = breath;
           if (expression.skirt !== undefined) influences[expression.skirt] = skirt;
         }

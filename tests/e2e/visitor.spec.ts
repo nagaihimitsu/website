@@ -2,6 +2,11 @@ import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
 test("実モデルのまばたき・口パク・呼吸・裾が動き、動作抑制で元に戻る", { tag: "@npc" }, async ({ page }) => {
+  const shaderErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /WebGLProgram|shader error/i.test(message.text())) shaderErrors.push(message.text());
+  });
+  const errors = collectPageErrors(page);
   await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
   const result = await page.evaluate(async () => {
@@ -14,6 +19,7 @@ test("実モデルのまばたき・口パク・呼吸・裾が動き、動作�
     });
     const names = ["mouth", "breath", "blink", "skirt"] as const;
     const maxima = Object.fromEntries(names.map((name) => [name, 0]));
+    const mouthSamples = new Map<number, number>();
     let skirtMinimum = 0;
     const maxDelta = Object.fromEntries(names.map((name) => [name, 0]));
     const bindings = names.map((name) => meshes.flatMap((mesh) => {
@@ -35,15 +41,24 @@ test("実モデルのまばたき・口パク・呼吸・裾が動き、動作�
           if (name === "skirt") skirtMinimum = Math.min(skirtMinimum, value);
         }
       });
+      const mouth = bindings[0][0];
+      if (mouth && [20, 42, 48, 56, 66, 100].includes(step)) {
+        mouthSamples.set(step, mouth.mesh.morphTargetInfluences![mouth.index]);
+      }
     }
     visitor.animate(11.05, true);
     const stopped = bindings.map((group) => group.map(({ mesh, index }) => mesh.morphTargetInfluences![index]));
     visitor.animate(12, true);
     const still = bindings.map((group) => group.map(({ mesh, index }) => mesh.morphTargetInfluences![index]));
-    return { counts: bindings.map((group) => group.length), maxima, maxDelta, skirtMinimum, stopped, still };
+    return { counts: bindings.map((group) => group.length), maxima, maxDelta, skirtMinimum, stopped, still, mouthSamples: Object.fromEntries(mouthSamples) };
   });
   expect(result.counts.every((count) => count > 0)).toBe(true);
   expect(result.maxima.mouth).toBeGreaterThan(0.5);
+  expect(result.mouthSamples[20]).toBe(0); // 開いている状態
+  expect(result.mouthSamples[42]).toBeGreaterThan(0); // 閉じ始め
+  expect(result.mouthSamples[48]).toBeGreaterThan(0.99); // 閉じた状態
+  expect(result.mouthSamples[56]).toBeGreaterThan(0.9); // 開き始め
+  expect(result.mouthSamples[66]).toBe(0); // 再び開く
   expect(result.maxima.breath).toBeGreaterThan(0.9);
   expect(result.maxima.blink).toBeGreaterThan(0.8);
   expect(result.maxima.skirt).toBeGreaterThan(0.7);
@@ -51,9 +66,11 @@ test("実モデルのまばたき・口パク・呼吸・裾が動き、動作�
   for (const name of ["mouth", "breath", "blink", "skirt"] as const) expect(result.maxDelta[name]).toBeGreaterThan(0.00001);
   expect(result.stopped.flat().every((value) => value === 0)).toBe(true);
   expect(result.still).toEqual(result.stopped);
+  expect(shaderErrors).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
-test("まばたき画像の取得に失敗してもモデルを表示し、目を開いたままにする", { tag: "@npc" }, async ({ page }) => {
+test("表情画像の取得に失敗してもモデルを表示し、目と口を開いたままにする", { tag: "@npc" }, async ({ page }) => {
   let markAborted!: () => void;
   const aborted = new Promise<void>((resolve) => { markAborted = resolve; });
   // Viteの?importモジュールは通し、画像としての取得のみを失敗させる。
@@ -71,6 +88,7 @@ test("まばたき画像の取得に失敗してもモデルを表示し、目�
     const THREE = await import(threePath) as typeof import("three");
     const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
     let maximum = 0;
+    let mouthMaximum = 0;
     visitor.animate(0, false);
     for (let i = 1; i <= 400; i++) {
       visitor.animate(i / 100, false);
@@ -78,12 +96,15 @@ test("まばたき画像の取得に失敗してもモデルを表示し、目�
         if (!(object instanceof THREE.Mesh)) return;
         const index = Object.entries(object.morphTargetDictionary ?? {}).find(([name]) => name.toLowerCase() === "blink")?.[1];
         if (index !== undefined && object.morphTargetInfluences) maximum = Math.max(maximum, object.morphTargetInfluences[index]);
+        const mouth = Object.entries(object.morphTargetDictionary ?? {}).find(([name]) => name.toLowerCase() === "mouth")?.[1];
+        if (mouth !== undefined && object.morphTargetInfluences) mouthMaximum = Math.max(mouthMaximum, object.morphTargetInfluences[mouth]);
       });
     }
-    return { status: visitor.group.userData.modelStatus, maximum };
+    return { status: visitor.group.userData.modelStatus, maximum, mouthMaximum };
   });
   expect(result.status).toBe("ready");
   expect(result.maximum).toBe(0);
+  expect(result.mouthMaximum).toBe(0);
   expect(errors).toEqual([]);
 });
 

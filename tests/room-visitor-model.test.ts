@@ -42,6 +42,25 @@ function model() {
   return { scene, front, geometry, texture, material, image };
 }
 
+// 実モデルと同じスキンメッシュ。2つのプリミティブが素材と形状を共有する場合も検証する。
+function addSkinnedMeshes(asset: ReturnType<typeof model>) {
+  for (const child of [...asset.scene.children]) if (child instanceof THREE.Mesh) asset.scene.remove(child);
+  const count = asset.geometry.attributes.position.count;
+  const skinWeights = new Float32Array(count * 4);
+  for (let i = 0; i < count; i++) skinWeights[i * 4] = 1;
+  asset.geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(new Uint16Array(count * 4), 4));
+  asset.geometry.setAttribute("skinWeight", new THREE.Float32BufferAttribute(skinWeights, 4));
+  const meshes = [0, 1].map(() => {
+    const mesh = new THREE.SkinnedMesh(asset.geometry, asset.material);
+    const root = new THREE.Bone();
+    mesh.add(root);
+    mesh.bind(new THREE.Skeleton([root]));
+    asset.scene.add(mesh);
+    return mesh;
+  });
+  return meshes;
+}
+
 const visitors: ReturnType<typeof createVisitorModel>[] = [];
 function create(onLoaded?: () => void) {
   const visitor = createVisitorModel(onLoaded); visitors.push(visitor); return visitor;
@@ -171,6 +190,7 @@ describe("provided visitor GLB", () => {
 
   it("animates expression morphs across meshes and resets them for reduced motion", async () => {
     const asset = model();
+    const meshes = addSkinnedMeshes(asset);
     const blinkTexture = new THREE.Texture<HTMLImageElement>();
     const blinkDispose = vi.spyOn(blinkTexture, "dispose");
     vi.spyOn(THREE.TextureLoader.prototype, "load").mockImplementation((_url, onLoad) => {
@@ -184,7 +204,6 @@ describe("provided visitor GLB", () => {
       attribute.name = name;
       return attribute;
     });
-    const meshes = asset.scene.children.filter((object): object is THREE.Mesh => object instanceof THREE.Mesh);
     meshes.forEach((mesh) => mesh.updateMorphTargets());
     parse.mockResolvedValue({ ...asset, animations: [] });
     const onVisualChange = vi.fn();
@@ -197,6 +216,11 @@ describe("provided visitor GLB", () => {
     asset.material.onBeforeCompile(shader as unknown as Parameters<typeof asset.material.onBeforeCompile>[0], {} as THREE.WebGLRenderer);
     expect(shader.uniforms.visitorBlinkImage.value).toBe(blinkTexture);
     expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
+    expect(shader.uniforms.visitorMouthPhase.value).toBe(0);
+    expect(meshes[0].geometry).not.toBe(asset.geometry);
+    expect(meshes[1].geometry).toBe(meshes[0].geometry);
+    const temporaryGeometry = meshes[0].geometry;
+    const temporaryDispose = vi.spyOn(temporaryGeometry, "dispose");
     const maxima = [0, 0, 0, 0];
     let skirtMinimum = 0;
     const blinkSamples = new Map<number, number>();
@@ -206,6 +230,7 @@ describe("provided visitor GLB", () => {
       const values = meshes[0].morphTargetInfluences!;
       expect(meshes[1].morphTargetInfluences).toEqual(values);
       expect(shader.uniforms.visitorBlinkPhase.value).toBe(values[2]);
+      expect(shader.uniforms.visitorMouthPhase.value).toBe(values[0]);
       if ([40, 52, 80, 144, 180].includes(step)) blinkSamples.set(step, values[2]);
       values.forEach((value, i) => {
         expect(value).toBeGreaterThanOrEqual(i === 3 ? -1 : 0);
@@ -228,6 +253,7 @@ describe("provided visitor GLB", () => {
     expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0, 0]);
     expect(meshes[1].morphTargetInfluences).toEqual([0, 0, 0, 0]);
     expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
+    expect(shader.uniforms.visitorMouthPhase.value).toBe(0);
     const notifications = onVisualChange.mock.calls.length;
     visitor.animate(11.1, true);
     expect(meshes[0].morphTargetInfluences).toEqual([0, 0, 0, 0]);
@@ -239,16 +265,19 @@ describe("provided visitor GLB", () => {
     expect(Math.abs(meshes[0].morphTargetInfluences![3])).toBeLessThan(0.01);
     visitor.dispose(); visitor.dispose();
     expect(blinkDispose).toHaveBeenCalledTimes(1);
+    expect(temporaryDispose).toHaveBeenCalledTimes(1);
     expect(shader.uniforms.visitorBlinkPhase.value).toBe(0);
+    expect(shader.uniforms.visitorMouthPhase.value).toBe(0);
   });
 
-  it("keeps the eyes open while the blink image is pending and ignores a late image after disposal", async () => {
+  it("keeps eyes and mouth open while the shared image is unavailable, and releases late resources", async () => {
     const asset = model();
+    const meshes = addSkinnedMeshes(asset);
     const count = asset.geometry.attributes.position.count;
     asset.geometry.morphTargetsRelative = true;
     const blink = new THREE.Float32BufferAttribute(new Float32Array(count * 3), 3); blink.name = "blink";
-    asset.geometry.morphAttributes.position = [blink];
-    const meshes = asset.scene.children.filter((object): object is THREE.Mesh => object instanceof THREE.Mesh);
+    const mouth = new THREE.Float32BufferAttribute(new Float32Array(count * 3), 3); mouth.name = "mouth";
+    asset.geometry.morphAttributes.position = [blink, mouth];
     meshes.forEach((mesh) => mesh.updateMorphTargets());
     const image = new THREE.Texture<HTMLImageElement>();
     const imageDispose = vi.spyOn(image, "dispose");
@@ -261,19 +290,29 @@ describe("provided visitor GLB", () => {
     });
     parse.mockResolvedValue({ ...asset, animations: [] });
     const visualChange = vi.fn();
+    const originalCompile = asset.material.onBeforeCompile;
+    const originalCacheKey = asset.material.customProgramCacheKey;
     const visitor = create(visualChange); await visitor.ready;
+    const clone = meshes[0].geometry;
+    expect(clone).not.toBe(asset.geometry);
+    const cloneDispose = vi.spyOn(clone, "dispose");
     for (let i = 0; i <= 60; i++) visitor.animate(i / 20, false);
-    expect(meshes[0].morphTargetInfluences![0]).toBe(0);
-    expect(meshes[1].morphTargetInfluences![0]).toBe(0);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0]);
+    expect(meshes[1].morphTargetInfluences).toEqual([0, 0]);
     fail?.(new Error("image unavailable"));
     expect(visitor.group.userData.modelStatus).toBe("ready");
     for (let i = 61; i <= 145; i++) visitor.animate(i / 20, false);
-    expect(meshes[0].morphTargetInfluences![0]).toBe(0);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0]);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("blink image"));
     visitor.dispose();
     const countBeforeLateLoad = visualChange.mock.calls.length;
     finish?.(image);
     expect(imageDispose).toHaveBeenCalledTimes(1);
+    expect(cloneDispose).toHaveBeenCalledTimes(1);
+    expect(meshes[0].geometry).toBe(asset.geometry);
+    expect(meshes[1].geometry).toBe(asset.geometry);
+    expect(asset.material.onBeforeCompile).toBe(originalCompile);
+    expect(asset.material.customProgramCacheKey).toBe(originalCacheKey);
     expect(visualChange).toHaveBeenCalledTimes(countBeforeLateLoad);
   });
 
