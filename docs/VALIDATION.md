@@ -732,3 +732,5 @@ Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が
 変更前の関連単体テスト17件、変更後の関連単体テスト18件、`tests/e2e/visitor.spec.ts` の5件が成功。実GLBと部屋の経路で、体のY回転がないこと、視界内での控えめな頭の動きと視界外での復帰、首の角度制限、手首の静止、衝突範囲を確認した。実モデルの正面側・横方向の見た目も比較し、首元に目立つ伸びがないことを目視した。`npm run build` 成功。GitHubへのpush・公開は行っていない。
 
 [視線の確認画像](screenshots/visitor-subtle-gaze.png)。
+
+公開結果：ユーザーの指示により、NPCの頭だけによる控えめな視線調整を含むソース `109475ddb22d811f5406fc4e66de247fb26610a3` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40440512525) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、CIでの自動テストは実行していない。ローカル検証結果は上記に記載。
