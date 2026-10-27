@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
-test("実モデルが主人公の全方向を向き、手振り中も衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
+test("実モデルが主人公の全方向を向き、手を振らず衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
   const result = await page.evaluate(async () => {
@@ -14,7 +14,10 @@ test("実モデルが主人公の全方向を向き、手振り中も衝突範�
     const allowed = visitor.bounds.clone().expandByScalar(0.018);
     const arm = visitor.group.getObjectByName("forearm");
     if (!arm) throw new Error("GLBに前腕のボーンがありません");
+    const hand = visitor.group.getObjectByName("hand");
+    if (!hand) throw new Error("GLBに手のボーンがありません");
     const armRest = arm.quaternion.clone();
+    const handRest = hand.quaternion.clone();
     const angles: number[] = [];
     const outside: number[] = [];
     let time = 0;
@@ -27,18 +30,21 @@ test("実モデルが主人公の全方向を向き、手振り中も衝突範�
       angles.push(front.angleTo(target.clone().setY(0).normalize()));
       if (!allowed.containsBox(new THREE.Box3().setFromObject(visitor.group, true))) outside.push(direction);
     }
-    let waveAngle = 0;
+    let armAngle = 0;
+    let handAngle = 0;
     for (let step = 1; step <= 140; step++) {
       visitor.animate(time += 0.1, false, target);
-      waveAngle = Math.max(waveAngle, armRest.angleTo(arm.quaternion));
+      armAngle = Math.max(armAngle, armRest.angleTo(arm.quaternion));
+      handAngle = Math.max(handAngle, handRest.angleTo(hand.quaternion));
       if (step % 10 !== 0) continue;
       visitor.group.updateMatrixWorld(true);
       if (!allowed.containsBox(new THREE.Box3().setFromObject(visitor.group, true))) outside.push(8 + step);
     }
-    return { angles, outside, waveAngle };
+    return { angles, outside, armAngle, handAngle };
   });
   expect(Math.max(...result.angles)).toBeLessThan(0.03);
-  expect(result.waveAngle).toBeGreaterThan(0.05);
+  expect(result.armAngle).toBeLessThan(0.001);
+  expect(result.handAngle).toBeLessThan(0.001);
   expect(result.outside).toEqual([]);
 
   // 部屋の更新経路からも、実際の主人公の位置がNPCに渡されることを確認する。
@@ -72,7 +78,7 @@ test("実モデルが主人公の全方向を向き、手振り中も衝突範�
   expect(roomDirection.vertical).toBeGreaterThan(-0.2);
 });
 
-test("実モデルが手を振り、動作抑制で元の姿勢へ戻り、衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
+test("実モデルの手は待機中に動かず、動作抑制で元の姿勢へ戻り、衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
   await page.goto("/scripts/visitor-model-study.html?view=front");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
   const result = await page.evaluate(async () => {
@@ -81,29 +87,41 @@ test("実モデルが手を振り、動作抑制で元の姿勢へ戻り、衝�
     const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
     const arm = visitor.group.getObjectByName("forearm");
     if (!arm) throw new Error("GLBに前腕のボーンがありません");
+    const hand = visitor.group.getObjectByName("hand");
+    if (!hand) throw new Error("GLBに手のボーンがありません");
+    const head = visitor.group.getObjectByName("head");
+    if (!head) throw new Error("GLBに頭のボーンがありません");
     const rest = arm.quaternion.clone();
+    const handRest = hand.quaternion.clone();
+    const headRest = head.quaternion.clone();
     const allowed = visitor.bounds.clone().expandByScalar(0.018);
     const samples = new Set([0, 50, 83, 87, 92, 110]);
     const boxes: { time: number; contained: boolean; min: number[]; max: number[] }[] = [];
     let greatestArmAngle = 0;
-    for (let step = 0; step <= 110; step++) {
+    let greatestHandAngle = 0;
+    let greatestHeadAngle = 0;
+    for (let step = 0; step <= 350; step++) {
       const time = step / 10;
       visitor.animate(time, false);
+      greatestArmAngle = Math.max(greatestArmAngle, rest.angleTo(arm.quaternion));
+      greatestHandAngle = Math.max(greatestHandAngle, handRest.angleTo(hand.quaternion));
+      greatestHeadAngle = Math.max(greatestHeadAngle, headRest.angleTo(head.quaternion));
       if (!samples.has(step)) continue;
       visitor.group.updateMatrixWorld(true);
       // SkinnedMesh の変形後の頂点から境界を求める（静的なキャッシュを使わない）。
       const box = new THREE.Box3().setFromObject(visitor.group, true);
       boxes.push({ time, contained: allowed.containsBox(box), min: box.min.toArray(), max: box.max.toArray() });
-      if (time >= 8) greatestArmAngle = Math.max(greatestArmAngle, rest.angleTo(arm.quaternion));
     }
-    visitor.animate(11.1, true);
+    visitor.animate(35.1, true);
     const stoppedAngle = rest.angleTo(arm.quaternion);
     const stopped = arm.quaternion.clone();
-    visitor.animate(12, true);
-    return { status: visitor.group.userData.modelStatus, greatestArmAngle, stoppedAngle, stillAngle: stopped.angleTo(arm.quaternion), boxes };
+    visitor.animate(36, true);
+    return { status: visitor.group.userData.modelStatus, greatestArmAngle, greatestHandAngle, greatestHeadAngle, stoppedAngle, stillAngle: stopped.angleTo(arm.quaternion), boxes };
   });
   expect(result.status).toBe("ready");
-  expect(result.greatestArmAngle).toBeGreaterThan(0.05);
+  expect(result.greatestArmAngle).toBeLessThan(0.001);
+  expect(result.greatestHandAngle).toBeLessThan(0.001);
+  expect(result.greatestHeadAngle).toBeGreaterThan(0.02);
   expect(result.stoppedAngle).toBeLessThan(0.001);
   expect(result.stillAngle).toBeLessThan(0.001);
   expect(result.boxes.filter((box) => !box.contained)).toEqual([]);

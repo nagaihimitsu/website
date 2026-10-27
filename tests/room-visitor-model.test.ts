@@ -129,7 +129,7 @@ describe("provided visitor GLB", () => {
     expect(asset.image.close).toHaveBeenCalledTimes(1);
   });
 
-  it("plays the idle and periodic wave clips, restores the rest pose for reduced motion, and releases the mixer", async () => {
+  it("plays idle without playing the wave clip, restores the rest pose for reduced motion, and releases the mixer", async () => {
     const asset = model();
     const idle = new THREE.AnimationClip("idle", 2, [
       new THREE.NumberKeyframeTrack("source-front.position[y]", [0, 2], [0.03, 0.03]),
@@ -142,20 +142,19 @@ describe("provided visitor GLB", () => {
     const uncache = vi.spyOn(THREE.AnimationMixer.prototype, "uncacheRoot");
     const visitor = create(onVisualChange); await visitor.ready;
 
-    for (let i = 0; i <= 50; i++) visitor.animate(i / 10, false);
-    expect(asset.front.position.y).toBeCloseTo(0.03, 2); // 最初は待機。
-    for (let i = 51; i <= 86; i++) visitor.animate(i / 10, false);
-    expect(asset.front.position.y).toBeGreaterThan(0.1); // 約8秒後に手振り。
-    for (let i = 87; i <= 105; i++) visitor.animate(i / 10, false);
-    expect(asset.front.position.y).toBeCloseTo(0.03, 2); // 再び待機へ。
+    // 以前の手振りが何度か再生される時間を通して、待機姿勢を維持する。
+    for (let i = 0; i <= 350; i++) {
+      visitor.animate(i / 10, false);
+      expect(asset.front.position.y).toBeCloseTo(0.03, 2);
+    }
 
-    visitor.animate(10.6, true);
+    visitor.animate(35.1, true);
     expect(asset.front.position.y).toBeCloseTo(0, 5);
     const notifications = onVisualChange.mock.calls.length;
-    visitor.animate(11, true);
+    visitor.animate(35.2, true);
     expect(asset.front.position.y).toBeCloseTo(0, 5);
     expect(onVisualChange).toHaveBeenCalledTimes(notifications);
-    visitor.animate(11.1, false); visitor.animate(11.2, false);
+    visitor.animate(35.3, false); visitor.animate(35.4, false);
     expect(asset.front.position.y).toBeCloseTo(0.03, 2);
 
     visitor.dispose(); visitor.dispose();
@@ -215,7 +214,7 @@ describe("provided visitor GLB", () => {
     // 胴体が回る場合も、首自体は大きくねじれない。
     expect(head.quaternion.angleTo(tilt)).toBeLessThan(Math.PI / 3);
     advance(0.8);
-    expect(asset.front.position.y).toBeGreaterThan(0.1); // 追従しながら手振りも再生する。
+    expect(asset.front.position.y).toBeCloseTo(0, 5); // 追従中も手振りは再生しない。
     expect(yaw()).toBeGreaterThan(0.1);
     visitor.animate(time + 0.1, true, target);
     expect(Math.abs(yaw())).toBeLessThan(0.001);

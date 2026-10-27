@@ -7,8 +7,6 @@ import modelUrl from "../../assets/room/visitor.glb?url";
 
 const MODEL_HEIGHT = 1.2765;
 const FOOT_Y = 0.0015;
-const WAVE_INTERVAL = 8;
-const CROSSFADE_SECONDS = 0.25;
 // 融合した首元が伸びすぎない範囲で、主人公の方向にゆっくり顔を向ける。
 const HEAD_TURN_LIMIT = Math.PI / 7;
 const HEAD_PITCH_LIMIT = THREE.MathUtils.degToRad(8);
@@ -17,7 +15,7 @@ const HEAD_EYE_Y = 1.045;
 const HEAD_TURN_SPEED = 4;
 const BODY_TURN_SPEED = 1.4;
 const HEAD_FREE_ANGLE = 0.2;
-// +Z正面・既存の身長へ正規化し、手振り時と量子化分の余裕を含む境界。
+// +Z正面・既存の身長へ正規化し、量子化分の余裕を含む境界。
 const MODEL_BOUNDS = new THREE.Box3(
   new THREE.Vector3(-0.291, 0, -0.209),
   new THREE.Vector3(0.254, 1.279, 0.209),
@@ -82,12 +80,7 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   let loaded = false;
   let mixer: THREE.AnimationMixer | undefined;
   let idle: THREE.AnimationAction | undefined;
-  let wave: THREE.AnimationAction | undefined;
   let previousTime: number | undefined;
-  let animationTime = 0;
-  let nextWaveAt = WAVE_INTERVAL;
-  let returnToIdleAt = 0;
-  let waving = false;
   let motionStopped = false;
   let previouslyReduced = false;
   let head: THREE.Bone | undefined;
@@ -139,15 +132,13 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
       });
       const headObject = gltf.scene.getObjectByName("head");
       head = headObject instanceof THREE.Bone ? headObject : undefined;
-      // 同じGLBに待機・手振りがある場合だけ再生し、旧版GLBにも対応する。
+      // 待機のみ再生し、旧版GLBにも対応する。手振りクリップは再生しない。
       const clips = gltf.animations ?? [];
       const idleClip = clips.find((clip) => clip.name.toLowerCase() === "idle");
-      const waveClip = clips.find((clip) => clip.name.toLowerCase() === "wave");
-      if (idleClip || waveClip) {
+      if (idleClip) {
         mixer = new THREE.AnimationMixer(gltf.scene);
-        idle = idleClip ? mixer.clipAction(idleClip) : undefined;
-        wave = waveClip ? mixer.clipAction(waveClip) : undefined;
-        idle?.play();
+        idle = mixer.clipAction(idleClip);
+        idle.play();
         const ownedMixer = mixer;
         scope.defer(() => { ownedMixer.stopAllAction(); ownedMixer.uncacheRoot(gltf.scene); });
       }
@@ -181,31 +172,14 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
       if (mixer) {
         if (reducedMotion) {
           if (!motionStopped) {
-            mixer.stopAllAction(); // 元の姿勢に戻し、手を上げたまま停止しない。
+            mixer.stopAllAction(); // 元の姿勢に戻して静止する。
             motionStopped = true;
-            waving = false;
-            nextWaveAt = animationTime + WAVE_INTERVAL;
           }
         } else {
           if (motionStopped) {
             idle?.reset().play();
             motionStopped = false;
           } else {
-            animationTime += delta;
-            if (wave && !waving && animationTime >= nextWaveAt) {
-              wave.reset().setLoop(THREE.LoopOnce, 1);
-              wave.clampWhenFinished = true;
-              wave.play();
-              if (idle) idle.crossFadeTo(wave, CROSSFADE_SECONDS, false);
-              else wave.fadeIn(CROSSFADE_SECONDS);
-              waving = true;
-              returnToIdleAt = animationTime + Math.max(wave.getClip().duration - CROSSFADE_SECONDS, 0.1);
-            } else if (wave && waving && animationTime >= returnToIdleAt) {
-              if (idle) { idle.reset().play(); wave.crossFadeTo(idle, CROSSFADE_SECONDS, false); }
-              else wave.fadeOut(CROSSFADE_SECONDS);
-              waving = false;
-              nextWaveAt = animationTime + WAVE_INTERVAL;
-            }
             mixer.update(delta);
           }
         }
