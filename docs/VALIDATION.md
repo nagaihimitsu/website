@@ -704,3 +704,5 @@ Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が
 変更前の対象単体テストは12件成功。変更後は `tests/room-visitor-model.test.ts`・`tests/room-engine-lifecycle.test.ts` の14件、`tests/e2e/visitor.spec.ts` の4件が成功。実GLBの前腕の動き、動作抑制時の姿勢復帰、複数時点の変形後境界、既存の読み込みと部屋の衝突を確認した。`npm run build` 成功。GitHubへのpush・公開は行っていない。
 
 [動作プレビュー](screenshots/visitor-wave.gif) ／ [動作の一場面](screenshots/visitor-wave-frame.png) ／ [部屋での表示](screenshots/visitor-wave-room.png)。
+
+公開結果：ユーザーの指示により、NPCの待機と手振りを含むソース `86b245654fc9cc34a546d41396ddc0ec0f13c749` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40437955027) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、CIでの自動テストは実行していない。ローカル検証結果は上記に記載。
