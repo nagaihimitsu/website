@@ -1,20 +1,20 @@
 # 部屋の女の子NPC
 
-現在のNPCは、所有者が提供した [GLB原本](https://github.com/nagaihimitsu/website/releases/download/npc-model-v1/_3D.glb) から作った軽量版をThree.jsで表示する。原本の形状・色・材質を引き継ぎ、読み込み中・失敗時は従来の自作モデルを表示する。原本そのものは編集せず、提供モデルにある左右のリボン・バッグも維持する。
+現在のNPCは、所有者が提供した [GLB原本](https://github.com/nagaihimitsu/website/releases/download/npc-model-v1/_3D.glb) から作った軽量版をThree.jsで表示する。原本の形状・色・材質を引き継ぎ、読み込み中・失敗時は従来の自作モデルを表示する。原本そのものは編集せず、部屋用GLBで重複していた鞄と余分な背面の肩ひもを修復した。鞄はキャラクターの左腰（正面から見て右側）の一つに統一している。
 
 ## 提供GLBと配信用データ
 
 | 項目 | 原本 | 部屋用 |
 |---|---:|---:|
-| ファイル容量 | 50,760,220 bytes | 6,504,428 bytes |
-| 三角形数 | 1,413,320 | 211,998 |
-| 色テクスチャ | 4096×4096 JPEG | 同じJPEGを維持 |
+| ファイル容量 | 50,760,220 bytes | 8,990,048 bytes |
+| 三角形数 | 1,413,320 | 218,189 |
+| 色テクスチャ | 4096×4096 JPEG | 同じJPEGを維持し、修復箇所に別テクスチャを追加 |
 | 表面の凹凸 | 4096×4096 PNG | 2048×2048、可逆WebP |
 | 質感マップ | 4096×4096 JPEG | 1024×1024 JPEG |
 
 配信用ファイルは `src/assets/room/visitor.glb`。`?url` importでViteのハッシュ付きアセットとなり、GitHub Pagesの `/website/` 配下でも同じサイトから取得する。Meshopt圧縮のデコーダーは既存のThree.jsに同梱されたものを使い、新たな実行時依存は追加しない。
 
-原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `41465261e07290c0538678ad9d6b525c4a47407e3d1c75bda91e6eab5ce7eee0`。
+原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `05ff85a09e8f416cc7f25ed99038f252304c481ce49becd9d935beeb31b03655`。
 
 以下はリポジトリのルートで、原本を別の作業ディレクトリに保存して実行する再生成手順。glTF Transform CLIを4.5.1へ固定し、途中ファイルはリポジトリに入れない。通常のサイトビルドでは再生成しない。
 
@@ -23,9 +23,22 @@ npx --yes @gltf-transform/cli@4.5.1 weld /path/to/_3D.glb /tmp/visitor-welded.gl
 npx --yes @gltf-transform/cli@4.5.1 simplify /tmp/visitor-welded.glb /tmp/visitor-simplified.glb --ratio 0.15 --error 0.0005 --lock-border true
 npx --yes @gltf-transform/cli@4.5.1 resize /tmp/visitor-simplified.glb /tmp/visitor-normal.glb --pattern 'NormalGL_*' --width 2048 --height 2048
 npx --yes @gltf-transform/cli@4.5.1 resize /tmp/visitor-normal.glb /tmp/visitor-orm.glb --pattern 'ORM_*' --width 1024 --height 1024
-npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-orm.glb /tmp/visitor-textures.glb --slots normalTexture --lossless true
+python scripts/assets/apply-visitor-bag-repair.py /tmp/visitor-orm.glb /tmp/visitor-repaired.glb
+npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-repaired.glb /tmp/visitor-textures.glb --slots normalTexture --lossless true
 npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets/room/visitor.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
 ```
+
+鞄の修復差分は `scripts/assets/visitor-bag-repair.zip` に保存している。適用スクリプトはPython 3とNumPyを使い、軽量化・画像縮小後の入力GLBのSHA-256を照合する。元の頂点の局所修正、不要な面の除去、服・袖・肩ひもの端の補修面と素材を適用する。通常のサイトビルドでは実行しない。差分を適用した未圧縮GLBは、作業中の完成モデルとメタデータ・バイナリバッファが一致することを確認済み。
+
+## 鞄の修復
+
+提供モデルでは、鞄が左右に重複し、背面の肩ひもが交差していた。正面から右側の鞄と元の前後の斜め掛けひもを残し、反対側の鞄と余分な枝を除いた。鞄・服・袖が一つのメッシュに融合していたため、隠れていたカーディガン、花柄スカート、内側の袖を補い、隣接する元の縁も曲面へ合わせた。
+
+追加の仕上げでは、背中に残っていた短いひもの枝を切除し、主ひもの丸い側面を補った。衣服の深い溝と切れ目状の境界を滑らかなニット面へつなぎ、袖内側に焼き込まれた茶色い跡も既存のニットへなじませた。残した鞄にも後側のふたが重複していたため、その凹凸を局所的に整えて一枚の編み側面へ変更した。前側のふた・留め具と肩ひもの接続位置を保っている。後面の編み地には元の鞄の前面から採った質感を使い、前後の色と凹凸を近づけた。
+
+修復は鞄とその接続部に限定。顔・髪・リボン・手足、元の色テクスチャ、部屋での大きさ・配置・待機動作・衝突判定は維持する。GLB読み込み後の描画は既存のThree.js経路を使う。
+
+最終確認画像：[編み地の追加調整](screenshots/visitor-bag-weave-comparison.png) ／ [追加修正の比較](screenshots/visitor-bag-refinement-comparison.png) ／ [修正前後の背面](screenshots/visitor-bag-before-after.png) ／ [四方向](screenshots/visitor-bag-four-views.png) ／ [斜め後ろの拡大](screenshots/visitor-bag-rear-detail.png) ／ [鞄の側面](screenshots/visitor-bag-side-detail.png) ／ [部屋・PC](screenshots/visitor-bag-room-desktop.png) ／ [部屋・390px幅](screenshots/visitor-bag-room-mobile.png)。
 
 別の原本へ差し替える場合は、`visitorModel.ts` の正面補正と `MODEL_BOUNDS` を再確認する。現在の原本は+X正面なので、Y軸を−90度回して+Z正面にし、足裏と身長を従来モデルへ合わせている。
 
