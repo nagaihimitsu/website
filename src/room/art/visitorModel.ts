@@ -7,18 +7,25 @@ import modelUrl from "../../assets/room/visitor.glb?url";
 
 const MODEL_HEIGHT = 1.2765;
 const FOOT_Y = 0.0015;
-// 提供GLBを+Z正面・既存の身長へ正規化した境界。量子化分の余裕を含む。
+const WAVE_INTERVAL = 8;
+const CROSSFADE_SECONDS = 0.25;
+// +Z正面・既存の身長へ正規化し、手振り時と量子化分の余裕を含む境界。
 const MODEL_BOUNDS = new THREE.Box3(
-  new THREE.Vector3(-0.254, 0, -0.209),
+  new THREE.Vector3(-0.291, 0, -0.209),
   new THREE.Vector3(0.254, 1.279, 0.209),
 );
 
-/** GLTFLoaderが作ったGPU資源とImageBitmapを、重複なく所有する。 */
+/** GLTFLoaderが作ったGPU資源・骨格・ImageBitmapを、重複なく所有する。 */
 function ownModel(root: THREE.Object3D) {
   const resources = createDisposalScope();
   const images = new Set<object>();
+  const skeletons = new Set<THREE.Skeleton>();
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
+    if (object instanceof THREE.SkinnedMesh && !skeletons.has(object.skeleton)) {
+      skeletons.add(object.skeleton);
+      resources.own(object.skeleton);
+    }
     resources.own(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       resources.own(material);
@@ -58,6 +65,16 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   const request = new AbortController();
   let disposed = false;
   let loaded = false;
+  let mixer: THREE.AnimationMixer | undefined;
+  let idle: THREE.AnimationAction | undefined;
+  let wave: THREE.AnimationAction | undefined;
+  let previousTime: number | undefined;
+  let animationTime = 0;
+  let nextWaveAt = WAVE_INTERVAL;
+  let returnToIdleAt = 0;
+  let waving = false;
+  let motionStopped = false;
+  let previouslyReduced = false;
   scope.defer(() => { group.removeFromParent(); group.clear(); });
   scope.defer(() => { disposed = true; request.abort(); });
 
@@ -93,6 +110,18 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           object.receiveShadow = true;
         }
       });
+      // 同じGLBに待機・手振りがある場合だけ再生し、旧版GLBにも対応する。
+      const clips = gltf.animations ?? [];
+      const idleClip = clips.find((clip) => clip.name.toLowerCase() === "idle");
+      const waveClip = clips.find((clip) => clip.name.toLowerCase() === "wave");
+      if (idleClip || waveClip) {
+        mixer = new THREE.AnimationMixer(gltf.scene);
+        idle = idleClip ? mixer.clipAction(idleClip) : undefined;
+        wave = waveClip ? mixer.clipAction(waveClip) : undefined;
+        idle?.play();
+        const ownedMixer = mixer;
+        scope.defer(() => { ownedMixer.stopAllAction(); ownedMixer.uncacheRoot(gltf.scene); });
+      }
       body.add(fitted);
       fallback.dispose();
       loaded = true;
@@ -114,10 +143,47 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
     animate(time: number, reducedMotion: boolean) {
       if (disposed) return;
       if (!loaded) { fallback.animate(time, reducedMotion); return; }
-      // GLBにボーンや表情モーフはないため、待機中の小さな揺れだけを付ける。
+      const delta = previousTime === undefined ? 0 : Math.max(0, time - previousTime);
+      previousTime = time;
+      if (mixer) {
+        if (reducedMotion) {
+          if (!motionStopped) {
+            mixer.stopAllAction(); // 元の姿勢に戻し、手を上げたまま停止しない。
+            motionStopped = true;
+            waving = false;
+            nextWaveAt = animationTime + WAVE_INTERVAL;
+          }
+        } else {
+          if (motionStopped) {
+            idle?.reset().play();
+            motionStopped = false;
+          } else {
+            animationTime += delta;
+            if (wave && !waving && animationTime >= nextWaveAt) {
+              wave.reset().setLoop(THREE.LoopOnce, 1);
+              wave.clampWhenFinished = true;
+              wave.play();
+              if (idle) idle.crossFadeTo(wave, CROSSFADE_SECONDS, false);
+              else wave.fadeIn(CROSSFADE_SECONDS);
+              waving = true;
+              returnToIdleAt = animationTime + Math.max(wave.getClip().duration - CROSSFADE_SECONDS, 0.1);
+            } else if (wave && waving && animationTime >= returnToIdleAt) {
+              if (idle) { idle.reset().play(); wave.crossFadeTo(idle, CROSSFADE_SECONDS, false); }
+              else wave.fadeOut(CROSSFADE_SECONDS);
+              waving = false;
+              nextWaveAt = animationTime + WAVE_INTERVAL;
+            }
+            mixer.update(delta);
+          }
+        }
+      }
+      // 旧版GLBも含め、待機中はモデル全体をわずかに揺らす。
       const still = reducedMotion ? 0 : 1;
       body.position.y = Math.sin(time * 1.65) * 0.0014 * still;
       body.rotation.z = Math.sin(time * 0.7) * 0.003 * still;
+      // 動作抑制中は静止した影を繰り返し描き直さない。
+      if (mixer && (!reducedMotion || !previouslyReduced)) onVisualChange?.();
+      previouslyReduced = reducedMotion;
     },
     dispose: scope.dispose,
   };

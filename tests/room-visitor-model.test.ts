@@ -128,4 +128,62 @@ describe("provided visitor GLB", () => {
     releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
     expect(asset.image.close).toHaveBeenCalledTimes(1);
   });
+
+  it("plays the idle and periodic wave clips, restores the rest pose for reduced motion, and releases the mixer", async () => {
+    const asset = model();
+    const idle = new THREE.AnimationClip("idle", 2, [
+      new THREE.NumberKeyframeTrack("source-front.position[y]", [0, 2], [0.03, 0.03]),
+    ]);
+    const wave = new THREE.AnimationClip("wave", 2, [
+      new THREE.NumberKeyframeTrack("source-front.position[y]", [0, 1, 2], [0, 0.4, 0]),
+    ]);
+    parse.mockResolvedValue({ ...asset, animations: [idle, wave] });
+    const onVisualChange = vi.fn();
+    const uncache = vi.spyOn(THREE.AnimationMixer.prototype, "uncacheRoot");
+    const visitor = create(onVisualChange); await visitor.ready;
+
+    for (let i = 0; i <= 50; i++) visitor.animate(i / 10, false);
+    expect(asset.front.position.y).toBeCloseTo(0.03, 2); // 最初は待機。
+    for (let i = 51; i <= 86; i++) visitor.animate(i / 10, false);
+    expect(asset.front.position.y).toBeGreaterThan(0.1); // 約8秒後に手振り。
+    for (let i = 87; i <= 105; i++) visitor.animate(i / 10, false);
+    expect(asset.front.position.y).toBeCloseTo(0.03, 2); // 再び待機へ。
+
+    visitor.animate(10.6, true);
+    expect(asset.front.position.y).toBeCloseTo(0, 5);
+    const notifications = onVisualChange.mock.calls.length;
+    visitor.animate(11, true);
+    expect(asset.front.position.y).toBeCloseTo(0, 5);
+    expect(onVisualChange).toHaveBeenCalledTimes(notifications);
+    visitor.animate(11.1, false); visitor.animate(11.2, false);
+    expect(asset.front.position.y).toBeCloseTo(0.03, 2);
+
+    visitor.dispose(); visitor.dispose();
+    expect(asset.front.position.y).toBeCloseTo(0, 5);
+    expect(uncache).toHaveBeenCalledTimes(1);
+    expect(uncache).toHaveBeenCalledWith(asset.scene);
+  });
+
+  it("releases a skeleton shared by multiple skinned meshes once", async () => {
+    const scene = new THREE.Group();
+    const geometry = new THREE.BoxGeometry(0.326, 1, 0.397);
+    const vertices = geometry.getAttribute("position").count;
+    geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(new Uint16Array(vertices * 4), 4));
+    const weights = new Float32Array(vertices * 4);
+    for (let i = 0; i < vertices; i++) weights[i * 4] = 1;
+    geometry.setAttribute("skinWeight", new THREE.Float32BufferAttribute(weights, 4));
+    const material = new THREE.MeshBasicMaterial();
+    const bone = new THREE.Bone();
+    const skeleton = new THREE.Skeleton([bone]);
+    const first = new THREE.SkinnedMesh(geometry, material);
+    const second = new THREE.SkinnedMesh(geometry, material);
+    first.bind(skeleton); second.bind(skeleton);
+    scene.add(bone, first, second);
+    const releaseSkeleton = vi.spyOn(skeleton, "dispose");
+    parse.mockResolvedValue({ scene, animations: [] });
+    const visitor = create();
+    expect(await visitor.ready).toBe("ready");
+    visitor.dispose(); visitor.dispose();
+    expect(releaseSkeleton).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,6 +1,43 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
+test("実モデルが手を振り、動作抑制で元の姿勢へ戻り、衝突範囲に収まる", { tag: "@npc" }, async ({ page }) => {
+  await page.goto("/scripts/visitor-model-study.html?view=front");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    const arm = visitor.group.getObjectByName("forearm");
+    if (!arm) throw new Error("GLBに前腕のボーンがありません");
+    const rest = arm.quaternion.clone();
+    const allowed = visitor.bounds.clone().expandByScalar(0.018);
+    const samples = new Set([0, 50, 83, 87, 92, 110]);
+    const boxes: { time: number; contained: boolean; min: number[]; max: number[] }[] = [];
+    let greatestArmAngle = 0;
+    for (let step = 0; step <= 110; step++) {
+      const time = step / 10;
+      visitor.animate(time, false);
+      if (!samples.has(step)) continue;
+      visitor.group.updateMatrixWorld(true);
+      // SkinnedMesh の変形後の頂点から境界を求める（静的なキャッシュを使わない）。
+      const box = new THREE.Box3().setFromObject(visitor.group, true);
+      boxes.push({ time, contained: allowed.containsBox(box), min: box.min.toArray(), max: box.max.toArray() });
+      if (time >= 8) greatestArmAngle = Math.max(greatestArmAngle, rest.angleTo(arm.quaternion));
+    }
+    visitor.animate(11.1, true);
+    const stoppedAngle = rest.angleTo(arm.quaternion);
+    const stopped = arm.quaternion.clone();
+    visitor.animate(12, true);
+    return { status: visitor.group.userData.modelStatus, greatestArmAngle, stoppedAngle, stillAngle: stopped.angleTo(arm.quaternion), boxes };
+  });
+  expect(result.status).toBe("ready");
+  expect(result.greatestArmAngle).toBeGreaterThan(0.05);
+  expect(result.stoppedAngle).toBeLessThan(0.001);
+  expect(result.stillAngle).toBeLessThan(0.001);
+  expect(result.boxes.filter((box) => !box.contained)).toEqual([]);
+});
+
 test("女の子NPCの読み込み中は旧モデルを表示せず、完了後にGLBを表示する", { tag: "@npc" }, async ({ page }) => {
   await page.route("**/visitor-loading-check", (route) => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>NPC loading</title>" }));
   await page.goto("/visitor-loading-check");

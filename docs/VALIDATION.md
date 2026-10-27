@@ -694,3 +694,13 @@ GitHubへのpush・公開は行っていない。既存の未コミットの造�
 変更前の `tests/room-visitor-model.test.ts`・`tests/room-engine-lifecycle.test.ts` は12件成功。変更後も同じ12件が成功し、読み込み中・成功時・失敗時の表示と通知、退室時の中断・解放を確認した。ChromiumではGLBの通信を一時停止して旧モデルが非表示であることを確認し、再開後にGLBが表示されるテスト1件が成功。最初のブラウザ試行は検証用の通信待機がViteのモジュール取得にもかかり中断したため、実際のGLB fetchだけを待機するようテストを修正した。`npm run build` も成功し、ブラウザテスト追加後に `npx tsc -b` を再実行して成功。GitHubへのpush・公開は行っていない。
 
 公開結果：ユーザーの指示により、NPCの読み込み中の表示修正を含むソース `1f4600c11ff2293a560712a89e9297e04685322b` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40429225817) で本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、CIでの自動テストは実行していない。変更前後のローカル検証結果は上記に記載。
+
+### 2026-10-27 — NPCの待機と手振り
+
+所有者提供の修復済みGLBをBlender 4.3.2でリグ付けし、頭・片腕・手の骨格、待機と手振りのクリップを追加。待機中は小さく頭を傾け、一定時間ごとに腰の横で握った手を小さく振る。大きく腕を上げる候補では袖と身頃の融合部に破れや伸びが出たため採用していない。まばたきや歩行は未実装。手振り時の外形を含むよう予約境界を拡張し、骨格の影もアニメーション中に更新する。
+
+Blenderでの再生成は入力ハッシュを照合し、生成GLBのSHA-256が `31f71199a5b64f92b1c8c014bdbbd183ba61a33fde7303e5ffbb298339797bb1` で一致。元の色画像を維持しつつ、Blender入出力で19三角形が省かれた。圧縮後GLBは `idle`・`wave` の2クリップと1スキンを含む。手振りの正面・背面・左右と全34フレームを目視し、大きな破れや棘がないことを確認。小さな袖の接続境界は元モデルに残る。
+
+変更前の対象単体テストは12件成功。変更後は `tests/room-visitor-model.test.ts`・`tests/room-engine-lifecycle.test.ts` の14件、`tests/e2e/visitor.spec.ts` の4件が成功。実GLBの前腕の動き、動作抑制時の姿勢復帰、複数時点の変形後境界、既存の読み込みと部屋の衝突を確認した。`npm run build` 成功。GitHubへのpush・公開は行っていない。
+
+[動作プレビュー](screenshots/visitor-wave.gif) ／ [動作の一場面](screenshots/visitor-wave-frame.png) ／ [部屋での表示](screenshots/visitor-wave-room.png)。
