@@ -1,6 +1,6 @@
 # 部屋の女の子NPC
 
-現在のNPCは、所有者が提供した [GLB原本](https://github.com/nagaihimitsu/website/releases/download/npc-model-v1/_3D.glb) から作った軽量版をThree.jsで表示する。原本の形状・色・材質を引き継ぎ、読み込み中・失敗時は従来の自作モデルを表示する。原本そのものは編集せず、部屋用GLBで重複していた鞄と余分な背面の肩ひもを修復した。鞄はキャラクターの左腰（正面から見て右側）の一つに統一している。
+現在のNPCは、所有者が提供した [GLB原本](https://github.com/nagaihimitsu/website/releases/download/npc-model-v1/_3D.glb) から作った軽量版をThree.jsで表示する。原本の形状・色・材質を引き継ぎ、読み込み中はNPCを表示せず、失敗時は従来の自作モデルを表示する。原本そのものは編集せず、部屋用GLBで重複していた鞄と余分な背面の肩ひもを修復した。鞄はキャラクターの左腰（正面から見て右側）の一つに統一している。
 
 ## 提供GLBと配信用データ
 
@@ -56,11 +56,11 @@ npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets
 
 頭部を集中的に仕上げた画像：[正面・背面・側面の比較](screenshots/visitor-head-comparison.png) ／ [正面アップ](screenshots/visitor-head-front.png) ／ [背面アップ](screenshots/visitor-head-back.png) ／ [参考に近い斜め横](screenshots/visitor-head-reference-side.png) ／ [斜めアップ](screenshots/visitor-head-quarter.png) ／ [右の真横](screenshots/visitor-head-side.png) ／ [左の真横](screenshots/visitor-head-left-side.png)。正面の頭幅・頬・瞳・まつ毛・笑顔、背面の大小の毛束と襟足、側面の鼻・口元・耳・こめかみを順に見比べて調整した。
 
-上の造形説明・旧スクリーンショットは、読み込み中に使う自作モデルの記録。現在のGLBも床で待機し、既存の部屋の更新処理でごく小さく上下・左右へ揺れる。GLBにはボーン・表情モーフ・アニメーションが含まれないため、GLBのまばたきや歩行は実装していない。従来モデルのまばたきは読み込み中にのみ残る。メニュー中・タブ非表示中は部屋とともに停止し、「動きを減らす」で装飾的な動きを止める。
+上の造形説明・旧スクリーンショットは、読み込み失敗時に使う自作モデルの記録。現在のGLBも床で待機し、既存の部屋の更新処理でごく小さく上下・左右へ揺れる。GLBにはボーン・表情モーフ・アニメーションが含まれないため、GLBのまばたきや歩行は実装していない。従来モデルのまばたきは読み込み失敗時にのみ表示される。メニュー中・タブ非表示中は部屋とともに停止し、「動きを減らす」で装飾的な動きを止める。
 
 ## 実装と更新
 
-- `src/room/art/visitorModel.ts`：GLBの非同期読み込み、身長・接地・向きの補正、待機動作。`group`・読み込み前から使える `bounds`・`ready`・`animate()`・`dispose()` を返す。退室時にfetchを中止し、画像デコード中に退室しても遅れて完成したGPU資源とImageBitmapを解放する。
+- `src/room/art/visitorModel.ts`：GLBの非同期読み込み、待機中の旧モデル非表示と失敗時の代替表示、身長・接地・向きの補正、待機動作。`group`・読み込み前から使える `bounds`・`ready`・`animate()`・`dispose()` を返す。退室時にfetchを中止し、画像デコード中に退室しても遅れて完成したGPU資源とImageBitmapを解放する。
 - `src/room/art/visitor.ts`：従来モデルの組み立てと待機アニメーション。`createVisitor()` が `group`・`animate(time, reducedMotion)`・`dispose()` を返す。GLBの準備ができた時点で解放する。モデルの正面はローカル+Z。
 - `src/room/art/visitorArt.ts`：形状・素材・コード生成テクスチャの共有生成処理と所有リソースの登録。
 - `src/room/art/visitorHead.ts`：顔の曲面、目の絵付け、笑顔、頭頂・前髪・重なるボブ。頭部だけを `visitor-head` にまとめ、横幅を元の頭部の0.875倍へ調整。目・鼻・口は共通の曲面に沿わせ、鼻先と口元の起伏、浅い口のくぼみも顔本体へ連続させる。前髪と後ろ髪は閉じた扁平断面で、根元の法線を頭頂へなじませる。後ろ髪の長さ・幅・曲がり・重なりを変え、襟足には下層の束を置く。殻の頂点色素材と、色属性のない内側の球に使う素材は分ける。
@@ -70,7 +70,7 @@ npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb src/assets
 - 従来モデルの可視境界と、正規化したGLBの境界の和を使い、読み込み前後で衝突体を変えない。部屋の変換を適用し、待機中の微動用に元モデルの1.8cmへ表示スケールを掛けた余裕（現在は各方向2.4cm）を加える。サイズや姿勢を変更した場合は、この余裕で両モデルの動く範囲を包含できるか確認する。
 - 衝突体は既存の保存位置検証と小鳥の生成より前に存在する。追加NPCと重なる古い保存位置は既存処理が安全な初期位置へ戻し、小鳥も同じ障害物一覧からNPCを避ける。保存形式・復元順序は変更しない。
 - 壊せる小物の一覧には登録しない。パンチでも壊れず、「小物を元に戻す」でも位置・形状・衝突体は維持する。
-- 形状・素材・テクスチャ・画像の解放は既存の `withDisposalScope` で所有し、切り替え時または部屋の破棄時に一度だけ解放する。GLBの読み込み完了を `roomEngine.ts` へ通知し、静止中でも旧モデルの影を描き直す。
+- 形状・素材・テクスチャ・画像の解放は既存の `withDisposalScope` で所有し、切り替え時または部屋の破棄時に一度だけ解放する。GLBの表示または代替モデルの表示を `roomEngine.ts` へ通知し、静止中でも影を描き直す。
 
 GLBは開発サーバーの `/scripts/visitor-model-study.html?view=front`、`side`、`left-side`、`back`、`quarter` で読み込み完了後のモデルを確認する。従来モデルの確認用に `/scripts/visitor-study.html` も残す。`view=reference-side` は70度の斜め横。`focus=face` は肩を含む顔アップ、`focus=head` は頭部を大きく収める。比較ページは開発専用で本番ビルドには含めない。部屋ではPCと狭い縦画面でも確認し、配置変更では家具との隙間と主人公・小鳥の通行を再確認する。
 

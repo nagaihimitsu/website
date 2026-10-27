@@ -1,6 +1,48 @@
 import { test, expect } from "@playwright/test";
 import { collectPageErrors, enterRoom, position, savedPosition } from "./helpers/room";
 
+test("女の子NPCの読み込み中は旧モデルを表示せず、完了後にGLBを表示する", { tag: "@npc" }, async ({ page }) => {
+  await page.route("**/visitor-loading-check", (route) => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>NPC loading</title>" }));
+  await page.goto("/visitor-loading-check");
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(/\/visitor\.glb(?:\?.*)?$/, async (route) => {
+    if (route.request().resourceType() !== "fetch") return route.continue();
+    await gate;
+    await route.continue();
+  });
+  const requested = page.waitForRequest((request) => /\/visitor\.glb(?:\?.*)?$/.test(request.url()) && request.resourceType() === "fetch");
+  try {
+    const loading = await page.evaluate(async () => {
+      const modelPath = "/src/room/art/visitorModel.ts";
+      const { createVisitorModel } = await import(modelPath) as typeof import("../../src/room/art/visitorModel");
+      const visitor = createVisitorModel();
+      (window as unknown as { loadingVisitor: typeof visitor }).loadingVisitor = visitor;
+      return { status: visitor.group.userData.modelStatus };
+    });
+    await requested;
+    expect(loading.status).toBe("loading");
+    // body の子である旧NPCを確認し、ダウンロード中に表示されないことを保証する。
+    const oldVisible = await page.evaluate(() => {
+      const visitor = (window as unknown as { loadingVisitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> }).loadingVisitor;
+      return visitor.group.getObjectByName("visitor-model-body")?.children[0]?.visible;
+    });
+    expect(oldVisible).toBe(false);
+    release();
+    const loaded = await page.evaluate(async () => {
+      const visitor = (window as unknown as { loadingVisitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> }).loadingVisitor;
+      const status = await visitor.ready;
+      const imported = visitor.group.getObjectByName("visitor-imported-model")?.visible;
+      const old = visitor.group.getObjectByName("visitor-body");
+      visitor.dispose();
+      return { status, imported, hasOld: Boolean(old) };
+    });
+    expect(loaded).toEqual({ status: "ready", imported: true, hasOld: false });
+  } finally {
+    release();
+  }
+});
+
 test("女の子NPCをすり抜けず、パンチ・小物の復元でも消えない", { tag: "@npc" }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await savedPosition(page, { x: 1.85, z: 0.30, yaw: 0 });

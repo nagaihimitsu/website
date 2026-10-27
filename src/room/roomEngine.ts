@@ -86,7 +86,7 @@ function initializeRoomEngine(
   scope.defer(() => renderer.forceContextLoss());
   scope.own(renderer);
   const room = scope.own(createRoomScene(options.archive, () => {
-    // 非同期GLBへの切替後、静止中でも旧モデルの影を描き直す。
+    // GLB表示時・代替モデル表示時に、静止中でも影を描き直す。
     renderer.shadowMap.needsUpdate = true;
   }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;

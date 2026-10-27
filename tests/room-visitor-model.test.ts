@@ -57,12 +57,15 @@ afterEach(() => {
 });
 
 describe("provided visitor GLB", () => {
-  it("keeps a solid fallback until loaded, then fits the feet, height and +Z facing without changing collision bounds", async () => {
+  it("hides the fallback while downloading and decoding, then fits the loaded model without changing collision bounds", async () => {
     const pending = deferred<{ scene: THREE.Group }>(); parse.mockReturnValue(pending.promise);
     const onLoaded = vi.fn(); const visitor = create(onLoaded);
     const bounds = visitor.bounds.clone();
-    expect(visitor.group.getObjectByName("procedural-fallback")).toBeDefined();
+    expect(visitor.group.getObjectByName("procedural-fallback")?.visible).toBe(false);
     expect(bounds.isEmpty()).toBe(false);
+    await vi.waitFor(() => expect(parse).toHaveBeenCalledTimes(1));
+    expect(visitor.group.getObjectByName("procedural-fallback")?.visible).toBe(false);
+    expect(visitor.group.getObjectByName("visitor-imported-model")).toBeUndefined();
     const asset = model(); pending.resolve(asset);
     expect(await visitor.ready).toBe("ready");
     expect(visitor.group.getObjectByName("procedural-fallback")).toBeUndefined();
@@ -80,8 +83,8 @@ describe("provided visitor GLB", () => {
     vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 503 }));
     const onLoaded = vi.fn(); const visitor = create(onLoaded);
     expect(await visitor.ready).toBe("fallback");
-    expect(visitor.group.getObjectByName("procedural-fallback")).toBeDefined();
-    expect(onLoaded).not.toHaveBeenCalled();
+    expect(visitor.group.getObjectByName("procedural-fallback")?.visible).toBe(true);
+    expect(onLoaded).toHaveBeenCalledTimes(1);
     expect(parse).not.toHaveBeenCalled();
   });
 

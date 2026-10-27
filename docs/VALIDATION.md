@@ -686,3 +686,9 @@ GitHubへのpush・公開は行っていない。既存の未コミットの造�
 [追加調整の比較](screenshots/visitor-bag-weave-comparison.png) ／ [四方向](screenshots/visitor-bag-four-views.png)。
 
 公開結果：ユーザーの指示により、鞄の修復と編み地の追加調整を含むソース `d4ac6996ffeda3696e4ae25c4ae5728ba48046eb` を `main` に反映。[GitHub Actions実行](https://github.com/nagaihimitsu/website/actions/runs/40425461453) は本番ビルドとGitHub Pagesのデプロイが成功した。通常pushの既定設定により、自動テストは実行していない。公開サイトそのものの直接表示はこの環境では確認していない。
+
+### 2026-10-27 — NPCのGLB読み込み中の表示
+
+従来の自作NPCがGLBの読み込み中に一瞬表示されていたため、待機中は旧モデルを非表示にし、読み込み成功時にGLBを表示するよう変更した。読み込み失敗時は従来どおり旧モデルを表示し、その際も影を更新する。衝突境界は読み込み前後で共通のまま。
+
+変更前の `tests/room-visitor-model.test.ts`・`tests/room-engine-lifecycle.test.ts` は12件成功。変更後も同じ12件が成功し、読み込み中・成功時・失敗時の表示と通知、退室時の中断・解放を確認した。ChromiumではGLBの通信を一時停止して旧モデルが非表示であることを確認し、再開後にGLBが表示されるテスト1件が成功。最初のブラウザ試行は検証用の通信待機がViteのモジュール取得にもかかり中断したため、実際のGLB fetchだけを待機するようテストを修正した。`npm run build` も成功し、ブラウザテスト追加後に `npx tsc -b` を再実行して成功。GitHubへのpush・公開は行っていない。

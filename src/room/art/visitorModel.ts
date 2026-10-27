@@ -37,12 +37,12 @@ function ownModel(root: THREE.Object3D) {
   return resources;
 }
 
-/** 提供GLBを非同期で表示。読み込み中・失敗時も従来のNPCを維持する。 */
-export function createVisitorModel(onLoaded?: () => void) {
-  return withDisposalScope((scope) => buildVisitorModel(scope, onLoaded));
+/** 提供GLBを非同期で表示。読み込み中は非表示にし、失敗時は従来のNPCを表示する。 */
+export function createVisitorModel(onVisualChange?: () => void) {
+  return withDisposalScope((scope) => buildVisitorModel(scope, onVisualChange));
 }
 
-function buildVisitorModel(scope: DisposalScope, onLoaded?: () => void) {
+function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
   const group = new THREE.Group();
   group.name = "visitor-npc";
   group.userData.damageable = false;
@@ -51,6 +51,7 @@ function buildVisitorModel(scope: DisposalScope, onLoaded?: () => void) {
   body.name = "visitor-model-body";
   group.add(body);
   const fallback = scope.own(createVisitor());
+  fallback.group.visible = false;
   body.add(fallback.group);
   // 非同期読込の前から、保存位置の検証と小鳥の回避に同じ境界を渡す。
   const bounds = new THREE.Box3().setFromObject(fallback.group).union(MODEL_BOUNDS);
@@ -96,12 +97,14 @@ function buildVisitorModel(scope: DisposalScope, onLoaded?: () => void) {
       fallback.dispose();
       loaded = true;
       group.userData.modelStatus = "ready";
-      onLoaded?.();
+      onVisualChange?.();
       return "ready" as const;
     } catch (error) {
       if (disposed) return "disposed" as const;
       group.userData.modelStatus = "fallback";
+      fallback.group.visible = true;
       console.warn("NPC model could not be loaded; keeping the procedural visitor.", error);
+      onVisualChange?.(); // 失敗時にも代替モデルとその影を描き直す。
       return "fallback" as const;
     }
   })();
