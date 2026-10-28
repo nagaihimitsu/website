@@ -20,6 +20,9 @@ const HEAD_TURN_SPEED = 2.8;
 const BLINK_PERIOD = 11;
 const BREATH_PERIOD = 4.2;
 const MOUTH_PERIOD = 9.6;
+// ときどき目を閉じた笑顔を見せる。通常の短いまばたきとは別の周期。
+const SMILE_PERIOD = 27;
+const SMILE_START = 15.2;
 // +Z正面・既存の身長へ正規化し、量子化分の余裕を含む境界。
 const MODEL_BOUNDS = new THREE.Box3(
   new THREE.Vector3(-0.291, 0, -0.209),
@@ -254,14 +257,24 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
           return t < 0.09 ? THREE.MathUtils.smoothstep(t, 0, 0.09)
             : 1 - THREE.MathUtils.smoothstep(t, 0.11, 0.26);
         };
-        const blink = reducedMotion ? 0 : Math.max(blinkPulse(2.5), blinkPulse(7.1));
+        // 口を先に開いた笑顔へ整え、目をゆっくり閉じて少し保つ。
+        // 通常のまばたきと重なっても合成値が不連続にならないよう、前後に抑制する。
+        const smileTime = expressionTime % SMILE_PERIOD - SMILE_START;
+        const smileEyes = reducedMotion ? 0 : THREE.MathUtils.smoothstep(smileTime, 0.2, 0.65)
+          * (1 - THREE.MathUtils.smoothstep(smileTime, 1.35, 1.8));
+        const smileWindow = reducedMotion ? 0 : THREE.MathUtils.smoothstep(smileTime, 0, 0.2)
+          * (1 - THREE.MathUtils.smoothstep(smileTime, 1.8, 2.1));
+        const usualBlink = Math.max(blinkPulse(2.5), blinkPulse(7.1));
+        const blink = reducedMotion ? 0 : Math.max(usualBlink * (1 - smileWindow), smileEyes);
         // 画像を取得できない場合、眼球を変形させず開眼を維持する。
         const blinkReady = blinkEffect?.setPhase(blink) ?? false;
         // 開いた笑顔からゆっくり閉じ、少し保ってから開く。
         const mouthCycle = expressionTime % MOUTH_PERIOD;
         const mouth = reducedMotion ? 0 : THREE.MathUtils.smoothstep(mouthCycle, 1.8, 2.35)
           * (1 - THREE.MathUtils.smoothstep(mouthCycle, 2.7, 3.25));
-        const mouthShape = THREE.MathUtils.smoothstep(mouth, 0.4, 1);
+        const smileMouth = reducedMotion ? 0 : THREE.MathUtils.smoothstep(smileTime, -0.3, 0.2)
+          * (1 - THREE.MathUtils.smoothstep(smileTime, 1.9, 2.3));
+        const mouthShape = THREE.MathUtils.smoothstep(mouth, 0.4, 1) * (1 - smileMouth);
         const mouthReady = mouthEffect?.setPhase(mouthShape, blinkReady) ?? false;
         // 布は体の傾きから少し遅れて左右へ揺れ、開始時は元の形から徐々に動く。
         const skirt = reducedMotion ? 0 : Math.sin((expressionTime - 0.7) * 0.7) * 0.8

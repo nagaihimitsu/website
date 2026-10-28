@@ -270,6 +270,67 @@ describe("provided visitor GLB", () => {
     expect(shader.uniforms.visitorMouthPhase.value).toBe(0);
   });
 
+  it("occasionally holds a smile with open mouth and gently closed eyes", async () => {
+    const asset = model();
+    const meshes = addSkinnedMeshes(asset);
+    const image = new THREE.Texture<HTMLImageElement>();
+    vi.spyOn(THREE.TextureLoader.prototype, "load").mockImplementation((_url, onLoad) => {
+      queueMicrotask(() => onLoad?.(image));
+      return image;
+    });
+    const count = asset.geometry.attributes.position.count;
+    asset.geometry.morphTargetsRelative = true;
+    asset.geometry.morphAttributes.position = ["mouth", "blink"].map((name) => {
+      const attribute = new THREE.Float32BufferAttribute(new Float32Array(count * 3), 3);
+      attribute.name = name;
+      return attribute;
+    });
+    meshes.forEach((mesh) => mesh.updateMorphTargets());
+    parse.mockResolvedValue({ ...asset, animations: [] });
+    const visitor = create(); await visitor.ready;
+
+    // 普通の短いまばたきではなく、開いた口と閉じた目を少し保つ区間を探す。
+    const samples: { mouth: number; blink: number }[] = [];
+    visitor.animate(0, false);
+    for (let i = 1; i <= 1200; i++) {
+      visitor.animate(i / 20, false);
+      const [mouth, blink] = meshes[0].morphTargetInfluences!;
+      expect(meshes[1].morphTargetInfluences).toEqual([mouth, blink]);
+      samples.push({ mouth, blink });
+    }
+    const runs: { start: number; end: number }[] = [];
+    for (let i = 0; i < samples.length; i++) {
+      if (samples[i].blink > 0.9 && samples[i].mouth < 0.05) {
+        if (i === 0 || samples[i - 1].blink <= 0.9 || samples[i - 1].mouth >= 0.05)
+          runs.push({ start: i, end: i });
+        else runs[runs.length - 1].end = i;
+      }
+    }
+    const smiles = runs.filter(({ start, end }) => (end - start) / 20 >= 0.45);
+    expect(smiles.length).toBeGreaterThanOrEqual(2);
+    expect(smiles.length).toBeLessThanOrEqual(4);
+    for (const { start, end } of smiles) {
+      // 笑い始めと終わりに急な目・口の切り替わりがない。
+      for (let i = Math.max(1, start - 20); i <= Math.min(samples.length - 1, end + 20); i++) {
+        expect(Math.abs(samples[i].blink - samples[i - 1].blink)).toBeLessThan(0.35);
+        expect(Math.abs(samples[i].mouth - samples[i - 1].mouth)).toBeLessThan(0.35);
+      }
+    }
+    let time = 60;
+    let heldSteps = 0;
+    while (time < 90 && heldSteps < 10) {
+      visitor.animate(time += 0.05, false);
+      const [mouth, blink] = meshes[0].morphTargetInfluences!;
+      heldSteps = blink > 0.9 && mouth < 0.05 ? heldSteps + 1 : 0;
+    }
+    expect(heldSteps).toBe(10);
+    expect(meshes[0].morphTargetInfluences![1]).toBeGreaterThan(0.9);
+    visitor.animate(time += 0.05, true);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0]);
+    visitor.animate(time += 0.05, false);
+    expect(meshes[0].morphTargetInfluences).toEqual([0, 0]);
+  });
+
   it("keeps eyes and mouth open while the shared image is unavailable, and releases late resources", async () => {
     const asset = model();
     const meshes = addSkinnedMeshes(asset);
@@ -301,7 +362,11 @@ describe("provided visitor GLB", () => {
     expect(meshes[1].morphTargetInfluences).toEqual([0, 0]);
     fail?.(new Error("image unavailable"));
     expect(visitor.group.userData.modelStatus).toBe("ready");
-    for (let i = 61; i <= 145; i++) visitor.animate(i / 20, false);
+    // 笑顔の周期をまたいでも画像なしで閉眼・口変形しない。
+    for (let i = 61; i <= 1200; i++) {
+      visitor.animate(i / 20, false);
+      expect(meshes[0].morphTargetInfluences).toEqual([0, 0]);
+    }
     expect(meshes[0].morphTargetInfluences).toEqual([0, 0]);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("blink image"));
     visitor.dispose();

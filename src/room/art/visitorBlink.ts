@@ -60,6 +60,19 @@ export function createVisitorBlink(mesh: THREE.Mesh, onVisualChange?: () => void
       vec2 visitorUv = vec2(0.512 - 4.12 * vVisitorFacePos.z,
         1.0 - (0.518 + (vVisitorFacePos.z < 0.0 ? 0.020 : 0.0) - 3.15 * (vVisitorFacePos.y - visitorLidY + 0.003)));
       vec3 visitorSkin = texture2D(visitorBlinkImage, visitorUv).rgb * vec3(0.93, 0.87, 0.80);
+      // 閉眼画像の明るい肌だけを、まつ毛の下から頬へなじませる。
+      // 暗いまつ毛と半開きの瞳には補正を掛けない。
+      float visitorSkinLuma = dot(visitorSkin, vec3(0.2126, 0.7152, 0.0722));
+      float visitorLidSkin = smoothstep(0.10, 0.30, visitorSkinLuma)
+        * (1.0 - smoothstep(visitorLidY - 0.003, visitorLidY + 0.003, vVisitorFacePos.y))
+        * smoothstep(0.55, 0.85, visitorBlinkPhase);
+      visitorSkin *= mix(vec3(1.0), vec3(0.70, 0.58, 0.57), visitorLidSkin);
+      // まつ毛の上側も明るい肌のみ穏やかに補正し、額と前髪へ自然に戻す。
+      float visitorUpperLidSkin = smoothstep(0.25, 0.45, visitorSkinLuma)
+        * smoothstep(visitorLidY + 0.001, visitorLidY + 0.005, vVisitorFacePos.y)
+        * (1.0 - smoothstep(visitorLidY + 0.020, visitorLidY + 0.030, vVisitorFacePos.y))
+        * smoothstep(0.55, 0.85, visitorBlinkPhase);
+      visitorSkin *= mix(vec3(1.0), vec3(0.86, 0.83, 0.80), visitorUpperLidSkin);
       diffuseColor.rgb = mix(diffuseColor.rgb, visitorSkin, visitorPart);
       }`);
     shader.fragmentShader = shader.fragmentShader.replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
@@ -67,7 +80,7 @@ export function createVisitorBlink(mesh: THREE.Mesh, onVisualChange?: () => void
     shader.fragmentShader = shader.fragmentShader.replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
       roughnessFactor = mix(roughnessFactor, 0.99, visitorPart);`);
   };
-  material.customProgramCacheKey = () => `${cacheKey.call(material)}|visitor-blink-1`;
+  material.customProgramCacheKey = () => `${cacheKey.call(material)}|visitor-blink-3`;
   material.needsUpdate = true;
   return {
     setPhase(value: number) {

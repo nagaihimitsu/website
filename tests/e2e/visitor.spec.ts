@@ -122,6 +122,52 @@ test("実モデルのまばたき・口パク・呼吸・裾が動き、動作�
   expect(errors).toEqual([]);
 });
 
+test("実モデルはときどき口を開いたまま目を閉じて笑い、動作抑制で元に戻る", { tag: "@npc" }, async ({ page }) => {
+  const errors = collectPageErrors(page);
+  await page.goto("/scripts/visitor-model-study.html?view=front&focus=face");
+  await page.waitForFunction(() => document.body.dataset.ready === "true");
+  await page.waitForLoadState("networkidle");
+  const result = await page.evaluate(async () => {
+    const threePath = "/node_modules/.vite/deps/three.js";
+    const THREE = await import(threePath) as typeof import("three");
+    const { visitor } = (window as unknown as { visitorStudy: { visitor: ReturnType<typeof import("../../src/room/art/visitorModel").createVisitorModel> } }).visitorStudy;
+    const meshes: import("three").Mesh[] = [];
+    visitor.group.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.morphTargetDictionary && object.morphTargetInfluences)
+        meshes.push(object);
+    });
+    const bindings = meshes.flatMap((mesh) => {
+      const entries = Object.entries(mesh.morphTargetDictionary!);
+      const mouth = entries.find(([key]) => key.toLowerCase() === "mouth")?.[1];
+      const blink = entries.find(([key]) => key.toLowerCase() === "blink")?.[1];
+      return mouth === undefined || blink === undefined ? [] : [{ mesh, mouth, blink }];
+    });
+    let held = 0, smiles = 0, maxMouthWhileSmiling = 0;
+    visitor.animate(0, false);
+    for (let step = 1; step <= 1200; step++) {
+      visitor.animate(step / 20, false);
+      if (!bindings.length) continue;
+      const first = bindings[0];
+      const blink = first.mesh.morphTargetInfluences![first.blink];
+      const mouth = first.mesh.morphTargetInfluences![first.mouth];
+      held = blink > 0.9 && mouth < 0.05 ? held + 1 : 0;
+      if (held === 10) smiles++;
+      if (held >= 10) maxMouthWhileSmiling = Math.max(maxMouthWhileSmiling, mouth);
+    }
+    visitor.animate(60.05, true);
+    return {
+      bindings: bindings.length, smiles, maxMouthWhileSmiling,
+      stopped: bindings.map(({ mesh, mouth, blink }) => [mesh.morphTargetInfluences![mouth], mesh.morphTargetInfluences![blink]]),
+    };
+  });
+  expect(result.bindings).toBeGreaterThan(0);
+  expect(result.smiles).toBeGreaterThanOrEqual(2);
+  expect(result.smiles).toBeLessThanOrEqual(4);
+  expect(result.maxMouthWhileSmiling).toBeLessThan(0.05);
+  expect(result.stopped.every(([mouth, blink]) => mouth === 0 && blink === 0)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("表情画像の取得に失敗してもモデルを表示し、目と口を開いたままにする", { tag: "@npc" }, async ({ page }) => {
   let markAborted!: () => void;
   const aborted = new Promise<void>((resolve) => { markAborted = resolve; });
