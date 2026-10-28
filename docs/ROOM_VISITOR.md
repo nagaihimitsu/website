@@ -6,7 +6,7 @@
 
 | 項目 | 原本 | 部屋用 |
 |---|---:|---:|
-| ファイル容量 | 50,760,220 bytes | 10,034,344 bytes |
+| ファイル容量 | 50,760,220 bytes | 8,910,304 bytes |
 | 三角形数 | 1,413,320 | 218,170 |
 | 色テクスチャ | 4096×4096 JPEG | 整理したUVへ元色を転写した4096×4096可逆WebP |
 | 表面の凹凸 | 4096×4096 PNG | 2048×2048、可逆WebP |
@@ -14,7 +14,7 @@
 
 配信用ファイルは `src/assets/room/visitor.glb`。`?url` importでViteのハッシュ付きアセットとなり、GitHub Pagesの `/website/` 配下でも同じサイトから取得する。Meshopt圧縮のデコーダーは既存のThree.jsに同梱されたものを使い、新たな実行時依存は追加しない。
 
-原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `b888d4891b7193ea4b9974413dfc09d93ffcff1a5842d2671f6e1c5eab9f15e7`。
+原本SHA-256: `82a0d456f0582e8bda354e54c9035e3bbe2f2e54a06e7ed2705e63d7e5aa8b34`。部屋用SHA-256: `a7505649b4464c9bc1dbc5d69a90eb342117849ff6379b6f908212f1e886c617`。
 
 以下はリポジトリのルートで、原本を別の作業ディレクトリに保存して実行する、UV整理前のリグ付きモデルまでの生成手順。glTF Transform CLIを4.5.1へ固定し、途中ファイルはリポジトリに入れない。通常のサイトビルドでは再生成しない。
 
@@ -33,21 +33,31 @@ npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-textures.glb /tmp/visit
 
 ### UV整理版の配信用データ
 
-顔を首から分けて大きく正立させ、髪・ワンピース・カーディガン・鞄や靴の島をまとめた `UV_Editable` に、元の7素材の色を4096×4096へ転写した。旧UV `UVMap` は維持し、色は新UV、元のノーマル・質感マップは旧UVを参照する。補修部の頂点色も色画像に焼き付け済みのため、GLBには頂点色を出力しない。読み込み後の位置・ボーン・ウェイト・形状キー・アニメーションは従来の配信用データと一致する。
+顔を首から分けて大きく正立させ、髪・ワンピース・カーディガン・鞄や靴の島をまとめた編集用UVに、元の7素材の色を4096×4096へ転写した。その後、髪と衣服の一部の島の向きと余白を調整した `UV_Editable_2` を配信に使用する。編集用Blendには旧UV `UVMap` と前回の `UV_Editable` も残している。配信用GLBの生成時は前回の中間UVをメモリ上だけで除き、色は `UV_Editable_2`、元のノーマル・質感マップは `UVMap` を参照する。補修部の頂点色は色画像に焼き付け済みのため、GLBには頂点色を出力しない。
 
 4K転写画像のUV島外は縮小表示で黒い継ぎ目が出ないよう近傍色を拡張している。島内の画素は維持し、通常のミップマップは使い続ける。顔の口内・側面は補助島に分かれ、部位の混在や局所的な歪み、少量のUV重なりは残る。編集用Blendと元データのコピーは作業環境の `/workspace/npc-animation/uv-study/` に保存され、サイトにはBlendそのものを含めない。元BlendのSHA-256は `aea54883c219ead48fc45d1e632944f2ccc8857a371844c694f508021690a9bc`。
 
-再生成には上記の検証済み元Blend、Blender 4.3.2、Python 3とNumPy 2.3.5・Pillow 12.3.0・SciPy 1.17.0、glTF Transform CLI 4.5.1を使う。元Blendはリポジトリには含まれないため、保存した元データを使う。各スクリプトは入力のSHA-256と出力先を確認する。
+現在の配信用データの再生成には、検証済みの編集用Blend、Blender 4.3.2、glTF Transform CLI 4.5.1を使う。Blendはリポジトリには含まれない。作業環境では `/workspace/npc-animation/uv-study/selected-uv-models/editing/visitor-uv-editable-padded.blend` に保存し、SHA-256は `e97d5b28170e7f1978c66cb480c7784de765aafe0016f12c54690e8553fd97d9`。入力Blendは編集・上書きしない。スクリプトは入力のSHA-256を照合し、既存の出力先への上書きを拒否する。
+
+以下では未使用の一時ファイル名を指定する。出力GLBの確認後、サイトへ反映するときだけ `src/assets/room/visitor.glb` へコピーする。
+
+```sh
+blender -b -t 4 --python-exit-code 1 --python scripts/assets/visitor-uv-selected-export.py -- /path/to/visitor-uv-editable-padded.blend /tmp/visitor-selected-raw.glb
+npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-selected-raw.glb /tmp/visitor-selected-webp.glb --formats png --lossless true
+npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-selected-webp.glb /tmp/visitor-selected.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
+```
+
+以下は前回のUV整理版の生成記録で、現在の配信用GLBとは異なる。この手順には検証済み元Blend、Blender 4.3.2、Python 3とNumPy 2.3.5・Pillow 12.3.0・SciPy 1.17.0、glTF Transform CLI 4.5.1を使う。元Blendはリポジトリには含まれない。各スクリプトは入力のSHA-256と出力先を確認する。
 
 ```sh
 blender -b -t 4 --python-exit-code 1 --python scripts/assets/visitor-uv-export.py -- /path/to/visitor-original.blend /tmp/visitor-uv.glb --texture /tmp/visitor-basecolor-4k.png --blend /tmp/visitor-uv.blend
 python3 scripts/assets/visitor-uv-pad-texture.py /tmp/visitor-basecolor-4k.png /tmp/visitor-basecolor-padded.png
 python3 scripts/assets/visitor-uv-replace-texture.py /tmp/visitor-uv.glb /tmp/visitor-basecolor-padded.png /tmp/visitor-uv-padded.glb
 npx --yes @gltf-transform/cli@4.5.1 webp /tmp/visitor-uv-padded.glb /tmp/visitor-uv-webp.glb --formats png --lossless true
-npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-uv-webp.glb src/assets/room/visitor.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
+npx --yes @gltf-transform/cli@4.5.1 meshopt /tmp/visitor-uv-webp.glb /tmp/visitor-previous-uv.glb --quantize-position 16 --quantize-texcoord 14 --quantize-normal 12
 ```
 
-[UV配置](screenshots/visitor-uv-layout.png) ／ [部屋用モデルの前後・表情比較](screenshots/visitor-uv-web-comparison.png) ／ [継ぎ目の補正比較](screenshots/visitor-uv-seams-comparison.png) ／ [部屋に近い縮尺](screenshots/visitor-uv-room-scale.png)。
+今回の[部屋用モデルの前後・表情比較](screenshots/visitor-selected-uv-comparison.png)。前回の参考画像：[UV配置](screenshots/visitor-uv-layout.png) ／ [部屋用モデルの前後・表情比較](screenshots/visitor-uv-web-comparison.png) ／ [継ぎ目の補正比較](screenshots/visitor-uv-seams-comparison.png) ／ [部屋に近い縮尺](screenshots/visitor-uv-room-scale.png)。
 
 閉眼の参照画像は、所有者提供の閉眼画像（SHA-256 `4004da2a1d7a2555358fceb1e182ad4f672cc7de1e3cc76f732d7c2a193b94de`）から作成する。Python 3 と Pillow を使い、原本を上書きせずに再生成する。
 
