@@ -270,6 +270,57 @@ describe("provided visitor GLB", () => {
     expect(shader.uniforms.visitorMouthPhase.value).toBe(0);
   });
 
+  it("composes eye and mouth relief on shared geometry and releases both copies", async () => {
+    const asset = model();
+    const meshes = addSkinnedMeshes(asset);
+    const image = new THREE.Texture<HTMLImageElement>();
+    vi.spyOn(THREE.TextureLoader.prototype, "load").mockImplementation((_url, onLoad) => {
+      queueMicrotask(() => onLoad?.(image));
+      return image;
+    });
+    const position = asset.geometry.getAttribute("position");
+    // 実GLBと同じ2倍座標で、目と口にそれぞれ独立した点を置く。
+    position.setXYZ(0, 0.15, 0.634, -0.092);
+    position.setXYZ(1, 0.18, 0.522, 0);
+    const originalEye = new THREE.Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+    originalEye.name = "blink";
+    originalEye.setXYZ(0, -0.02, 0, 0);
+    const originalMouth = new THREE.Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+    originalMouth.name = "mouth";
+    originalMouth.setXYZ(1, 0.01, 0, 0);
+    asset.geometry.morphTargetsRelative = true;
+    asset.geometry.morphAttributes.position = [originalEye, originalMouth];
+    meshes.forEach((mesh) => mesh.updateMorphTargets());
+    parse.mockResolvedValue({ ...asset, animations: [] });
+    const clone = vi.spyOn(THREE.BufferGeometry.prototype, "clone");
+    const visitor = create();
+    expect(await visitor.ready).toBe("ready");
+    const copies = clone.mock.results.flatMap((result) => result.type === "return" && result.value instanceof THREE.BufferGeometry
+      && result.value.morphAttributes.position?.length === 2 ? [result.value] : []);
+    expect(copies).toHaveLength(2);
+    const [eyeCopy, composedCopy] = copies;
+    expect(meshes[0].geometry).toBe(composedCopy);
+    expect(meshes[1].geometry).toBe(composedCopy);
+    const eye = composedCopy.morphAttributes.position![0];
+    const mouth = composedCopy.morphAttributes.position![1];
+    // 口のclone後も目の補正が残り、閉口時の口面も前へ戻る。
+    expect(eye.getX(0)).toBeGreaterThan(originalEye.getX(0));
+    expect(eye.getX(1)).toBe(originalEye.getX(1));
+    expect(mouth.getX(1)).toBeGreaterThan(-0.02);
+    expect(mouth.getX(0)).toBe(0);
+    expect(originalEye.getX(0)).toBeCloseTo(-0.02);
+    expect(originalMouth.getX(1)).toBeCloseTo(0.01);
+    const eyeDispose = vi.spyOn(eyeCopy, "dispose");
+    const composedDispose = vi.spyOn(composedCopy, "dispose");
+    const originalDispose = vi.spyOn(asset.geometry, "dispose");
+    visitor.dispose(); visitor.dispose();
+    expect(meshes[0].geometry).toBe(asset.geometry);
+    expect(meshes[1].geometry).toBe(asset.geometry);
+    expect(eyeDispose).toHaveBeenCalledTimes(1);
+    expect(composedDispose).toHaveBeenCalledTimes(1);
+    expect(originalDispose).toHaveBeenCalledTimes(1);
+  });
+
   it("occasionally holds a smile with open mouth and gently closed eyes", async () => {
     const asset = model();
     const meshes = addSkinnedMeshes(asset);

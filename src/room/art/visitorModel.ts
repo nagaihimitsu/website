@@ -4,6 +4,7 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { createDisposalScope, withDisposalScope, type DisposalScope } from "../disposal";
 import { createVisitor } from "./visitor";
 import { createVisitorBlink } from "./visitorBlink";
+import { createVisitorEyeRelief } from "./visitorEyeRelief";
 import { createVisitorMouth } from "./visitorMouth";
 import modelUrl from "../../assets/room/visitor.glb?url";
 
@@ -156,6 +157,10 @@ function buildVisitorModel(scope: DisposalScope, onVisualChange?: () => void) {
         blinkEffect = createVisitorBlink(face, onVisualChange);
         if (blinkEffect) {
           scope.own(blinkEffect);
+          // 顔と共有する閉眼モーフを複製し、シャドウを含む形状自体を補正する。
+          // 口側もさらに複製するため、破棄は口→目元の順に戻る。
+          const eyeRelief = createVisitorEyeRelief(expressions.map((entry) => entry.mesh));
+          if (eyeRelief) scope.own(eyeRelief);
           mouthEffect = createVisitorMouth(face, expressions.map((entry) => entry.mesh));
           if (mouthEffect) scope.own(mouthEffect);
         }

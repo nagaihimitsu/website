@@ -32,7 +32,9 @@ export function createVisitorMouth(face: THREE.Mesh, meshes: THREE.Mesh[]) {
           const radius = Math.hypot(z / 0.027, (y - 0.261) / 0.019);
           const weight = (1 - smooth((radius - 0.75) / 0.65))
             * smooth((x - 0.05) / 0.014) * (1 - smooth((x - 0.095) / 0.015));
-          const target = 0.075 - 0.9 * z * z - 0.7 * (y - 0.261) ** 2;
+          // 口を閉じるときも周囲の頬に近い前後位置を保ち、
+          // 元の唇を奥へ押し込みすぎない緩やかな曲面へ寄せる。
+          const target = 0.085 - 0.9 * z * z - 0.7 * (y - 0.261) ** 2;
           delta[i * 3] = (target - x) * weight * 2;
         }
         const morph = new THREE.Float32BufferAttribute(delta, 3);
